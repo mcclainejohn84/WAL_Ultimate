@@ -29,6 +29,7 @@ import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession, signIn } from '@/shared/session/useSession'
 import { Button } from '@/shared/ui/Button'
 import { TextField } from '@/shared/ui/TextField'
+import { PasswordField } from '@/shared/ui/PasswordField'
 
 type Mode = 'entrar' | 'crear' | 'restablecer'
 
@@ -144,9 +145,8 @@ export function UserGate({ children }: { children: ReactNode }) {
             ))}
           </datalist>
 
-          <TextField
+          <PasswordField
             label={mode === 'entrar' ? 'Contraseña' : 'Contraseña nueva'}
-            type="password"
             autoComplete={mode === 'entrar' ? 'current-password' : 'new-password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -154,16 +154,14 @@ export function UserGate({ children }: { children: ReactNode }) {
 
           {mode === 'restablecer' && (
             <>
-              <TextField
+              <PasswordField
                 label="Repite la contraseña nueva"
-                type="password"
                 autoComplete="new-password"
                 value={repetida}
                 onChange={(e) => setRepetida(e.target.value)}
               />
-              <TextField
+              <PasswordField
                 label="Contraseña de administrador"
-                type="password"
                 autoComplete="off"
                 value={admin}
                 onChange={(e) => setAdmin(e.target.value)}
@@ -201,12 +199,6 @@ export function UserGate({ children }: { children: ReactNode }) {
             </button>
           )}
         </div>
-
-        <p className="mt-5 border-t border-rule-dark/20 pt-3 text-mini leading-relaxed text-ink-soft">
-          Tu usuario separa tus ejércitos y tus facciones, y es además lo que te permite guardar cambios: sin entrar se
-          puede mirar todo, pero no modificar nada. Si sabes tu contraseña y quieres otra, se cambia desde dentro, en el
-          menú de tu nombre; si la has olvidado, se restablece aquí con la contraseña de administrador.
-        </p>
       </form>
     </div>
   )

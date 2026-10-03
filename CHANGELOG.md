@@ -13,6 +13,26 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.165 — 03/10/2026 18:52
+
+- **La pantalla de acceso enseña la contraseña si se lo pides**, con el ojo de
+  siempre dentro del campo. Escribir a ciegas una contraseña que no se ve es la
+  causa número uno de "no me deja entrar" —una mayúscula que se coló, el teclado
+  en otro idioma—, y aquí duele el doble: al crear o restablecer hay que
+  teclearla dos veces sin verla ninguna, y detrás no hay ningún correo de
+  recuperación que arregle el estropicio. Lo llevan los tres campos de la
+  pantalla: la contraseña, su repetición y la de administrador.
+  - El ojo **empieza siempre apagado**, en cada campo y en cada visita. Mostrar
+    la contraseña es algo que se pide, no algo que se hereda: quien la escribe
+    delante de otra persona da por hecho que no se ve.
+
+- **Fuera el párrafo del pie** que explicaba para qué sirve el usuario y dónde
+  se cambia la contraseña. Era un cuarto del alto de la tarjeta contando lo que
+  la propia pantalla ya hace: entrar, crear usuario y "He olvidado la
+  contraseña" están ahí, con su nombre, a un dedo de distancia.
+
+---
+
 ## 0.164 — 15/09/2026 12:04
 
 - **El alias de la unidad (Editor > Unidades) pasa de apartado a una línea.**
