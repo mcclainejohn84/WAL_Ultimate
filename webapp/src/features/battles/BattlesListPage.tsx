@@ -90,7 +90,6 @@ export function BattlesListPage() {
     <div>
       <PageHeader
         title="Batallas"
-        description="Dos ejércitos completados, enfrentados sobre la misma mesa: los dos despliegues cara a cara, las dos listas y los PDF para llevar a la partida. Las batallas las ve todo el grupo."
         actions={
           <Button variant="primary" onClick={() => setCreando(true)}>
             <PlusIcon className="h-4 w-4" />

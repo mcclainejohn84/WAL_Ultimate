@@ -13,6 +13,16 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.166 — 05/11/2026 22:13
+
+- **Fuera la explicación de la cabecera de Batallas** ("Dos ejércitos
+  completados, enfrentados sobre la misma mesa…"). Tres renglones describiendo
+  la pantalla a quien ya la tiene delante, y encima solo los lee quien no los
+  necesita: el que entra una vez y el que entra cada semana ven lo mismo. La
+  lista de batallas y "Nueva batalla" dicen de qué va esto sin ayuda.
+
+---
+
 ## 0.165 — 03/10/2026 18:52
 
 - **La pantalla de acceso enseña la contraseña si se lo pides**, con el ojo de
