@@ -20,3 +20,6 @@ side/Archive.zip
 # Es basura de taller, no código del programa: no tiene por qué viajar en el
 # repositorio, y cuatro archivos muertos ya se habían colado.
 _to_delete/
+
+# Copias que deja sed -i.bak cuando no se pueden borrar.
+*.bak

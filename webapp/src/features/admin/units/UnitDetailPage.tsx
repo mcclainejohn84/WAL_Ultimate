@@ -20,7 +20,7 @@ import { PageHeader } from '@/shared/ui/PageHeader'
 import { Panel } from '@/shared/ui/Panel'
 import { Spinner } from '@/shared/ui/Spinner'
 import { Button } from '@/shared/ui/Button'
-import { ArrowLeftIcon, CheckIcon, PlusIcon, WarningIcon } from '@/shared/ui/icons'
+import { ArrowLeftIcon, CheckIcon, PlusIcon, TrashIcon, WarningIcon } from '@/shared/ui/icons'
 import { TextField } from '@/shared/ui/TextField'
 import { EnteroInput } from '@/shared/ui/EnteroInput'
 import { Select } from '@/shared/ui/Select'
@@ -30,7 +30,14 @@ import { UnsavedChangesDialog } from '@/shared/ui/UnsavedChangesDialog'
 import { AppendicesModal } from '@/features/admin/units/AppendicesModal'
 import { EquipmentCreateModal } from '@/features/admin/units/EquipmentCreateModal'
 import { UpgradeCreateModal } from '@/features/admin/units/UpgradeCreateModal'
-import type { AttributeProfile, AttributeProfileInput, CommandRole, EquipmentOption, UnitDetail } from '@/domain/types'
+import type {
+  AttributeProfile,
+  AttributeProfileInput,
+  CommandRole,
+  EquipmentOption,
+  TroopProfile,
+  UnitDetail,
+} from '@/domain/types'
 
 /** Nombre por defecto del Campeón en toda ficha que no tenga uno propio asignado. */
 const DEFAULT_CHAMPION_NAME = 'Campeón'
@@ -65,6 +72,16 @@ interface UnitDraft {
   /** command_role_id -> coste en puntos de esa opción de mando (Músico/Portaestandarte/Campeón). */
   commandCosts: Record<number, number>
   profileStats: Record<number, AttributeProfileInput>
+  /**
+   * PERFILES DE TROPA de la unidad, en orden (ver TroopProfile). Lo que se
+   * edita aquí es su precio por miniatura y su mínimo; el nombre y los
+   * atributos se guardan por su lado (el nombre al momento, los atributos con
+   * `profileStats`), porque el perfil tiene que existir en la base para poder
+   * editarse por id.
+   */
+  troopProfiles: Array<{ profileId: number; cost: number; minSize: number | null }>
+  /** equipment_id -> qué perfiles de tropa pueden llevarla. Vacío = toda la unidad. */
+  equipmentProfileIds: Record<number, number[]>
 }
 
 function scalarFromUnit(unit: UnitDetail): UnitScalarInput {
@@ -91,6 +108,9 @@ function draftFromUnit(unit: UnitDetail): UnitDraft {
   for (const opt of unit.commandOptions) {
     if (opt.profile) profileStats[opt.profile.id] = extractProfileInput(opt.profile)
   }
+  // Los perfiles de tropa también se editan con la cuadrícula de atributos, así
+  // que entran en el mismo saco.
+  for (const perfil of unit.troopProfiles) profileStats[perfil.id] = extractProfileInput(perfil)
   return {
     scalar: scalarFromUnit(unit),
     specialRuleIds: new Set(unit.specialRules.map((r) => r.id)),
@@ -109,6 +129,8 @@ function draftFromUnit(unit: UnitDetail): UnitDraft {
     ),
     commandCosts: Object.fromEntries(unit.commandOptions.map((opt) => [opt.role.id, opt.cost])),
     profileStats,
+    troopProfiles: unit.troopProfiles.map((p) => ({ profileId: p.id, cost: p.cost, minSize: p.minSize })),
+    equipmentProfileIds: Object.fromEntries(unit.equipmentOptions.map((e) => [e.id, e.profileIds])),
   }
 }
 
@@ -164,6 +186,13 @@ export function UnitDetailPage() {
   // cambios en curso. Este override sustituye a unit.commandOptions hasta la
   // próxima carga real de la unidad.
   const [commandOverride, setCommandOverride] = useState<UnitDetail['commandOptions'] | null>(null)
+  // Mismo mecanismo que los dos de arriba, para los PERFILES DE TROPA: darlos
+  // de alta toca la base en el acto (el perfil tiene que existir para poder
+  // editar sus atributos por id), y recargar la unidad entera tiraría por la
+  // borda todo lo que hubiera sin guardar.
+  const [troopOverride, setTroopOverride] = useState<TroopProfile[] | null>(null)
+  const [nombreDePerfilNuevo, setNombreDePerfilNuevo] = useState('')
+  const [perfilBusy, setPerfilBusy] = useState(false)
   const [commandBusy, setCommandBusy] = useState(false)
 
   // Solo se resetea el borrador cuando llega una unidad "fresca" de verdad
@@ -249,6 +278,8 @@ export function UnitDetailPage() {
         ),
         commandCosts: draft.commandCosts,
         profileStats: draft.profileStats,
+        troopProfiles: draft.troopProfiles,
+        equipmentProfileIds: draft.equipmentProfileIds,
       })
       setSavedFlash(true)
       setTimeout(() => setSavedFlash(false), 1500)
@@ -326,6 +357,54 @@ export function UnitDetailPage() {
 
   const baseProfile = unit.profiles.base ?? baseProfileOverride
   const commandOptions = commandOverride ?? unit.commandOptions
+  const troopProfiles = troopOverride ?? unit.troopProfiles
+
+  /** Da de alta un perfil de tropa ("Gor") y lo mete también en el borrador. */
+  async function anadirPerfilDeTropa() {
+    const nombre = nombreDePerfilNuevo.trim()
+    if (!nombre || perfilBusy) return
+    setPerfilBusy(true)
+    try {
+      const creado = await UnitRepository.addTroopProfile(unitId, nombre)
+      setTroopOverride([...troopProfiles, creado])
+      updateDraft((d) => ({
+        ...d,
+        troopProfiles: [...d.troopProfiles, { profileId: creado.id, cost: 0, minSize: null }],
+        profileStats: { ...d.profileStats, [creado.id]: extractProfileInput(creado) },
+      }))
+      setNombreDePerfilNuevo('')
+    } finally {
+      setPerfilBusy(false)
+    }
+  }
+
+  async function quitarPerfilDeTropa(profileId: number) {
+    setPerfilBusy(true)
+    try {
+      await UnitRepository.removeTroopProfile(unitId, profileId)
+      setTroopOverride(troopProfiles.filter((p) => p.id !== profileId))
+      updateDraft((d) => ({ ...d, troopProfiles: d.troopProfiles.filter((p) => p.profileId !== profileId) }))
+    } finally {
+      setPerfilBusy(false)
+    }
+  }
+
+  /** El nombre se guarda al salir del campo, no con "Guardar cambios": vive en
+      la ficha de atributos, que ya existe en la base. */
+  async function renombrarPerfilDeTropa(profileId: number, nombre: string) {
+    const limpio = nombre.trim()
+    if (!limpio) return
+    setTroopOverride(troopProfiles.map((p) => (p.id === profileId ? { ...p, name: limpio } : p)))
+    await UnitRepository.renameTroopProfile(profileId, limpio)
+  }
+
+  /** Cambia el precio por miniatura o el mínimo de un perfil, en el borrador. */
+  function ajustarPerfilDeTropa(profileId: number, valores: { cost?: number; minSize?: number | null }) {
+    updateDraft((d) => ({
+      ...d,
+      troopProfiles: d.troopProfiles.map((p) => (p.profileId === profileId ? { ...p, ...valores } : p)),
+    }))
+  }
 
   /** Da de alta o de baja un rol de mando (Músico, Portaestandarte, Campeón). */
   async function toggleCommandRole(role: CommandRole, enabled: boolean) {
@@ -675,6 +754,67 @@ export function UnitDetailPage() {
               defaultIds={draft.defaultEquipmentIds}
               onToggleDefault={(otherId, isDefault) => toggleDraftDefault('defaultEquipmentIds', otherId, isDefault)}
             />
+
+            {/* DE QUIÉN ES CADA OPCIÓN, solo en las unidades mixtas.
+                "Los Ungor pueden llevar lanza (+1 por miniatura)" no se le
+                puede cobrar también a los Gor: con el perfil anotado aquí, el
+                precio de la opción multiplica por las miniaturas DE SU PERFIL
+                y no por las de la unidad entera.
+
+                Aparece únicamente cuando hay perfiles de tropa. En una unidad
+                normal no habría nada que elegir —todas las opciones son de
+                todos— y sería una columna de desplegables diciendo siempre lo
+                mismo. */}
+            {troopProfiles.length > 0 && draft.equipmentIds.size > 0 && (
+              <div className="mt-4 border-t border-rule-dark/20 pt-3">
+                <p className="mb-1 text-xs font-semibold tracking-wide text-ink-soft">¿Quién puede llevar cada opción?</p>
+                <p className="mb-2 text-mini leading-relaxed text-ink-soft">
+                  Sin marcar nada, la lleva toda la unidad y se cobra por cada miniatura. Marcando perfiles, solo esos
+                  —y solo ellos la pagan.
+                </p>
+                <div className="space-y-1.5">
+                  {equipmentItems
+                    .filter((item) => draft.equipmentIds.has(item.id))
+                    .map((item) => {
+                      const elegidos = draft.equipmentProfileIds[item.id] ?? []
+                      return (
+                        <div key={item.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                          <span className="min-w-0 truncate text-xs text-ink">{item.name}</span>
+                          <span className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1">
+                            {troopProfiles.map((perfil) => (
+                              <label key={perfil.id} className="flex items-center gap-1 text-xs text-ink-soft">
+                                <input
+                                  type="checkbox"
+                                  className="accent-maroon"
+                                  checked={elegidos.includes(perfil.id)}
+                                  onChange={(e) =>
+                                    updateDraft((d) => {
+                                      const actuales = d.equipmentProfileIds[item.id] ?? []
+                                      return {
+                                        ...d,
+                                        equipmentProfileIds: {
+                                          ...d.equipmentProfileIds,
+                                          [item.id]: e.target.checked
+                                            ? [...actuales, perfil.id]
+                                            : actuales.filter((x) => x !== perfil.id),
+                                        },
+                                      }
+                                    })
+                                  }
+                                />
+                                {perfil.name}
+                              </label>
+                            ))}
+                            {elegidos.length === 0 && (
+                              <span className="text-mini italic text-ink-soft/60">toda la unidad</span>
+                            )}
+                          </span>
+                        </div>
+                      )
+                    })}
+                </div>
+              </div>
+            )}
           </Panel>
 
           <Panel title="Opciones de unidad">
@@ -749,6 +889,115 @@ export function UnitDetailPage() {
               </div>
             )}
           </Panel>
+
+          {/* ----------------------------------------------------------------
+              PERFILES DE TROPA: una unidad que es una MEZCLA.
+              Una Manada de Bestias son Gor a 7 puntos y Ungor a 3, con
+              atributos distintos y en una sola unidad. Sin esto había que
+              partirla en dos entradas, que ni es verdad ni cuadra con la
+              composición del ejército (es UNA unidad básica, no dos).
+
+              VACÍO ES LO NORMAL y por eso el panel no grita: casi todas las
+              unidades son N miniaturas iguales y se quedan con su perfil base
+              y su coste de arriba. Mientras no haya ni un perfil aquí, nada
+              cambia en ninguna otra pantalla.
+              ---------------------------------------------------------------- */}
+          {unit.unitType !== 'personaje' && (
+            <Panel
+              title="Perfiles de tropa"
+              subtitle="Para unidades mixtas: cada tipo de miniatura con sus atributos y su precio."
+            >
+              {troopProfiles.length === 0 && (
+                <p className="mb-3 text-xs text-ink-soft">
+                  Sin perfiles: la unidad son miniaturas iguales y cada una cuesta el{' '}
+                  <b className="text-ink">Coste (pts)</b> de Datos generales.
+                </p>
+              )}
+
+              <div className="space-y-3">
+                {troopProfiles.map((perfil) => {
+                  const enBorrador = draft.troopProfiles.find((p) => p.profileId === perfil.id)
+                  return (
+                    <div key={perfil.id} className="rounded-sm border border-rule-dark/30 bg-parchment/50 p-2.5">
+                      <div className="mb-2 flex flex-wrap items-end gap-x-3 gap-y-2">
+                        <div className="min-w-[8rem] flex-1">
+                          <TextField
+                            label="Perfil"
+                            defaultValue={perfil.name ?? ''}
+                            onBlur={(e) => void renombrarPerfilDeTropa(perfil.id, e.target.value)}
+                          />
+                        </div>
+                        <div className="w-24">
+                          <TextField
+                            label="Pts/miniatura"
+                            type="number"
+                            min={0}
+                            className="text-center"
+                            value={enBorrador?.cost ?? 0}
+                            onChange={(e) => ajustarPerfilDeTropa(perfil.id, { cost: Number(e.target.value) || 0 })}
+                          />
+                        </div>
+                        <div className="w-20">
+                          <TextField
+                            label="Mínimo"
+                            type="number"
+                            min={0}
+                            className="text-center"
+                            title='Lo que pide el reglamento de este perfil ("5+ Gor"). Se enseña al montar la lista; no lo impone nadie.'
+                            value={enBorrador?.minSize ?? ''}
+                            onChange={(e) =>
+                              ajustarPerfilDeTropa(perfil.id, {
+                                minSize: e.target.value ? Number(e.target.value) : null,
+                              })
+                            }
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void quitarPerfilDeTropa(perfil.id)}
+                          disabled={perfilBusy}
+                          aria-label={`Quitar el perfil ${perfil.name ?? ''}`}
+                          title="Quitar este perfil de la unidad (borra también su ficha de atributos)"
+                          className="mb-1 rounded-sm p-1 text-ink-soft hover:bg-maroon/10 hover:text-danger disabled:opacity-40"
+                        >
+                          <TrashIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <EditableAttributeTable
+                        value={draft.profileStats[perfil.id] ?? extractProfileInput(perfil)}
+                        onChange={(input) => setProfileStats(perfil.id, input)}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="mt-3 flex items-end gap-2 border-t border-rule-dark/20 pt-3">
+                <div className="min-w-0 flex-1">
+                  <TextField
+                    label="Añadir un perfil"
+                    placeholder="Gor, Ungor, Desgarrador…"
+                    value={nombreDePerfilNuevo}
+                    onChange={(e) => setNombreDePerfilNuevo(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        void anadirPerfilDeTropa()
+                      }
+                    }}
+                  />
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={anadirPerfilDeTropa}
+                  disabled={perfilBusy || !nombreDePerfilNuevo.trim()}
+                >
+                  <PlusIcon className="h-4 w-4" />
+                  Añadir
+                </Button>
+              </div>
+            </Panel>
+          )}
 
           {/* Solo en unidades de TROPA. Un personaje es una única miniatura:
               no puede llevar músico, portaestandarte ni campeón, así que

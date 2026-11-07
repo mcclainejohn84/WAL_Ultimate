@@ -13,6 +13,51 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.168 — 07/11/2026 17:53
+
+**UNIDADES DE VARIOS PERFILES.** Hasta ahora una unidad eran N miniaturas
+iguales: un perfil, un coste, una cantidad. Pero una Manada de Bestias son Gor
+a 7 puntos y Ungor a 3, con atributos distintos y en una sola unidad, y eso
+había que partirlo en dos entradas — que ni es verdad ni cuadra con la
+composición del ejército, porque es UNA unidad básica y no dos.
+
+- **En el editor**, un apartado nuevo: "Perfiles de tropa". Se añade un perfil
+  por su nombre (Gor, Ungor, Desgarrador…), se le ponen sus nueve atributos, su
+  **precio por miniatura** y su mínimo. Una unidad sin perfiles de tropa —que
+  son casi todas— sigue funcionando exactamente igual que antes.
+
+- **Al montar la lista**, en vez de una casilla "Cantidad" hay una por perfil,
+  con su precio debajo y el total al lado. El coste sale solo: 5 Gor y 10 Ungor
+  son 65 puntos, no 15 por el precio de nadie.
+
+- **El equipo sabe de quién es.** "Los Ungor pueden llevar lanza (+1 por
+  miniatura)" no se le cobra a los Gor: en el editor se marca qué perfiles
+  pueden llevar cada opción, y su coste multiplica por las miniaturas de esos
+  perfiles. Una opción sin marcar nada es de toda la unidad, como siempre. El
+  escudo puede ser de varios a la vez, que es justo el caso que tumbó el primer
+  intento de resolver esto con una sola columna.
+
+- **Las fichas enseñan todos los perfiles**, una fila cada uno, en la hoja de
+  unidad, en la exportación a PNG y en la de Word, sin tocar nada en cada sitio:
+  salen de la misma función que ya componía la tabla.
+
+- Por dentro, `quantity` sigue siendo el TOTAL de miniaturas aunque haya
+  desglose. Es deliberado: el despliegue, el orden de batalla, los PDF y las
+  peanas sobre la mesa solo necesitan saber cuántas son, y así ninguno se entera
+  de que esto existe.
+
+- **Viene la Manada de Bestias hecha**, en `webapp/db/manada-de-bestias.sql`:
+  los cuatro perfiles con sus atributos y precios, el equipo con su dueño, el
+  grupo de mando y las reglas (Emboscada, Indisciplinado, Manada). Se lanza con
+  `npx wrangler d1 execute wharmy-db --remote --file=../db/manada-de-bestias.sql`
+  desde `webapp/worker`, es idempotente, y todo lo que trae se puede cambiar
+  después desde el editor.
+
+- **Hay que desplegar el Worker** (`npx wrangler deploy`): las tablas nuevas van
+  en sus migraciones.
+
+---
+
 ## 0.167 — 07/11/2026 17:31
 
 - **Se entra por Ejércitos.** La primera pantalla era "Hojas de Unidad", que es

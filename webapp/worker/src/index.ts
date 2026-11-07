@@ -516,6 +516,7 @@ const RESET_DELETE_TABLES = [
   'change_log',
   'army_list_entry_equipment',
   'army_list_entry_upgrades',
+  'army_list_entry_profiles',
   'army_list_entries',
   'army_lists',
   'faction_construction_rules',
@@ -524,6 +525,8 @@ const RESET_DELETE_TABLES = [
   'unit_equipment_options',
   'unit_special_rules',
   'unit_profiles',
+  'unit_troop_profiles',
+  'unit_equipment_profiles',
   'units',
   'command_roles',
   'upgrade_incompatibilities',
@@ -1227,6 +1230,70 @@ const MIGRATIONS: string[] = [
      SELECT id, password_hash FROM users WHERE password_hash <> ''`,
   `UPDATE users SET password_hash = ''
     WHERE password_hash <> '' AND id IN (SELECT user_id FROM user_secrets)`,
+  // --------------------------------------------------------------------------
+  // UNIDADES DE VARIOS PERFILES (la Manada de Bestias y las que se parezcan).
+  //
+  // Hasta aquí una unidad era N miniaturas iguales: un perfil, un coste, una
+  // cantidad. Pero hay unidades que son una MEZCLA —5 Gor a 7 puntos y 10 Ungor
+  // a 3, en la misma peana y como una sola unidad— y eso no se podía escribir:
+  // había que partirla en dos entradas, que ni es verdad ni cuadra en las
+  // reglas de composición.
+  //
+  // POR QUÉ UNA TABLA NUEVA Y NO UN ROL MÁS EN `unit_profiles`. Porque esa
+  // tabla tiene un CHECK sobre `role` que solo admite base/montura/carro, y
+  // SQLite no sabe cambiar un CHECK: habría que reconstruir la tabla entera,
+  // copiarla y renombrarla… en un lote de migraciones que se ejecuta ENTERO en
+  // cada carga, donde un renombrado solo funciona la primera vez. Una tabla
+  // aparte con su `CREATE TABLE IF NOT EXISTS` se puede lanzar mil veces sin
+  // consecuencias, y además dice mejor lo que es: un perfil de tropa no se
+  // parece a una montura más que en tener atributos.
+  //
+  // `cost` es por MINIATURA de ese perfil, y por eso no admite NULL como el de
+  // las monturas: un perfil de tropa sin precio no significa "gratis con la
+  // unidad", significa que falta el dato.
+  // --------------------------------------------------------------------------
+  `CREATE TABLE IF NOT EXISTS unit_troop_profiles (
+     unit_id    INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+     profile_id INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+     sort_order INTEGER NOT NULL DEFAULT 0,
+     cost       INTEGER NOT NULL DEFAULT 0,
+     min_size   INTEGER,
+     PRIMARY KEY (unit_id, profile_id)
+   )`,
+  // Cuántas miniaturas de cada perfil lleva UNA entrada de la lista.
+  //
+  // `army_list_entries.quantity` SIGUE SIENDO EL TOTAL, y es deliberado: el
+  // despliegue, el orden de batalla, los PDF y las peanas sobre la mesa solo
+  // necesitan saber cuántas miniaturas son, y así ninguno se entera de que
+  // existe el desglose. Quien lo necesita —el coste y el editor de la entrada—
+  // lo lee de aquí.
+  `CREATE TABLE IF NOT EXISTS army_list_entry_profiles (
+     entry_id   INTEGER NOT NULL REFERENCES army_list_entries(id) ON DELETE CASCADE,
+     profile_id INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+     quantity   INTEGER NOT NULL DEFAULT 0,
+     PRIMARY KEY (entry_id, profile_id)
+   )`,
+  // QUIÉN PUEDE LLEVAR CADA OPCIÓN DE EQUIPO, en una unidad mixta.
+  //
+  // Sin filas aquí, la opción es de TODA la unidad: es lo que han sido siempre
+  // todas, y lo que siguen siendo. Con filas, la opción es solo de esos
+  // perfiles, y su coste por miniatura multiplica por las miniaturas DE ELLOS
+  // y no por las de la unidad entera — que es lo que hace falta para escribir
+  // "los Ungor pueden llevar lanza (+1 por miniatura)" sin cobrársela a los
+  // Gor.
+  //
+  // UNA TABLA Y NO UNA COLUMNA en unit_equipment_options. Se intentó con una
+  // columna `profile_id` y el primer caso real la tumbó: el escudo lo pueden
+  // llevar tanto los Gor como los Ungor, y con la clave primaria
+  // (unit_id, equipment_id) de aquella tabla la misma opción no se puede
+  // enganchar dos veces. Aquí el perfil forma parte de la clave, así que una
+  // opción vale para los que haga falta.
+  `CREATE TABLE IF NOT EXISTS unit_equipment_profiles (
+     unit_id      INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+     equipment_id INTEGER NOT NULL REFERENCES equipment_options(id) ON DELETE CASCADE,
+     profile_id   INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+     PRIMARY KEY (unit_id, equipment_id, profile_id)
+   )`,
 ]
 
 /**

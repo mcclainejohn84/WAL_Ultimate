@@ -12,6 +12,7 @@ import { UnitRepository } from '@/data/repositories/unitRepository'
 import { FactionRepository } from '@/data/repositories/factionRepository'
 import { computeCategoryInsertIndex } from '@/domain/armyValidation'
 import type {
+  EntryProfileQuantity,
   ArmyList,
   ArmyListDetail,
   ArmyListEntry,
@@ -89,7 +90,7 @@ async function resolveEntry(row: Record<string, unknown>): Promise<ArmyListEntry
   // Las tres consultas son independientes entre sí (ninguna depende del
   // resultado de otra: unit_id y row.id ya se conocen desde el principio),
   // así que se lanzan en paralelo en vez de una detrás de otra.
-  const [unit, equipmentIds, upgradeIds, magicPaths] = await Promise.all([
+  const [unit, equipmentIds, upgradeIds, magicPaths, profileQuantities] = await Promise.all([
     UnitRepository.getDetailById(row.unit_id as number),
     query<number>(
       'SELECT equipment_id FROM army_list_entry_equipment WHERE entry_id = ?',
@@ -108,6 +109,15 @@ async function resolveEntry(row: Record<string, unknown>): Promise<ArmyListEntry
       [row.id as number],
       (r) => ({ pathId: r.path_id as number, level: (r.level as number) ?? 1 }),
     ).catch(() => [] as EntryMagicPath[]),
+    // Miniaturas por perfil de tropa (unidades mixtas, ver TroopProfile).
+    // `.catch` como las sendas: si la tabla todavía no existe —Worker sin
+    // desplegar— la lista entera se cargaba igual antes de que esto existiera,
+    // y tiene que seguir cargándose.
+    query<EntryProfileQuantity>(
+      'SELECT profile_id, quantity FROM army_list_entry_profiles WHERE entry_id = ?',
+      [row.id as number],
+      (r) => ({ profileId: r.profile_id as number, quantity: (r.quantity as number) ?? 0 }),
+    ).catch(() => [] as EntryProfileQuantity[]),
   ])
   if (!unit) return null // unidad borrada después de añadirla a la lista: se omite en vez de romper la carga
 
@@ -130,6 +140,7 @@ async function resolveEntry(row: Record<string, unknown>): Promise<ArmyListEntry
     sortOrder: row.sort_order as number,
     equipmentIds,
     upgradeIds,
+    profileQuantities,
     // Sin columna todavía (D1 sin migrar) = visible. Nunca al revés: una lista
     // que aparece medio vacía porque falta una migración es indistinguible de
     // una lista a la que le han borrado unidades.
@@ -146,6 +157,7 @@ async function replaceEntryRelations(
   equipmentIds: number[],
   upgradeIds: number[],
   magicPaths: EntryMagicPath[] = [],
+  profileQuantities: EntryProfileQuantity[] = [],
 ): Promise<void> {
   const statements: BatchStatement[] = [
     { sql: 'DELETE FROM army_list_entry_equipment WHERE entry_id = ?', params: [entryId] },
@@ -163,6 +175,16 @@ async function replaceEntryRelations(
       sql: 'INSERT OR IGNORE INTO army_list_entry_magic_paths (entry_id, path_id, level) VALUES (?, ?, ?)',
       params: [entryId, path.pathId, path.level],
     })),
+    { sql: 'DELETE FROM army_list_entry_profiles WHERE entry_id = ?', params: [entryId] },
+    // Solo los perfiles con miniaturas: una fila con 0 no dice nada que no
+    // diga su ausencia, y ensucia la tabla de una unidad a la que se le quitó
+    // un tipo de tropa.
+    ...profileQuantities
+      .filter((q) => q.quantity > 0)
+      .map((q) => ({
+        sql: 'INSERT OR IGNORE INTO army_list_entry_profiles (entry_id, profile_id, quantity) VALUES (?, ?, ?)',
+        params: [entryId, q.profileId, q.quantity],
+      })),
   ]
   await execBatch(statements)
 }
@@ -613,6 +635,7 @@ export const ArmyListRepository = {
           magicPaths: e.magicPaths,
           equipmentIds: e.equipmentIds,
           upgradeIds: e.upgradeIds,
+          profileQuantities: e.profileQuantities,
           hidden: e.hidden,
         })),
       )
@@ -717,7 +740,13 @@ export const ArmyListRepository = {
         existingRows.length, // provisional (al final); se corrige justo debajo
       ],
     )
-    await replaceEntryRelations(entryId, input.equipmentIds, input.upgradeIds, input.magicPaths)
+    await replaceEntryRelations(
+      entryId,
+      input.equipmentIds,
+      input.upgradeIds,
+      input.magicPaths,
+      input.profileQuantities,
+    )
 
     const orderedIds = existingRows.map((r) => r.id)
     orderedIds.splice(insertIndex, 0, entryId)
@@ -767,7 +796,13 @@ export const ArmyListRepository = {
         entryId,
       ],
     )
-    await replaceEntryRelations(entryId, input.equipmentIds, input.upgradeIds, input.magicPaths)
+    await replaceEntryRelations(
+      entryId,
+      input.equipmentIds,
+      input.upgradeIds,
+      input.magicPaths,
+      input.profileQuantities,
+    )
     await touchList(armyListId)
   },
 

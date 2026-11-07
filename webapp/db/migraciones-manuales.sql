@@ -54,3 +54,28 @@ INSERT OR IGNORE INTO user_secrets (user_id, password_hash)
   SELECT id, password_hash FROM users WHERE password_hash <> '';
 UPDATE users SET password_hash = ''
   WHERE password_hash <> '' AND id IN (SELECT user_id FROM user_secrets);
+
+-- Unidades de VARIOS PERFILES (la Manada de Bestias y las que se le parezcan):
+-- una unidad que es una mezcla de tipos de miniatura, cada uno con sus
+-- atributos y su precio. Ver unit_troop_profiles en db/schema.sql.
+CREATE TABLE IF NOT EXISTS unit_troop_profiles (
+  unit_id    INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+  profile_id INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  cost       INTEGER NOT NULL DEFAULT 0,
+  min_size   INTEGER,
+  PRIMARY KEY (unit_id, profile_id)
+);
+CREATE TABLE IF NOT EXISTS army_list_entry_profiles (
+  entry_id   INTEGER NOT NULL REFERENCES army_list_entries(id) ON DELETE CASCADE,
+  profile_id INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+  quantity   INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (entry_id, profile_id)
+);
+-- Quién puede llevar cada opción de equipo. Sin filas = toda la unidad.
+CREATE TABLE IF NOT EXISTS unit_equipment_profiles (
+  unit_id      INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+  equipment_id INTEGER NOT NULL REFERENCES equipment_options(id) ON DELETE CASCADE,
+  profile_id   INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+  PRIMARY KEY (unit_id, equipment_id, profile_id)
+);

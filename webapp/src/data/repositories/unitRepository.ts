@@ -13,6 +13,7 @@ import { esVisiblePara } from '@/domain/personajeRenombre'
 import type { UnidadConAlias } from '@/domain/unitAlias'
 import type {
   AttributeProfile,
+  TroopProfile,
   AttributeProfileInput,
   CommandRole,
   EquipmentOption,
@@ -183,6 +184,18 @@ export interface UnitBatchSaveInput {
   commandCosts: Record<number, number>
   /** attribute_profile_id -> estadísticas nuevas. */
   profileStats: Record<number, AttributeProfileInput>
+  /**
+   * PERFILES DE TROPA de la unidad, en su orden (ver TroopProfile). El perfil
+   * en sí (nombre y atributos) ya existe como fila de `attribute_profiles`:
+   * aquí va solo lo que es propio de ESTA unidad — su precio por miniatura y
+   * su mínimo.
+   */
+  troopProfiles: Array<{ profileId: number; cost: number; minSize: number | null }>
+  /**
+   * equipment_id -> qué perfiles de tropa pueden llevar esa opción. Ausente o
+   * vacío = toda la unidad, que es lo que son todas salvo en las mixtas.
+   */
+  equipmentProfileIds: Record<number, number[]>
 }
 
 /**
@@ -318,6 +331,8 @@ export const UnitRepository = {
       equipmentExclusivePairs,
       upgradeOptions,
       commandOptions,
+      troopProfiles,
+      equipmentProfileLinks,
     ] = await Promise.all([
       queryLocalOne('SELECT * FROM units WHERE id = ?', [id], mapUnit),
       // Una unidad puede tener varios perfiles de atributos a la vez (base,
@@ -403,6 +418,29 @@ export const UnitRepository = {
           profile: row.profile_id != null ? mapAttributeProfileRow(row) : null,
         }),
       ),
+      // PERFILES DE TROPA (ver TroopProfile): los tipos de miniatura que
+      // componen una unidad mixta. Vacío en casi todas.
+      queryLocal<TroopProfile>(
+        `SELECT ap.*, utp.cost AS troop_cost, utp.min_size AS troop_min_size, utp.sort_order AS troop_sort_order
+         FROM unit_troop_profiles utp
+         JOIN attribute_profiles ap ON ap.id = utp.profile_id
+         WHERE utp.unit_id = ?
+         ORDER BY utp.sort_order, ap.name`,
+        [id],
+        (row) => ({
+          ...mapAttributeProfileRow(row),
+          cost: (row.troop_cost as number) ?? 0,
+          minSize: (row.troop_min_size as number | null) ?? null,
+          sortOrder: (row.troop_sort_order as number) ?? 0,
+        }),
+      ),
+      // Qué perfiles pueden llevar cada opción de equipo (unidades mixtas).
+      // Sin filas para una opción = la lleva toda la unidad.
+      queryLocal<{ equipmentId: number; profileId: number }>(
+        'SELECT equipment_id, profile_id FROM unit_equipment_profiles WHERE unit_id = ?',
+        [id],
+        (row) => ({ equipmentId: row.equipment_id as number, profileId: row.profile_id as number }),
+      ),
     ])
     if (!unit) return null
 
@@ -436,6 +474,11 @@ export const UnitRepository = {
       rulesByProfile.set(link.profileId, [...(rulesByProfile.get(link.profileId) ?? []), link.rule])
     }
 
+    const perfilesPorEquipo = new Map<number, number[]>()
+    for (const enlace of equipmentProfileLinks) {
+      perfilesPorEquipo.set(enlace.equipmentId, [...(perfilesPorEquipo.get(enlace.equipmentId) ?? []), enlace.profileId])
+    }
+
     const profiles = {
       base: linkedProfiles.find((p) => p.role === 'base')?.profile ?? null,
       montura: linkedProfiles
@@ -455,8 +498,9 @@ export const UnitRepository = {
       category,
       typeTag,
       profiles,
+      troopProfiles,
       specialRules,
-      equipmentOptions,
+      equipmentOptions: equipmentOptions.map((e) => ({ ...e, profileIds: perfilesPorEquipo.get(e.id) ?? [] })),
       equipmentExclusivePairs,
       upgradeOptions,
       commandOptions,
@@ -716,6 +760,65 @@ export const UnitRepository = {
     return { id: profileId, name: null, equippableByCharacter: false, includeInSheets: false, ...blank }
   },
 
+  /**
+   * Da de alta un PERFIL DE TROPA nuevo en una unidad: crea su ficha de
+   * atributos (en blanco, con nombre) y la engancha a la unidad.
+   *
+   * Se persiste EN EL ACTO y no con "Guardar cambios", igual que la ficha
+   * base: el perfil tiene que existir en la base para que sus atributos se
+   * puedan editar con `profileStats`, que trabaja por id. Lo que sí espera al
+   * guardado es su precio y su mínimo.
+   */
+  async addTroopProfile(unitId: number, name: string): Promise<TroopProfile> {
+    const profileId = await execCatalog(
+      "INSERT INTO attribute_profiles (name, profile_kind, m, ha, hp, f, r, h, i, a, l) VALUES (?, 'unidad', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)",
+      [name.trim()],
+    )
+    await execCatalog(
+      'INSERT INTO unit_troop_profiles (unit_id, profile_id, sort_order, cost, min_size) VALUES (?, ?, (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM unit_troop_profiles WHERE unit_id = ?), 0, NULL)',
+      [unitId, profileId, unitId],
+    )
+    return {
+      id: profileId,
+      name: name.trim(),
+      m: null,
+      ha: null,
+      hp: null,
+      f: null,
+      r: null,
+      h: null,
+      i: null,
+      a: null,
+      l: null,
+      equippableByCharacter: false,
+      includeInSheets: false,
+      cost: 0,
+      minSize: null,
+      sortOrder: 0,
+    }
+  },
+
+  /**
+   * Quita un perfil de tropa de la unidad Y BORRA SU FICHA DE ATRIBUTOS.
+   *
+   * Lo segundo es a propósito y no es un exceso: a diferencia de una montura
+   * —que es un catálogo compartido y puede estar en veinte unidades—, un
+   * perfil de tropa se crea para ESTA unidad y no lo usa nadie más. Dejar la
+   * ficha suelta solo llenaría `attribute_profiles` de "Ungor" huérfanos que
+   * no se pueden ver ni borrar desde ninguna pantalla.
+   */
+  async removeTroopProfile(unitId: number, profileId: number): Promise<void> {
+    await execCatalogBatch([
+      { sql: 'DELETE FROM unit_troop_profiles WHERE unit_id = ? AND profile_id = ?', params: [unitId, profileId] },
+      { sql: 'DELETE FROM attribute_profiles WHERE id = ?', params: [profileId] },
+    ])
+  },
+
+  /** Cambia el nombre de un perfil de tropa ("Gor", "Ungor"...). */
+  async renameTroopProfile(profileId: number, name: string): Promise<void> {
+    await execCatalog('UPDATE attribute_profiles SET name = ? WHERE id = ?', [name.trim(), profileId])
+  },
+
   async updateScalarFields(id: number, input: UnitScalarInput): Promise<void> {
     const { sql, params } = scalarUpdateStatement(id, input)
     await execCatalog(sql, params)
@@ -907,6 +1010,31 @@ export const UnitRepository = {
         params: [cost, unitId, Number(roleId)],
       })
     }
+
+    // QUIÉN PUEDE LLEVAR CADA OPCIÓN DE EQUIPO (unidades mixtas). Se sustituye
+    // el conjunto entero, igual que el resto de relaciones. Sin filas para una
+    // opción = la lleva toda la unidad, que es el caso de siempre.
+    statements.push({ sql: 'DELETE FROM unit_equipment_profiles WHERE unit_id = ?', params: [unitId] })
+    for (const [equipmentId, profileIds] of Object.entries(input.equipmentProfileIds)) {
+      for (const profileId of profileIds) {
+        statements.push({
+          sql: 'INSERT OR IGNORE INTO unit_equipment_profiles (unit_id, equipment_id, profile_id) VALUES (?, ?, ?)',
+          params: [unitId, Number(equipmentId), profileId],
+        })
+      }
+    }
+
+    // PERFILES DE TROPA. Mismo criterio que las monturas: se sustituye el
+    // conjunto entero (borrar todos + insertar los del borrador), porque el
+    // borrador ya trae la lista final y no un diff. `sort_order` sale del
+    // orden en que vienen, que es el que se ve en el editor.
+    statements.push({ sql: 'DELETE FROM unit_troop_profiles WHERE unit_id = ?', params: [unitId] })
+    input.troopProfiles.forEach((perfil, indice) => {
+      statements.push({
+        sql: 'INSERT OR IGNORE INTO unit_troop_profiles (unit_id, profile_id, sort_order, cost, min_size) VALUES (?, ?, ?, ?, ?)',
+        params: [unitId, perfil.profileId, indice, perfil.cost, perfil.minSize],
+      })
+    })
 
     for (const [profileId, stats] of Object.entries(input.profileStats)) {
       statements.push({

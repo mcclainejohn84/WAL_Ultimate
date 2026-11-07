@@ -4,7 +4,7 @@
 // pura sobre los tipos de dominio, para que sea testeable y reutilizable
 // tanto desde la UI del constructor como, en el futuro, desde el PDF.
 // ============================================================================
-import type { ArmyListEntry, UnitDetail } from '@/domain/types'
+import type { ArmyListEntry, EntryProfileQuantity, UnitDetail } from '@/domain/types'
 
 export interface ArmyListIssue {
   severity: 'error' | 'warning'
@@ -21,6 +21,12 @@ export interface EntryCostInput {
   hasChampion: boolean
   mountProfileId: number | null
   chariotProfileId: number | null
+  /**
+   * Miniaturas por perfil de tropa, solo en las unidades mixtas (ver
+   * TroopProfile). Opcional: quien calcula el coste de una unidad normal no
+   * tiene por qué saber que esto existe.
+   */
+  profileQuantities?: EntryProfileQuantity[]
   /**
    * Coste a mano que pisa al calculado. Opcional porque también se calcula el
    * coste de una entrada que todavía no existe (el botón "Añadir a la lista"),
@@ -47,10 +53,6 @@ export interface EntryCostInput {
 export function computeEntryCost(unit: UnitDetail, input: EntryCostInput): number {
   if (input.costOverride != null) return input.costOverride
 
-  const equipmentCost = unit.equipmentOptions
-    .filter((e) => input.equipmentIds.includes(e.id))
-    .reduce((sum, e) => sum + e.cost, 0)
-
   const upgradeCost = unit.upgradeOptions
     .filter((u) => input.upgradeIds.includes(u.id))
     .reduce((sum, u) => sum + u.cost, 0)
@@ -65,7 +67,53 @@ export function computeEntryCost(unit: UnitDetail, input: EntryCostInput): numbe
   const mountCost = unit.profiles.montura.find((p) => p.id === input.mountProfileId)?.cost ?? 0
   const chariotCost = unit.profiles.carro.find((p) => p.id === input.chariotProfileId)?.cost ?? 0
 
-  return input.quantity * (unit.baseCost + equipmentCost) + upgradeCost + commandCost + mountCost + chariotCost
+  const porMiniatura = costeDeLasMiniaturas(unit, input)
+
+  return porMiniatura + upgradeCost + commandCost + mountCost + chariotCost
+}
+
+/**
+ * LO QUE CUESTAN LAS MINIATURAS de una entrada, que es la única parte del
+ * coste que cambia según la unidad sea de un solo tipo o MIXTA.
+ *
+ * Unidad normal (sin perfiles de tropa): `cantidad × (base + equipo)`, como
+ * siempre.
+ *
+ * Unidad mixta (Manada de Bestias): cada perfil cuenta por su lado, con su
+ * precio y sus miniaturas —5 Gor a 7 y 10 Ungor a 3 son 65 puntos, no 15 por
+ * el precio de nadie—, y el equipo se reparte según de quién sea:
+ *
+ *   · El equipo DE CIERTOS PERFILES ("los Ungor pueden llevar lanza, +1 por
+ *     miniatura") multiplica por las miniaturas DE ESOS PERFILES. Cobrárselo
+ *     también a los Gor sería cobrar lanzas que nadie lleva. Si vale para
+ *     varios —el escudo lo llevan Gor y Ungor— se cobra por todos ellos.
+ *   · El equipo de TODA LA UNIDAD (sin perfiles, que es lo que son todas las
+ *     opciones de siempre) multiplica por el total de miniaturas.
+ *
+ * `unit.baseCost` NO entra en el caso mixto: ahí el precio de cada miniatura lo
+ * pone su perfil, y sumar además el de la unidad lo contaría dos veces.
+ */
+function costeDeLasMiniaturas(unit: UnitDetail, input: EntryCostInput): number {
+  const equipoElegido = unit.equipmentOptions.filter((e) => input.equipmentIds.includes(e.id))
+
+  if (unit.troopProfiles.length === 0) {
+    return input.quantity * (unit.baseCost + equipoElegido.reduce((suma, e) => suma + e.cost, 0))
+  }
+
+  const porPerfil = new Map((input.profileQuantities ?? []).map((q) => [q.profileId, q.quantity]))
+  const totalMiniaturas = unit.troopProfiles.reduce((suma, p) => suma + (porPerfil.get(p.id) ?? 0), 0)
+
+  const deCadaPerfil = unit.troopProfiles.reduce((suma, perfil) => {
+    const cuantas = porPerfil.get(perfil.id) ?? 0
+    const equipoSuyo = equipoElegido
+      .filter((e) => e.profileIds.includes(perfil.id))
+      .reduce((parcial, e) => parcial + e.cost, 0)
+    return suma + cuantas * (perfil.cost + equipoSuyo)
+  }, 0)
+
+  const equipoDeTodos = equipoElegido.filter((e) => e.profileIds.length === 0).reduce((suma, e) => suma + e.cost, 0)
+
+  return deCadaPerfil + totalMiniaturas * equipoDeTodos
 }
 
 export function computeListTotal(entries: ArmyListEntry[]): number {
