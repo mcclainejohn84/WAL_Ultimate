@@ -34,7 +34,6 @@ import {
 } from '@/domain/armyComposition'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { Modal } from '@/shared/ui/Modal'
-import { EnteroInput } from '@/shared/ui/EnteroInput'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 
@@ -128,13 +127,7 @@ export function CompositionRulesModal({ onClose }: { onClose: () => void }) {
                 <tr className="bg-parchment-dark/50 text-ink-soft">
                   <th className="border-b border-rule-dark/30 px-2 py-1.5 text-left font-semibold">Categoría</th>
                   <th className="w-40 border-b border-rule-dark/30 px-2 py-1.5 text-left font-semibold">Regla</th>
-                  {/* LAS DOS COLUMNAS, DEL MISMO ANCHO. Estaban en 5rem y 6rem
-                      porque "Por tramo" es una palabra más larga que "Base", y
-                      el resultado era que las dos casillas de debajo —que
-                      contienen lo mismo, un número de una cifra— salían de
-                      distinto tamaño y desalineadas entre sí. Manda lo que
-                      contienen, no lo que mide su rótulo. */}
-                  <th className="w-24 border-b border-rule-dark/30 px-2 py-1.5 text-center font-semibold">Base</th>
+                  <th className="w-20 border-b border-rule-dark/30 px-2 py-1.5 text-center font-semibold">Base</th>
                   <th className="w-24 border-b border-rule-dark/30 px-2 py-1.5 text-center font-semibold">Por tramo</th>
                 </tr>
               </thead>
@@ -170,21 +163,23 @@ export function CompositionRulesModal({ onClose }: { onClose: () => void }) {
                         </select>
                       </td>
                       <td className="px-2 py-1.5">
-                        <EnteroInput
+                        <input
+                          type="number"
                           min={0}
                           value={rule.base}
                           disabled={!rule.enabled}
                           onChange={(e) => patch(category.id, { base: Number(e.target.value) || 0 })}
-                          className="mx-auto block w-14 rounded-sm border border-rule-dark/40 bg-parchment px-1 py-1 text-center text-xs text-ink tabular-nums outline-none focus:border-bronze disabled:opacity-50 sin-flechitas"
+                          className="w-full rounded-sm border border-rule-dark/40 bg-parchment px-1.5 py-1 text-center text-xs text-ink outline-none focus:border-bronze disabled:opacity-50"
                         />
                       </td>
                       <td className="px-2 py-1.5">
-                        <EnteroInput
+                        <input
+                          type="number"
                           min={0}
                           value={rule.step}
                           disabled={!rule.enabled}
                           onChange={(e) => patch(category.id, { step: Number(e.target.value) || 0 })}
-                          className="mx-auto block w-14 rounded-sm border border-rule-dark/40 bg-parchment px-1 py-1 text-center text-xs text-ink tabular-nums outline-none focus:border-bronze disabled:opacity-50 sin-flechitas"
+                          className="w-full rounded-sm border border-rule-dark/40 bg-parchment px-1.5 py-1 text-center text-xs text-ink outline-none focus:border-bronze disabled:opacity-50"
                         />
                       </td>
                     </tr>

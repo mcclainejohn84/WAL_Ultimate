@@ -6,12 +6,6 @@ interface ConfirmDialogProps {
   title: string
   message: string
   confirmLabel?: string
-  /**
-   * Rótulo del botón de salir. "Cancelar" vale para casi todo, pero no cuando
-   * el diálogo hace una PREGUNTA: a "¿dejas de ver este ejército?" se responde
-   * "No", no "Cancelar".
-   */
-  cancelLabel?: string
   danger?: boolean
   /** Puede ser asíncrono: el diálogo se queda abierto y bloqueado hasta que termine. */
   onConfirm: () => void | Promise<void>
@@ -35,7 +29,6 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel = 'Confirmar',
-  cancelLabel = 'Cancelar',
   danger = true,
   onConfirm,
   onCancel,
@@ -66,7 +59,7 @@ export function ConfirmDialog({
       footer={
         <>
           <Button variant="ghost" onClick={onCancel} disabled={busy}>
-            {cancelLabel}
+            Cancelar
           </Button>
           <Button variant={danger ? 'danger' : 'primary'} onClick={handleConfirm} disabled={busy}>
             {busy ? 'Un momento…' : confirmLabel}

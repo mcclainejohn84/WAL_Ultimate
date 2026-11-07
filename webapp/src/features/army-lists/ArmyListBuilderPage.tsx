@@ -37,7 +37,6 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { Tooltip } from '@/shared/ui/Tooltip'
 import { Button } from '@/shared/ui/Button'
 import { TextField } from '@/shared/ui/TextField'
-import { EnteroInput } from '@/shared/ui/EnteroInput'
 import { Select } from '@/shared/ui/Select'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
@@ -320,7 +319,9 @@ function FichasDeLaLista({
                 role="presentation"
               >
                 {editandoCoste ? (
-                  <EnteroInput
+                  <input
+                    type="number"
+                    inputMode="numeric"
                     min={0}
                     autoFocus
                     value={coste.texto}
@@ -412,15 +413,6 @@ interface EntryDraft {
   chariotProfileId: number | null
   /** Sendas con su nivel. Solo se rellena en hechiceros (ver unit.isWizard). */
   magicPaths: EntryMagicPath[]
-  /**
-   * Miniaturas de cada perfil de tropa, en las unidades MIXTAS (ver
-   * TroopProfile). Vacío en el resto, que es casi siempre, y entonces manda
-   * `quantity` como toda la vida.
-   *
-   * Es un Map y no un array porque aquí se edita casilla a casilla —"sube un
-   * Ungor"— y un array obligaría a buscar y reconstruir en cada tecla.
-   */
-  profileQuantities: Map<number, number>
 }
 
 const EMPTY_DRAFT: EntryDraft = {
@@ -435,7 +427,6 @@ const EMPTY_DRAFT: EntryDraft = {
   mountProfileId: null,
   chariotProfileId: null,
   magicPaths: [],
-  profileQuantities: new Map(),
 }
 
 const EDITOR_OPEN_KEY = 'wharmy_ejercitos_editor_abierto'
@@ -866,10 +857,6 @@ export function ArmyListBuilderPage() {
       chariotProfileId:
         detail.profiles.carro.length === 1 && !hasCost(detail.profiles.carro[0]) ? detail.profiles.carro[0].id : null,
       magicPaths: [],
-      // Cada perfil de tropa arranca en SU MÍNIMO (5 Gor, 5 Ungor), no en
-      // cero: es la composición legal más pequeña, y partir de ahí es
-      // justamente lo que uno escribiría a mano antes de subir números.
-      profileQuantities: new Map(detail.troopProfiles.map((perfil) => [perfil.id, perfil.minSize ?? 0])),
     })
     setEntryIssues([])
   }
@@ -917,7 +904,6 @@ export function ArmyListBuilderPage() {
       mountProfileId: entry.mountProfileId,
       chariotProfileId: entry.chariotProfileId,
       magicPaths: entry.magicPaths,
-      profileQuantities: new Map(entry.profileQuantities.map((q) => [q.profileId, q.quantity])),
     })
     setEntryIssues([])
   }
@@ -931,21 +917,9 @@ export function ArmyListBuilderPage() {
   /** Añade o actualiza una entrada EN EL BORRADOR LOCAL (sin tocar la red). Se persiste al pulsar "Guardar ejército". */
   function handleSaveEntry() {
     if (!list || !selectedUnit || !draft.unitId) return
-    // EN UNA UNIDAD MIXTA LA CANTIDAD ES LA SUMA, no un número aparte. Se
-    // guarda igualmente en `quantity` porque es lo que leen el despliegue, el
-    // orden de batalla, los PDF y las peanas: así ninguno de ellos se entera de
-    // que existe el desglose.
-    const esMixta = selectedUnit.troopProfiles.length > 0
-    const desglose = selectedUnit.troopProfiles.map((perfil) => ({
-      profileId: perfil.id,
-      quantity: draft.profileQuantities.get(perfil.id) ?? 0,
-    }))
-    const totalMixta = desglose.reduce((suma, q) => suma + q.quantity, 0)
-
     const input: ArmyListEntryInput = {
       unitId: draft.unitId,
-      quantity: selectedUnit.unitType === 'personaje' ? 1 : esMixta ? totalMixta : draft.quantity,
-      profileQuantities: esMixta ? desglose : [],
+      quantity: selectedUnit.unitType === 'personaje' ? 1 : draft.quantity,
       mountProfileId: draft.mountProfileId,
       chariotProfileId: draft.chariotProfileId,
       hasStandardBearer: draft.hasStandardBearer,
@@ -977,7 +951,7 @@ export function ArmyListBuilderPage() {
 
     const issues = validateEntryInput(
       selectedUnit,
-      { quantity: input.quantity, equipmentIds: input.equipmentIds, upgradeIds: input.upgradeIds },
+      { quantity: draft.quantity, equipmentIds: input.equipmentIds, upgradeIds: input.upgradeIds },
       incompatiblePairs ?? [],
       currentEntries,
       draft.editingEntryId ?? undefined,
@@ -1004,7 +978,6 @@ export function ArmyListBuilderPage() {
       alias: input.alias,
       costOverride: input.costOverride,
       magicPaths: input.magicPaths,
-      profileQuantities: input.profileQuantities,
       sortOrder: 0,
       equipmentIds: input.equipmentIds,
       upgradeIds: input.upgradeIds,
@@ -1120,7 +1093,6 @@ export function ArmyListBuilderPage() {
         hasChampion: e.hasChampion,
         championName: e.championName,
         costOverride: e.costOverride,
-        profileQuantities: e.profileQuantities,
         alias: e.alias,
         magicPaths: e.magicPaths,
         equipmentIds: e.equipmentIds,
@@ -1253,33 +1225,6 @@ export function ArmyListBuilderPage() {
   // siquiera se muestra, sería un dato redundante para el jugador.
   const isPersonaje = selectedUnit?.unitType === 'personaje'
 
-  /** Una unidad MIXTA es la que tiene perfiles de tropa (ver TroopProfile). */
-  const esMixta = (selectedUnit?.troopProfiles.length ?? 0) > 0
-  /** En una unidad mixta el tamaño no se escribe: es la suma de sus perfiles. */
-  const totalDeMiniaturas = (selectedUnit?.troopProfiles ?? []).reduce(
-    (suma, perfil) => suma + (draft.profileQuantities.get(perfil.id) ?? 0),
-    0,
-  )
-
-  /**
-   * LO QUE CUESTA CADA MINIATURA con lo que lleva marcado AHORA MISMO.
-   *
-   * No es `baseCost` a secas, que es lo que ya enseña el explorador de
-   * unidades: es la base más el equipo elegido, que es exactamente el número
-   * por el que se multiplica la cantidad (ver computeEntryCost). Puesto al
-   * lado del nombre, al marcar "Lanza (+1)" se ve subir el precio de cada
-   * miniatura en el momento, en vez de tener que mirar el total de la lista y
-   * dividir mentalmente entre veinte.
-   *
-   * El grupo de mando, la montura y las mejoras NO entran: se pagan una vez
-   * por unidad, no por miniatura, y meterlos aquí daría un "por miniatura" que
-   * no es por miniatura.
-   */
-  const costeUnitario = selectedUnit
-    ? selectedUnit.baseCost +
-      selectedUnit.equipmentOptions.filter((e) => draft.equipmentIds.has(e.id)).reduce((suma, e) => suma + e.cost, 0)
-    : 0
-
   // Reglas que se muestran en el panel "Ficha": las propias de la unidad más
   // las que aporta la montura ELEGIDA para esta entrada. Una montura no
   // seleccionada todavía no forma parte de la unidad, así que sus reglas no
@@ -1314,48 +1259,7 @@ export function ArmyListBuilderPage() {
         </p>
       )}
 
-      {/* UNA CASILLA POR PERFIL en las unidades mixtas, y la de siempre en el
-          resto. En una Manada de Bestias no hay "cantidad": hay 5 Gor y 10
-          Ungor, que cuestan distinto y tienen atributos distintos. El total se
-          calcula y se enseña al lado, porque es lo que miran las reglas de
-          tamaño y lo que acaba guardándose como `quantity`. */}
-      {!isPersonaje && esMixta && (
-        <div>
-          <p className="mb-1.5 text-xs font-medium text-ink-soft">Miniaturas de cada perfil</p>
-          <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
-            {selectedUnit.troopProfiles.map((perfil) => (
-              <div key={perfil.id} className="w-28">
-                <TextField
-                  label={perfil.name ?? 'Perfil'}
-                  type="number"
-                  min={0}
-                  className="text-center"
-                  title={`${perfil.cost} pts por miniatura${perfil.minSize != null ? ` · mínimo ${perfil.minSize}` : ''}`}
-                  value={draft.profileQuantities.get(perfil.id) ?? 0}
-                  onChange={(e) => {
-                    const cuantas = Math.max(0, Number(e.target.value) || 0)
-                    setDraft((d) => {
-                      const siguiente = new Map(d.profileQuantities)
-                      siguiente.set(perfil.id, cuantas)
-                      return { ...d, profileQuantities: siguiente }
-                    })
-                  }}
-                />
-                <p className="mt-0.5 text-center text-micro text-ink-soft">
-                  {perfil.cost} pts
-                  {perfil.minSize != null && <> · mín. {perfil.minSize}</>}
-                </p>
-              </div>
-            ))}
-            <p className="pb-1 text-xs text-ink-soft">
-              Total <b className="text-ink tabular-nums">{totalDeMiniaturas}</b>{' '}
-              {totalDeMiniaturas === 1 ? 'miniatura' : 'miniaturas'}
-            </p>
-          </div>
-        </div>
-      )}
-
-      {!isPersonaje && !esMixta && (
+      {!isPersonaje && (
         <div className="w-24">
           <TextField
             label="Cantidad"
@@ -1789,21 +1693,6 @@ export function ArmyListBuilderPage() {
                         {/* Al editar una entrada no se ve la lista de unidades, así
                       que el distintivo tiene que aparecer también aquí. */}
                         {selectedUnit?.isUnique && <Badge tone="amber">0-1</Badge>}
-                        {/* EL PRECIO DE CADA MINIATURA, pegado al margen derecho
-                            (`ml-auto`). Es el número con el que se decide si
-                            caben dos regimientos más o solo uno, y hasta ahora
-                            había que deducirlo del total. Se dice "por
-                            miniatura" salvo en los personajes, que son una
-                            sola y ahí ese rótulo sobra. */}
-                        {/* En una unidad MIXTA no se enseña: no hay "el precio
-                            de cada miniatura" cuando un Gor cuesta 7 y un Ungor
-                            3. Ahí el precio de cada perfil va en su casilla. */}
-                        {selectedUnit && !esMixta && (
-                          <span className="ml-auto shrink-0 text-xs font-semibold text-maroon tabular-nums">
-                            {costeUnitario}
-                            <span className="font-normal text-ink-soft">{isPersonaje ? ' pts' : ' pts/miniatura'}</span>
-                          </span>
-                        )}
                       </p>
                       {optionsForm}
                     </div>
@@ -1982,20 +1871,6 @@ export function ArmyListBuilderPage() {
                           <AttributeTable profile={selectedUnit.profiles.base} />
                         </div>
                       )}
-                      {/* Los perfiles de una unidad MIXTA, cada uno con el suyo.
-                          Van todos, se hayan elegido miniaturas de ese tipo o
-                          no: aquí se viene a ver qué es la unidad, y un Ungor
-                          sigue siendo parte de lo que una Manada puede llevar
-                          aunque esta en concreto no lleve ninguno. */}
-                      {selectedUnit.troopProfiles.map((perfil) => (
-                        <div key={`tropa-${perfil.id}`}>
-                          <p className="mb-1 flex items-baseline justify-between gap-2 text-xs font-medium text-ink-soft">
-                            <span>{perfil.name}</span>
-                            <span className="shrink-0 tabular-nums">{perfil.cost} pts/miniatura</span>
-                          </p>
-                          <AttributeTable profile={perfil} />
-                        </div>
-                      ))}
                       {/* Solo la montura y el carro ELEGIDOS para esta entrada, no
                     todos los que la unidad podría llevar: mientras no se
                     escoge, ese perfil no forma parte de la unidad y verlo en
@@ -2397,7 +2272,8 @@ export function ArmyListBuilderPage() {
                                 )}
                               </>
                             ) : editingCostId === entry.id ? (
-                              <EnteroInput
+                              <input
+                                type="number"
                                 min={0}
                                 autoFocus
                                 value={costText}

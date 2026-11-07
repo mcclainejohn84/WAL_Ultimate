@@ -482,70 +482,6 @@ CREATE TABLE unit_equipment_options (
     PRIMARY KEY (unit_id, equipment_id)
 );
 
--- QUIÉN PUEDE LLEVAR CADA OPCIÓN DE EQUIPO, en una unidad mixta.
---
--- Sin filas aquí, la opción es de TODA la unidad: es lo que son todas salvo en
--- las unidades mixtas. Con filas, es solo de esos perfiles, y su coste por
--- miniatura multiplica por las miniaturas DE ELLOS y no por las de la unidad
--- entera — que es lo que hace falta para "los Ungor pueden llevar lanza (+1
--- por miniatura)" sin cobrársela a los Gor.
---
--- Una tabla y no una columna en unit_equipment_options: el escudo lo pueden
--- llevar tanto los Gor como los Ungor, y con la clave (unit_id, equipment_id)
--- de aquella tabla la misma opción no cabe dos veces. Aquí el perfil forma
--- parte de la clave.
--- LAS HABILIDADES DE UN PERSONAJE DE RENOMBRE: rangos, mejoras de atributo,
--- habilidades y características sociales, compradas con experiencia.
---
--- Aquí va solo QUIÉN TIENE QUÉ. El catálogo —nombre, precio y qué hace cada
--- una— es el reglamento y vive en el código (src/domain/habilidadesDeRenombre):
--- no lo edita nadie desde el programa y es igual en todas las partidas.
---
--- `skill_key` es la clave estable del catálogo, no el nombre. Y no se guarda el
--- coste: lo que se pagó está en unit_experience_log, que es donde se lee.
-CREATE TABLE unit_skills (
-    unit_id    INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
-    skill_key  TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    PRIMARY KEY (unit_id, skill_key)
-);
-
-CREATE TABLE unit_equipment_profiles (
-    unit_id      INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
-    equipment_id INTEGER NOT NULL REFERENCES equipment_options(id) ON DELETE CASCADE,
-    profile_id   INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
-    PRIMARY KEY (unit_id, equipment_id, profile_id)
-);
-
--- ---------------------------------------------------------------------------
--- PERFILES DE TROPA: una unidad que es una MEZCLA de varios tipos de miniatura.
---
--- Una Manada de Bestias son Gor a 7 puntos y Ungor a 3, en la misma unidad y
--- con atributos distintos. Sin esto había que partirla en dos entradas, que ni
--- es verdad ni cuadra con las reglas de composición (son UNA unidad básica, no
--- dos).
---
--- No se metió como un `role` más en `unit_profiles` porque aquella tabla tiene
--- un CHECK sobre `role` y SQLite no sabe cambiar un CHECK sin reconstruir la
--- tabla — y las migraciones de este programa se lanzan enteras en cada carga,
--- donde un renombrado solo funciona la primera vez. Aparte, un perfil de tropa
--- no se parece a una montura más que en tener atributos.
---
--- `cost` es por MINIATURA y no admite NULL (a diferencia del de las monturas):
--- un perfil de tropa sin precio no es "gratis", es un dato que falta.
--- `min_size` es informativo —"5+ Gor"—: se enseña al montar la lista, no se
--- impone.
--- ---------------------------------------------------------------------------
-CREATE TABLE unit_troop_profiles (
-    unit_id    INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
-    profile_id INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    cost       INTEGER NOT NULL DEFAULT 0,
-    min_size   INTEGER,
-    PRIMARY KEY (unit_id, profile_id)
-);
-
 -- Mejoras/opciones disponibles para una unidad (N:M). Mismo `is_default` que
 -- unit_equipment_options y mismo motivo.
 CREATE TABLE unit_upgrade_options (
@@ -1057,22 +993,6 @@ CREATE TABLE army_list_entry_equipment (
     entry_id     INTEGER NOT NULL REFERENCES army_list_entries(id) ON DELETE CASCADE,
     equipment_id INTEGER NOT NULL REFERENCES equipment_options(id) ON DELETE CASCADE,
     PRIMARY KEY (entry_id, equipment_id)
-);
-
--- Cuántas miniaturas de cada PERFIL DE TROPA lleva una entrada de la lista:
--- "5 Gor y 10 Ungor". Solo la usan las unidades mixtas (ver
--- unit_troop_profiles); las demás no tienen filas aquí.
---
--- OJO: `army_list_entries.quantity` SIGUE SIENDO EL TOTAL de miniaturas, y es
--- a propósito. El despliegue, el orden de batalla, los PDF y las peanas sobre
--- la mesa solo necesitan saber cuántas son, y así ninguno se entera de que
--- existe el desglose. Quien lo necesita —el coste y el editor de la entrada—
--- lo lee de aquí.
-CREATE TABLE army_list_entry_profiles (
-    entry_id   INTEGER NOT NULL REFERENCES army_list_entries(id) ON DELETE CASCADE,
-    profile_id INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
-    quantity   INTEGER NOT NULL DEFAULT 0,
-    PRIMARY KEY (entry_id, profile_id)
 );
 
 -- Opciones de unidad ("mejoras") elegidas para esta entrada (N:M).

@@ -24,13 +24,6 @@ export function unifiedProfileRows(
   if (unit.profiles.base) {
     rows.push({ key: `base-${unit.profiles.base.id}`, label: unit.name, profile: unit.profiles.base })
   }
-  // PERFILES DE TROPA (unidades mixtas, ver TroopProfile): van justo detrás
-  // del perfil base, en el orden que tengan en la ficha de la unidad. En una
-  // Manada de Bestias no hay perfil base y estos son TODA la tabla: Gor,
-  // Ungor, Desgarrador, Campeón Ungor, una fila cada uno.
-  for (const p of unit.troopProfiles) {
-    rows.push({ key: `tropa-${p.id}`, label: p.name ?? 'Perfil', profile: p })
-  }
   // Ficha del Campeón (si el grupo de mando la trae): va justo debajo del
   // perfil de la unidad y ENCIMA de monturas/carros, como en CodexMaker.
   const champion = unit.commandOptions.find((c) => c.role.code === 'CAMPEON')

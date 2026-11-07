@@ -89,20 +89,6 @@
   line-height: 0.875rem;
 }
 
-/* Un <input type="number"> SIN las flechitas de subir y bajar.
-   En un campo estrecho se comen la cifra en cuanto el ratón pasa por encima, y
-   un coste o un mínimo se teclean: nadie llega a 2.000 puntos a flechazos. El
-   truco estaba copiado a mano en TaxonomyPage con tres selectores arbitrarios;
-   aquí tiene nombre y se puede volver a usar. */
-@utility sin-flechitas {
-  appearance: textfield;
-  &::-webkit-inner-spin-button,
-  &::-webkit-outer-spin-button {
-    appearance: none;
-    margin: 0;
-  }
-}
-
 html, body, #root {
   height: 100%;
 }

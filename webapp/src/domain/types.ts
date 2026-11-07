@@ -87,35 +87,6 @@ export interface AttributeProfile {
 
 export type UnitProfileRole = 'base' | 'montura' | 'carro'
 
-/**
- * UN PERFIL DE TROPA: uno de los tipos de miniatura que componen una unidad
- * MIXTA. Una Manada de Bestias son Gor a 7 puntos y Ungor a 3, con atributos
- * distintos, en una sola unidad.
- *
- * No es una montura con otro nombre, aunque las dos cosas sean un
- * AttributeProfile colgado de la unidad: una montura la lleva la unidad entera
- * y se paga una vez; un perfil de tropa SON miniaturas, se cuentan y cada una
- * cuesta lo suyo. De ahí que `cost` aquí no admita null —un perfil de tropa sin
- * precio es un dato que falta, no algo gratis— y que viva en su propia tabla
- * (ver unit_troop_profiles en db/schema.sql).
- *
- * `minSize` es informativo ("5+ Gor"): se enseña al montar la lista para que se
- * sepa qué pide el reglamento, pero no lo impone nadie.
- */
-export interface TroopProfile extends AttributeProfile {
-  /** Puntos por MINIATURA de este perfil. */
-  cost: number
-  /** Mínimo de miniaturas de este perfil según el reglamento. null = sin mínimo propio. */
-  minSize: number | null
-  sortOrder: number
-}
-
-/** Cuántas miniaturas de un perfil de tropa lleva una entrada de la lista. */
-export interface EntryProfileQuantity {
-  profileId: number
-  quantity: number
-}
-
 /** Las 9 características editables de un perfil de atributos (sin id/nombre) — usado al crear o editar una ficha. */
 export interface AttributeProfileInput {
   m: string | null
@@ -320,24 +291,8 @@ export interface UnitDetail extends Unit {
    * `profiles.montura[].specialRules`.
    */
   specialRules: SpecialRule[]
-  /**
-   * PERFILES DE TROPA (ver TroopProfile). Vacío en la inmensa mayoría de las
-   * unidades, que son N miniaturas iguales; con contenido solo en las mixtas.
-   * Mientras esté vacío, todo lo demás —coste, cantidad, fichas— se comporta
-   * exactamente igual que antes de que esto existiera.
-   */
-  troopProfiles: TroopProfile[]
-  /**
-   * `isDefault`: viene ya marcada al añadir la unidad a una lista (ver
-   * unit_equipment_options.is_default).
-   *
-   * `profileIds`: QUÉ PERFILES DE TROPA pueden llevarla. Vacío = toda la
-   * unidad, que es lo que son todas salvo en las unidades mixtas. Es lo que
-   * permite que "los Ungor pueden llevar lanza (+1 por miniatura)" no se le
-   * cobre también a los Gor (ver computeEntryCost). Es una LISTA y no un solo
-   * perfil porque el escudo lo pueden llevar los dos.
-   */
-  equipmentOptions: Array<EquipmentOption & { isDefault: boolean; profileIds: number[] }>
+  /** `isDefault`: viene ya marcada al añadir la unidad a una lista (ver unit_equipment_options.is_default). */
+  equipmentOptions: Array<EquipmentOption & { isDefault: boolean }>
   /**
    * Parejas de opciones de equipo EXCLUYENTES entre sí, limitadas a las que
    * ofrece esta unidad (ver equipment_incompatibilities). Se cargan con la
@@ -548,16 +503,6 @@ export interface ArmyListEntry {
   equipmentIds: number[]
   upgradeIds: number[]
   /**
-   * Miniaturas de cada PERFIL DE TROPA (ver TroopProfile): "5 Gor y 10 Ungor".
-   * Vacío mientras la unidad no sea mixta, que es casi siempre.
-   *
-   * `quantity` SIGUE SIENDO EL TOTAL aunque esto tenga contenido, y es
-   * deliberado: el despliegue, el orden de batalla, los PDF y las peanas sobre
-   * la mesa solo necesitan saber cuántas miniaturas son, y así ninguno se
-   * entera de que existe el desglose.
-   */
-  profileQuantities: EntryProfileQuantity[]
-  /**
    * UNIDAD OCULTA: no se le enseña al rival en la sección de Batallas —ni peana
    * sobre la mesa, ni línea en el orden de batalla—. En su propia lista y en su
    * despliegue se ve y se maneja como cualquier otra: esto no la esconde de su
@@ -599,8 +544,6 @@ export interface ArmyListEntryInput {
   magicPaths: EntryMagicPath[]
   equipmentIds: number[]
   upgradeIds: number[]
-  /** Miniaturas por perfil de tropa (ver ArmyListEntry.profileQuantities). */
-  profileQuantities: EntryProfileQuantity[]
   /**
    * Oculta al rival en Batallas (ver ArmyListEntry.hidden).
    *

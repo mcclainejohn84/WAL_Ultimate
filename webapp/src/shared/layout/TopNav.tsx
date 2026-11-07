@@ -30,17 +30,6 @@ interface NavItem {
 // detrás de un único punto de entrada en vez de ocupar 5 huecos en la barra.
 // El menú solo reorganiza la navegación: no cambia quién puede entrar.
 const EDITOR_ITEMS: NavItem[] = [
-  // "Hojas de Unidad" ENCABEZA el menú y ya no está en la barra. Se pidió
-  // meterla aquí dentro, y tiene su lógica: es la pantalla donde se mira y se
-  // imprime la ficha de una unidad del catálogo, que es trabajo de preparar
-  // material, no de montar el ejército del sábado.
-  //
-  // OJO CON LA CONSECUENCIA: este menú solo sale en modo administrador, así
-  // que quien no lo active deja de tener un camino a "Hojas" por la barra. La
-  // RUTA sigue siendo pública (ver AppRouter): un enlace guardado a /hojas
-  // funciona igual para cualquiera, no se ha cerrado la pantalla, solo se ha
-  // quitado de la navegación de diario.
-  { to: '/hojas', label: 'Hojas de Unidad' },
   { to: '/admin/facciones', label: 'Facciones' },
   { to: '/admin/unidades', label: 'Unidades' },
   { to: '/admin/reglas', label: 'Reglas' },
@@ -58,6 +47,7 @@ const EDITOR_ITEMS: NavItem[] = [
 // PersonajesRenombrePage). Lo que sigue estando en "Editor" es su ficha de
 // unidad —atributos, equipo y coste—, como la de cualquier otra unidad.
 const TOOL_ITEMS: NavItem[] = [
+  { to: '/hojas', label: 'Hojas de Unidad', corto: 'Hojas' },
   { to: '/ejercitos', label: 'Ejércitos' },
   { to: '/renombre', label: 'Personajes de Renombre', corto: 'Renombre' },
   { to: '/batallas', label: 'Batallas' },
