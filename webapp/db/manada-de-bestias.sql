@@ -9,6 +9,15 @@
 -- CÓMO SE LANZA (desde webapp/worker):
 --   npx wrangler d1 execute wharmy-db --remote --file=../db/manada-de-bestias.sql
 --
+-- SE PUEDE LANZAR ANTES DE QUE LA APLICACIÓN HAYA MIGRADO. Las dos tablas que
+-- necesita se crean aquí mismo si no están. No es una copia descuidada de las
+-- migraciones del Worker: es que `wrangler deploy` NO ejecuta migraciones —
+-- solo sube el código—, las aplica la propia aplicación al abrirse (ver
+-- catalogMaintenance). Quien despliega y lanza esto a continuación, sin pasar
+-- por el navegador, se encontraba con "no such table: unit_troop_profiles" y
+-- ninguna pista de por qué. Son idénticas a las del Worker; si alguna vez
+-- cambian allí, cambian aquí.
+--
 -- ES IDEMPOTENTE: se puede lanzar dos veces sin duplicar nada. Todo va por
 -- INSERT OR IGNORE o por búsquedas por nombre, así que no hay un solo id
 -- escrito a mano — si en tu base "Hombres Bestia" tiene otro número, da igual.
@@ -17,6 +26,22 @@
 -- teclear. Editor > Unidades > Manada de Bestias tiene los cuatro perfiles con
 -- su precio, el equipo con su "¿de qué perfil es?" y el grupo de mando.
 -- ===========================================================================
+
+-- --- 0. Las tablas que hace falta que existan -------------------------------
+CREATE TABLE IF NOT EXISTS unit_troop_profiles (
+  unit_id    INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+  profile_id INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  cost       INTEGER NOT NULL DEFAULT 0,
+  min_size   INTEGER,
+  PRIMARY KEY (unit_id, profile_id)
+);
+CREATE TABLE IF NOT EXISTS unit_equipment_profiles (
+  unit_id      INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+  equipment_id INTEGER NOT NULL REFERENCES equipment_options(id) ON DELETE CASCADE,
+  profile_id   INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+  PRIMARY KEY (unit_id, equipment_id, profile_id)
+);
 
 -- --- 1. La unidad -----------------------------------------------------------
 -- Coste base 0 a propósito: en una unidad mixta el precio lo pone cada perfil,

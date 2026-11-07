@@ -51,7 +51,10 @@ composición del ejército, porque es UNA unidad básica y no dos.
   grupo de mando y las reglas (Emboscada, Indisciplinado, Manada). Se lanza con
   `npx wrangler d1 execute wharmy-db --remote --file=../db/manada-de-bestias.sql`
   desde `webapp/worker`, es idempotente, y todo lo que trae se puede cambiar
-  después desde el editor.
+  después desde el editor. El script **crea las dos tablas que necesita si no
+  están**: `wrangler deploy` no ejecuta migraciones —solo sube el código, las
+  aplica la aplicación al abrirse—, así que lanzarlo justo después de desplegar
+  fallaba con un "no such table" que no explicaba nada.
 
 - **Hay que desplegar el Worker** (`npx wrangler deploy`): las tablas nuevas van
   en sus migraciones.
