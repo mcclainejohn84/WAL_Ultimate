@@ -54,7 +54,12 @@ composición del ejército, porque es UNA unidad básica y no dos.
   después desde el editor. El script **crea las dos tablas que necesita si no
   están**: `wrangler deploy` no ejecuta migraciones —solo sube el código, las
   aplica la aplicación al abrirse—, así que lanzarlo justo después de desplegar
-  fallaba con un "no such table" que no explicaba nada.
+  fallaba con un "no such table" que no explicaba nada. Y está escrito **con
+  una sentencia por fila, sin un solo `UNION ALL`**: agruparlas en SELECT
+  encadenados es más corto, pero D1 los rechaza a partir de unos pocos con
+  "too many terms in compound SELECT". Tampoco queda un punto y coma dentro de
+  ningún texto ni comentario, para no depender de lo fino que sea el partidor
+  de sentencias de turno.
 
 - **Hay que desplegar el Worker** (`npx wrangler deploy`): las tablas nuevas van
   en sus migraciones.
