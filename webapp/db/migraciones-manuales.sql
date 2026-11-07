@@ -54,3 +54,12 @@ INSERT OR IGNORE INTO user_secrets (user_id, password_hash)
   SELECT id, password_hash FROM users WHERE password_hash <> '';
 UPDATE users SET password_hash = ''
   WHERE password_hash <> '' AND id IN (SELECT user_id FROM user_secrets);
+
+-- Habilidades de los Personajes de Renombre (el catálogo está en el código).
+CREATE TABLE IF NOT EXISTS unit_skills (
+  unit_id    INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+  skill_key  TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  PRIMARY KEY (unit_id, skill_key)
+);

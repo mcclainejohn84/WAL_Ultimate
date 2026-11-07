@@ -37,6 +37,7 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { Tooltip } from '@/shared/ui/Tooltip'
 import { Button } from '@/shared/ui/Button'
 import { TextField } from '@/shared/ui/TextField'
+import { EnteroInput } from '@/shared/ui/EnteroInput'
 import { Select } from '@/shared/ui/Select'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
@@ -319,9 +320,7 @@ function FichasDeLaLista({
                 role="presentation"
               >
                 {editandoCoste ? (
-                  <input
-                    type="number"
-                    inputMode="numeric"
+                  <EnteroInput
                     min={0}
                     autoFocus
                     value={coste.texto}
@@ -1225,6 +1224,25 @@ export function ArmyListBuilderPage() {
   // siquiera se muestra, sería un dato redundante para el jugador.
   const isPersonaje = selectedUnit?.unitType === 'personaje'
 
+  /**
+   * LO QUE CUESTA CADA MINIATURA con lo que lleva marcado AHORA MISMO.
+   *
+   * No es `baseCost` a secas, que es lo que ya enseña el explorador de
+   * unidades: es la base más el equipo elegido, que es exactamente el número
+   * por el que se multiplica la cantidad (ver computeEntryCost). Puesto al
+   * lado del nombre, al marcar "Lanza (+1)" se ve subir el precio de cada
+   * miniatura en el momento, en vez de tener que mirar el total de la lista y
+   * dividir mentalmente entre veinte.
+   *
+   * El grupo de mando, la montura y las mejoras NO entran: se pagan una vez
+   * por unidad, no por miniatura, y meterlos aquí daría un "por miniatura" que
+   * no es por miniatura.
+   */
+  const costeUnitario = selectedUnit
+    ? selectedUnit.baseCost +
+      selectedUnit.equipmentOptions.filter((e) => draft.equipmentIds.has(e.id)).reduce((suma, e) => suma + e.cost, 0)
+    : 0
+
   // Reglas que se muestran en el panel "Ficha": las propias de la unidad más
   // las que aporta la montura ELEGIDA para esta entrada. Una montura no
   // seleccionada todavía no forma parte de la unidad, así que sus reglas no
@@ -1693,6 +1711,18 @@ export function ArmyListBuilderPage() {
                         {/* Al editar una entrada no se ve la lista de unidades, así
                       que el distintivo tiene que aparecer también aquí. */}
                         {selectedUnit?.isUnique && <Badge tone="amber">0-1</Badge>}
+                        {/* EL PRECIO DE CADA MINIATURA, pegado al margen derecho
+                            (`ml-auto`). Es el número con el que se decide si
+                            caben dos regimientos más o solo uno, y hasta ahora
+                            había que deducirlo del total. Se dice "por
+                            miniatura" salvo en los personajes, que son una
+                            sola y ahí ese rótulo sobra. */}
+                        {selectedUnit && (
+                          <span className="ml-auto shrink-0 text-xs font-semibold text-maroon tabular-nums">
+                            {costeUnitario}
+                            <span className="font-normal text-ink-soft">{isPersonaje ? ' pts' : ' pts/miniatura'}</span>
+                          </span>
+                        )}
                       </p>
                       {optionsForm}
                     </div>
@@ -2272,8 +2302,7 @@ export function ArmyListBuilderPage() {
                                 )}
                               </>
                             ) : editingCostId === entry.id ? (
-                              <input
-                                type="number"
+                              <EnteroInput
                                 min={0}
                                 autoFocus
                                 value={costText}

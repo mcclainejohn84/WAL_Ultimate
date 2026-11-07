@@ -40,7 +40,7 @@ import { MapEditorPage } from '@/features/maps/MapEditorPage'
  */
 function AdminOnly({ children }: { children: ReactNode }) {
   const { actingAsAdmin } = useSession()
-  if (!actingAsAdmin) return <Navigate to="/hojas" replace />
+  if (!actingAsAdmin) return <Navigate to="/ejercitos" replace />
   return <>{children}</>
 }
 
@@ -48,7 +48,11 @@ const router = createHashRouter([
   {
     element: <AppShell />,
     children: [
-      { path: '/', element: <Navigate to="/hojas" replace /> },
+      // SE ENTRA POR EJÉRCITOS. Antes se abría en "Hojas de Unidad", que es el
+      // catálogo: una pantalla de consulta. Pero a esto se entra a montar la
+      // lista del sábado, no a leer fichas, así que la primera pantalla es
+      // ahora la de los ejércitos y la ficha se consulta cuando hace falta.
+      { path: '/', element: <Navigate to="/ejercitos" replace /> },
       {
         path: '/admin/facciones',
         element: (
@@ -138,6 +142,9 @@ const router = createHashRouter([
         ),
       },
       {
+        // SIN AdminOnly, aunque su entrada de menú viva ahora dentro de
+        // "Editor" (ver TopNav): mover algo de sitio en la navegación no es
+        // motivo para cerrarle la puerta a quien tenga el enlace guardado.
         path: '/hojas',
         element: <FichasPage />,
       },
@@ -181,7 +188,7 @@ const router = createHashRouter([
         path: '/mapas/:id',
         element: <MapEditorPage />,
       },
-      { path: '*', element: <Navigate to="/hojas" replace /> },
+      { path: '*', element: <Navigate to="/ejercitos" replace /> },
     ],
   },
 ])

@@ -643,6 +643,27 @@ export function FileTextIcon({ className = 'h-4 w-4' }: { className?: string }) 
 }
 
 /** Lupa — buscar. */
+/**
+ * La "i" en un círculo: "pulsa para saber qué hace esto". Se usa donde antes
+ * había la palabra "qué hace" repetida en cada fila de una lista larga.
+ */
+export function InfoIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="10" cy="10" r="7.25" />
+      <path d="M10 9v5" strokeLinecap="round" />
+      <path d="M10 6.4h.01" strokeLinecap="round" strokeWidth={2.2} />
+    </svg>
+  )
+}
+
 export function SearchIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <svg

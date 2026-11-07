@@ -48,6 +48,7 @@ import { mensajeDeMigracionPendiente } from '@/data/repositories/schemaHealth'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
 import { Modal } from '@/shared/ui/Modal'
+import { HabilidadesModal } from '@/features/renombre/HabilidadesModal'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { TextField } from '@/shared/ui/TextField'
@@ -150,6 +151,7 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
   const [ocultando, setOcultando] = useState(false)
   const [errorOcultar, setErrorOcultar] = useState<string | null>(null)
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false)
+  const [viendoHabilidades, setViendoHabilidades] = useState(false)
 
   const trasfondo = personaje.background ?? ''
   const tieneTrasfondo = tieneTexto(trasfondo)
@@ -301,6 +303,9 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
           <PlusIcon className="h-4 w-4" />
           Experiencia
         </Button>
+        <Button variant="secondary" onClick={() => setViendoHabilidades(true)}>
+          Habilidades
+        </Button>
         <Button variant="ghost" onClick={() => setEditando(true)}>
           <PencilIcon className="h-4 w-4" />
           Retrato y trasfondo
@@ -403,6 +408,10 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
             onCambio()
           }}
         />
+      )}
+
+      {viendoHabilidades && (
+        <HabilidadesModal personaje={personaje} onClose={() => setViendoHabilidades(false)} onCambio={onCambio} />
       )}
     </article>
   )

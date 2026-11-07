@@ -62,6 +62,18 @@ export interface ArmyListSummary extends ArmyList {
   shared: boolean
   /** Quién te la compartió; null si es tuya. */
   ownerName: string | null
+  /**
+   * CUÁNTAS DE SUS UNIDADES ESTÁN YA COLOCADAS sobre la mesa (ver
+   * army_list_deployments). Con `entryCount` al lado dice si el despliegue
+   * está hecho, a medias o sin empezar, que es justo lo que hay que saber
+   * ANTES de dar la lista por completada: una lista cerrada cierra también su
+   * despliegue, y descubrir que estaba a medias cuando ya no se puede tocar es
+   * tarde.
+   *
+   * 0 si la tabla todavía no existe (Worker sin desplegar), que es la lectura
+   * prudente: "no consta que esté desplegado" y no "está desplegado".
+   */
+  deployedCount: number
 }
 
 /** Una persona con la que está compartida una lista. */
@@ -192,6 +204,9 @@ export const ArmyListRepository = {
     const conCompartidas = `
        SELECT al.*, f.name AS faction_name,
               (SELECT COUNT(*) FROM army_list_entries e WHERE e.army_list_id = al.id) AS entry_count,
+              (SELECT COUNT(*) FROM army_list_deployments d
+                 JOIN army_list_entries e2 ON e2.id = d.entry_id
+                WHERE e2.army_list_id = al.id) AS deployed_count,
               CASE WHEN al.user_id = ?1 THEN 1 ELSE 0 END AS es_mia,
               (SELECT u.username FROM users u WHERE u.id = al.user_id) AS owner_name
        FROM army_lists al
@@ -208,6 +223,7 @@ export const ArmyListRepository = {
         entryCount: row.entry_count as number,
         shared: !mia,
         ownerName: mia ? null : ((row.owner_name as string) ?? null),
+        deployedCount: (row.deployed_count as number) ?? 0,
       }
     }
 
@@ -265,6 +281,7 @@ export const ArmyListRepository = {
           entryCount: row.entry_count as number,
           shared: !mia,
           ownerName: mia ? null : ((row.owner_name as string) ?? null),
+          deployedCount: 0,
         }
       },
     )
@@ -294,6 +311,23 @@ export const ArmyListRepository = {
         params: [armyListId, share.userId, share.shareDeployment ? 1 : 0],
       })),
     ])
+  },
+
+  /**
+   * DEJA DE VER una lista que te han compartido.
+   *
+   * Borra UNA fila de `army_list_shares`: la tuya. Ni la lista, que no es
+   * tuya y no te corresponde, ni el reparto a los demás, que tampoco. Para
+   * quien la compartió no cambia nada visible, y puede volver a enviártela
+   * cuando quiera — por eso no hay aviso de "esto es irreversible": no lo es.
+   *
+   * Existe porque compartir es cosa de uno solo y la bandeja la sufre el otro:
+   * sin esto, un ejército que te mandaron para una partida de hace tres meses
+   * se queda en tu listado para siempre, y el único que puede quitarlo de ahí
+   * es alguien que ni lo ve.
+   */
+  async dejarDeVerCompartida(armyListId: number, userId: number): Promise<void> {
+    await exec('DELETE FROM army_list_shares WHERE army_list_id = ? AND user_id = ?', [armyListId, userId])
   },
 
   /** Carga un mapa en el despliegue de una lista, o lo quita (null = mesa libre). */

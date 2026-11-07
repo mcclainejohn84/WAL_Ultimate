@@ -13,6 +13,52 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.171 — 07/11/2026 23:29
+
+- **Vuelven las Habilidades de los Personajes de Renombre, los estados de
+  Ejércitos y los campos sin decimales**, que se habían ido en la vuelta a
+  0.166. Lo que NO vuelve son las unidades de varios perfiles ni la Manada de
+  Bestias: eso se quedó fuera a propósito, que era justo lo que se pidió
+  revertir. En la base siguen sin usarse las tablas `unit_troop_profiles`,
+  `army_list_entry_profiles` y `unit_equipment_profiles`; no estorban y las
+  borra quien quiera.
+
+- **El diálogo de habilidades, rehecho.** Era una pila de cajas con borde,
+  todas del mismo peso, y el catálogo de 131 entradas desplegado debajo
+  enterrando lo único que se venía a mirar.
+  - **Se abre para consultar.** Lo que el personaje sabe hacer ocupa el
+    diálogo entero, agrupado por rangos, atributos, habilidades y
+    características sociales, cada grupo con su filete y su recuento. El
+    catálogo empieza **plegado** detrás de "Añadir habilidades", y al abrirlo
+    se sube solo a la vista: en un móvil nacía por debajo del borde y parecía
+    que el botón no hacía nada.
+  - **La experiencia manda en la cabecera**, en cifra grande, junto a cuántas
+    habilidades lleva y cuántas sociales de las dos que caben.
+  - **"Qué hace" es ahora un icono**, una "i" que se pulsa y despliega la
+    descripción bajo su fila. La palabra repetida en setenta filas pesaba más
+    que los nombres, que son lo que se lee. No es un `hover`: en un móvil no
+    existiría, y seis líneas no caben en un globo.
+  - **Filas de una sola línea con filete**, en vez de una caja con borde por
+    cada habilidad.
+
+- **Dos características sociales como mucho.** El reglamento solo pone precio a
+  la primera (8) y a la segunda (12), así que una tercera no existe: en el
+  catálogo, donde estaría el botón, pone "Tope de 2".
+
+- **Quitar una habilidad pregunta antes.** Devuelve experiencia y deja rastro,
+  pero es un clic en una fila estrecha junto a otras veinte; el accidente se
+  evita preguntando. Y al quitar una social se devuelve lo que costó **esa**
+  —la segunda 12, la primera 8— y no el precio de la siguiente: devolviendo 12
+  las dos veces se regalaban 4 puntos por cada pareja que entraba y salía.
+
+- **Fuera los textos que sobraban** en el diálogo: los dos párrafos de las
+  características sociales (el del rango 1 y el de "esto lo vigiláis
+  vosotros"), las explicaciones de los rangos —"Campeón veterano", "Héroe" y
+  "Comandante" se explican solos— y la estrella del botón de Habilidades. Y
+  "Lo que sabe hacer" pasa a llamarse **"Habilidades de personaje"**.
+
+---
+
 ## 0.166 — 05/11/2026 22:13
 
 - **Fuera la explicación de la cabecera de Batallas** ("Dos ejércitos

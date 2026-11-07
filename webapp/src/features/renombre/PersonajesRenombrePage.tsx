@@ -102,11 +102,6 @@ export function PersonajesRenombrePage() {
     <div>
       <PageHeader
         title="Personajes de Renombre"
-        description={
-          'Personajes con nombre propio. Nacen copiando un personaje de su facción, así que traen ya sus ' +
-          'atributos, su equipo, sus monturas y su coste; a partir de ahí son suyos. Son de todos: cualquiera ' +
-          'los edita y los mete en su ejército.'
-        }
         actions={
           <Button variant="primary" onClick={() => setCreando(true)}>
             <PlusIcon className="h-4 w-4" />

@@ -524,6 +524,7 @@ const RESET_DELETE_TABLES = [
   'unit_equipment_options',
   'unit_special_rules',
   'unit_profiles',
+  'unit_skills',
   'units',
   'command_roles',
   'upgrade_incompatibilities',
@@ -1227,6 +1228,28 @@ const MIGRATIONS: string[] = [
      SELECT id, password_hash FROM users WHERE password_hash <> ''`,
   `UPDATE users SET password_hash = ''
     WHERE password_hash <> '' AND id IN (SELECT user_id FROM user_secrets)`,
+  // LAS HABILIDADES DE UN PERSONAJE DE RENOMBRE: rangos, mejoras de atributo,
+  // habilidades y características sociales, compradas con experiencia.
+  //
+  // Aquí va SOLO QUIÉN TIENE QUÉ. El catálogo —nombre, precio y qué hace cada
+  // una— es el reglamento y vive en el código (ver domain/habilidadesDeRenombre):
+  // no lo edita nadie, es igual en todas las partidas, y meterlo en una tabla
+  // habría sido una migración de 131 filas de texto que además deja la pantalla
+  // vacía en cuanto alguien abre la aplicación sin migrar.
+  //
+  // `skill_key` es la clave estable del catálogo, no el nombre: renombrar una
+  // habilidad allí no puede cambiar la de nadie.
+  //
+  // NO guarda el coste. Lo que se pagó está en `unit_experience_log`, que es el
+  // sitio donde de verdad se lee: "Añadida habilidad Hijo de un Dios, -50".
+  // Repetirlo aquí sería dos verdades que pueden discrepar.
+  `CREATE TABLE IF NOT EXISTS unit_skills (
+     unit_id    INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+     skill_key  TEXT NOT NULL,
+     created_at TEXT NOT NULL,
+     user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+     PRIMARY KEY (unit_id, skill_key)
+   )`,
 ]
 
 /**
