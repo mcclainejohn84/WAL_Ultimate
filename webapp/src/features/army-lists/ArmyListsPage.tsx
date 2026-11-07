@@ -108,7 +108,7 @@ function MarcaDeDespliegue({ list }: { list: ArmyListSummary }) {
             : `Despliegue a medias: ${list.deployedCount} de ${list.entryCount} unidades colocadas`
       }
       className={clsx(
-        'flex shrink-0 items-center gap-1 text-mini tabular-nums',
+        'flex w-12 shrink-0 items-center justify-end gap-1 text-mini tabular-nums',
         vacio ? 'text-ink-soft/35' : completo ? 'text-success' : 'text-bronze',
       )}
     >
@@ -394,9 +394,58 @@ export function ArmyListsPage() {
                   se parte en el móvil, bajan los dos juntos a la segunda línea
                   y quedan alineados a la derecha en vez de repartirse a medias
                   entre las dos. En el ordenador el bloque es `w-auto` y la fila
-                  vuelve a leerse de un tirón. */}
+                  vuelve a leerse de un tirón.
+
+                  DENTRO DEL BLOQUE VA PRIMERO LO QUE SE HACE Y DESPUÉS LO QUE
+                  SE MIRA: compartir, duplicar y borrar por dentro, y el
+                  despliegue y el sello pegados al borde derecho. Al revés, que
+                  es como estaba, el estado se quedaba flotando a media fila con
+                  un hueco a su derecha — porque esos tres botones ocupan su
+                  sitio aunque no se vean: son `opacity-0`, no `display:none`.
+                  Cada uno de los dos lleva ancho fijo, así que de una fila a
+                  otra forman dos columnas que se leen de arriba abajo. */}
               {!list.shared && (
                 <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:gap-3">
+                  {/* Duplicar, compartir y borrar son cosa del dueño. En una lista
+                    compartida contigo no salen: no es que fallen, es que no
+                    existen.
+
+                    APARECEN AL PASAR EL RATÓN SOLO DONDE HAY RATÓN. Estaban en
+                    `opacity-0` con `group-hover`, y en Tailwind v4 `hover:` ya
+                    va dentro de `@media (hover: hover)`: en un teléfono ese
+                    hover no ocurre NUNCA, así que los tres botones se quedaban
+                    invisibles para siempre. Compartir, duplicar y borrar un
+                    ejército sencillamente no existían desde el móvil. Ahora se
+                    ven de partida y solo se esconden donde hay un cursor con el
+                    que sacarlos. */}
+                  <div className="flex shrink-0 items-center gap-1 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100">
+                    <button
+                      className="rounded-sm px-2 py-0.5 text-mini font-medium text-ink-soft hover:bg-bronze/10 hover:text-bronze"
+                      onClick={() => setSharing(list)}
+                      aria-label={`Compartir ${list.name}`}
+                      title="Compartir esta lista con otros usuarios"
+                    >
+                      Compartir
+                    </button>
+                    <button
+                      className="rounded-sm px-2 py-0.5 text-mini font-medium text-ink-soft hover:bg-bronze/10 hover:text-bronze disabled:cursor-wait disabled:opacity-50"
+                      onClick={() => handleDuplicate(list)}
+                      disabled={duplicatingId === list.id}
+                      aria-label={`Duplicar ${list.name}`}
+                      title="Duplicar esta lista"
+                    >
+                      {duplicatingId === list.id ? 'Copiando…' : 'Duplicar'}
+                    </button>
+                    <button
+                      className="rounded-sm px-1.5 py-0.5 text-ink-soft hover:bg-maroon/10 hover:text-danger"
+                      onClick={() => setDeleting(list)}
+                      aria-label={`Borrar ${list.name}`}
+                      title="Borrar"
+                    >
+                      <TrashIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
                   <MarcaDeDespliegue list={list} />
                   <button
                     type="button"
@@ -450,46 +499,6 @@ export function ArmyListsPage() {
                       </>
                     )}
                   </button>
-
-                  {/* Duplicar, compartir y borrar son cosa del dueño. En una lista
-                    compartida contigo no salen: no es que fallen, es que no
-                    existen.
-
-                    APARECEN AL PASAR EL RATÓN SOLO DONDE HAY RATÓN. Estaban en
-                    `opacity-0` con `group-hover`, y en Tailwind v4 `hover:` ya
-                    va dentro de `@media (hover: hover)`: en un teléfono ese
-                    hover no ocurre NUNCA, así que los tres botones se quedaban
-                    invisibles para siempre. Compartir, duplicar y borrar un
-                    ejército sencillamente no existían desde el móvil. Ahora se
-                    ven de partida y solo se esconden donde hay un cursor con el
-                    que sacarlos. */}
-                  <div className="flex shrink-0 items-center gap-1 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100">
-                    <button
-                      className="rounded-sm px-2 py-0.5 text-mini font-medium text-ink-soft hover:bg-bronze/10 hover:text-bronze"
-                      onClick={() => setSharing(list)}
-                      aria-label={`Compartir ${list.name}`}
-                      title="Compartir esta lista con otros usuarios"
-                    >
-                      Compartir
-                    </button>
-                    <button
-                      className="rounded-sm px-2 py-0.5 text-mini font-medium text-ink-soft hover:bg-bronze/10 hover:text-bronze disabled:cursor-wait disabled:opacity-50"
-                      onClick={() => handleDuplicate(list)}
-                      disabled={duplicatingId === list.id}
-                      aria-label={`Duplicar ${list.name}`}
-                      title="Duplicar esta lista"
-                    >
-                      {duplicatingId === list.id ? 'Copiando…' : 'Duplicar'}
-                    </button>
-                    <button
-                      className="rounded-sm px-1.5 py-0.5 text-ink-soft hover:bg-maroon/10 hover:text-danger"
-                      onClick={() => setDeleting(list)}
-                      aria-label={`Borrar ${list.name}`}
-                      title="Borrar"
-                    >
-                      <TrashIcon className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
                 </div>
               )}
 

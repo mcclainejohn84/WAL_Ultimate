@@ -13,6 +13,20 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.172 — 07/11/2026 23:34
+
+- **El despliegue y el sello de completado, al borde derecho de la fila** en
+  Ejércitos. Iban por delante de Compartir / Duplicar / Borrar, que ocupan su
+  sitio aunque no se vean —son transparentes, no están quitados—, así que el
+  estado se quedaba flotando a media fila con un hueco a su derecha. Ahora el
+  estado cierra la fila y las acciones se quedan por dentro.
+  - La marca del despliegue **lleva ancho fijo**, como ya lo llevaba el sello:
+    "0/14" y "12/12" no miden lo mismo y sin fijarlo la columna bailaba de una
+    fila a otra. Las dos forman ahora columna y el montón entero se lee de
+    arriba abajo de una pasada, en el móvil también.
+
+---
+
 ## 0.171 — 07/11/2026 23:29
 
 - **Vuelven las Habilidades de los Personajes de Renombre, los estados de
