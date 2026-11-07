@@ -13,6 +13,47 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.175 — 07/11/2026 23:56
+
+- **Al subir un retrato ya no se le toca la foto.** Pasaba por el mismo arreglo
+  que una pieza de escenografía —quitarle el fondo liso, recortarla al
+  contenido y difuminarle el canto—, que para una peana sobre la mesa está
+  bien, pero para la foto de un personaje no: su "fondo liso" suele ser parte
+  de la foto, y el canto desvanecido deja la cara flotando en una nube. Ahora
+  solo se encoge para que no pese; lo que la asienta en el papel es el marco,
+  que sigue ahí con la sombra interior algo más floja.
+
+- **La lámina del personaje, rehecha.**
+  - **La experiencia ya no cruza la lámina de lado a lado.** Mil doscientos
+    píxeles de barra para decir "24 de 100", y encima partiendo en dos la
+    columna de texto. Ahora es un recuadro de datos a la derecha del nombre
+    —rótulo, cifra y una barra corta—, como el encabezado de una ficha. En el
+    móvil baja a su propia línea: compartiendo fila le robaba al nombre la
+    mitad del ancho y "Grimgor Colmillo de Hierro" se quedaba en "Grimgor
+    Col…".
+  - **Una sola línea para lo que el personaje ES**: coste, distintivo y
+    estados. Estaban en tres sitios distintos y cada uno pedía su vistazo.
+  - **El distintivo de Renombre deja de ser una pastilla** y pasa a ser una
+    estrella con la palabra en versalita de bronce: dentro de esa línea, una
+    pastilla pesaba el doble que todo lo que la rodea.
+  - **Un filete, y no tres adornos.** Fuera la raya corta con rombo bajo el
+    nombre —un gesto de portada, repetido veinte veces es un adorno suelto— y
+    fuera el filete que encajonaba el trasfondo.
+  - **El trasfondo se lee mejor**: medida limitada a unos 76 caracteres en vez
+    de líneas de borde a borde, y plegado se DESVANECE en vez de cortarse a
+    cuchillo.
+  - **La barra de abajo pesa menos**: tres acciones con el mismo peso
+    tipográfico y sin cajas, en lugar de dos botones con borde y uno sin él.
+    Solo destaca "Experiencia", en granate, que es lo que se hace después de
+    cada partida.
+  - **Retrato de 144 px, y 96 en el móvil**: con los 160 de antes, en una
+    pantalla de 390 px el texto bajaba a tres palabras por línea.
+
+- En el catálogo de habilidades, **"Ya adquirido"** en lugar de "La tiene", y
+  **"Faltan 25 exp"** en lugar de "Faltan 25".
+
+---
+
 ## 0.174 — 07/11/2026 23:44
 
 - **El diálogo de habilidades, más apretado.** Con las mismas habilidades

@@ -331,7 +331,7 @@ export function HabilidadesModal({
                           {yaLaTiene ? (
                             <span className="inline-flex items-center gap-1 text-mini font-medium text-maroon">
                               <CheckIcon className="h-3 w-3" />
-                              La tiene
+                              Ya adquirido
                             </span>
                           ) : topeLlena ? (
                             // EL TOPE NO SE EXPLICA EN UN PÁRRAFO, se ve en el
@@ -356,7 +356,7 @@ export function HabilidadesModal({
                             // cuánto falta. Un botón que al pulsarlo contesta
                             // "no te llega" hace perder un clic y no informa.
                             <span className="text-mini text-danger" title={`Hacen falta ${coste} y tiene ${saldo}`}>
-                              Faltan {coste - saldo}
+                              Faltan {coste - saldo} exp
                             </span>
                           )}
                         </span>

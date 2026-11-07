@@ -6,19 +6,18 @@
 // metía tres por fila con un retrato de 80 px y el trasfondo escondido detrás
 // de un botón: el retrato no se veía y la historia —que es justo lo que
 // distingue a un personaje con nombre de "un Señor Vampiro"— no existía hasta
-// que alguien abría el diálogo de edición. Ahora el retrato ocupa 160 px (el
-// doble) y el trasfondo se lee en la propia lámina, plegado a unas líneas con
-// un "Seguir leyendo" cuando es largo. Caben dos por fila en pantalla ancha,
-// una en el resto.
+// que alguien abría el diálogo de edición. Ahora el retrato ocupa 144 px (96
+// en el móvil) y el trasfondo se lee en la propia lámina, plegado a unas
+// líneas con un "Seguir leyendo" cuando es largo.
 //
-// El RETRATO se prepara igual que una pieza de escenografía
-// (shared/image#prepararImagenDeEscenografia): se le quita el fondo liso, se
-// recorta al contenido, se le difumina el canto y se reduce a 512 px. No es
-// casualidad ni pereza — una foto de personaje recortada sobre blanco puesta
-// en una lámina de pergamino canta exactamente igual que una pieza recortada
-// sobre la mesa, y el arreglo ya estaba escrito y probado. El marco es doble
-// (filete de tinta fuera, hilo de bronce dentro) y lleva una sombra INTERIOR,
-// que es lo que impide que la foto parezca un recorte pegado encima del papel.
+// EL RETRATO NO SE RETOCA. Se sube la foto tal cual, solo encogida para que no
+// pese (ver elegirFoto). Antes pasaba por el mismo arreglo que una pieza de
+// escenografía —quitarle el fondo liso, recortarla al contenido y difuminarle
+// el canto—, y con una pieza sobre la mesa eso está bien, pero con la foto de
+// un personaje no: el "fondo liso" de un retrato suele ser parte de la foto, y
+// el canto desvanecido deja la cara flotando en una nube. Lo que asienta la
+// foto en el papel es el MARCO, que sigue siendo doble (filete de tinta fuera,
+// hilo de bronce dentro) con una sombra interior suave.
 //
 // La EXPERIENCIA solo se puede SUMAR, nunca corregir ni borrar: cada apunte es
 // el registro de lo que pasó en una partida. Rectificar es apuntar otra cosa,
@@ -34,9 +33,9 @@ import {
   type PersonajeEspecial,
 } from '@/data/repositories/specialCharacterRepository'
 import {
+  compressImageFile,
   descargarImagenComoBytes,
   ENCUADRE_CENTRADO,
-  prepararImagenDeEscenografia,
   recortarRetrato,
   type EncuadreRetrato,
 } from '@/shared/image'
@@ -53,7 +52,6 @@ import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { TextField } from '@/shared/ui/TextField'
 import { RichTextEditor } from '@/shared/ui/RichTextEditor'
-import { Badge } from '@/shared/ui/Badge'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EyeIcon, EyeOffIcon, ImageIcon, PencilIcon, PlusIcon, StarIcon, TrashIcon } from '@/shared/ui/icons'
 
@@ -78,7 +76,16 @@ const PROSA =
  * porque la usan la lámina y su diálogo; tenerla en la página obligaba a que
  * página y lámina se importasen la una a la otra.
  */
-export function BarraDeExperiencia({ valor, size = 'sm' }: { valor: number; size?: 'sm' | 'md' }) {
+export function BarraDeExperiencia({
+  valor,
+  size = 'sm',
+  sinCifra = false,
+}: {
+  valor: number
+  size?: 'sm' | 'md'
+  /** Sin el "24 / 100" al lado, para cuando la cifra ya está escrita encima. */
+  sinCifra?: boolean
+}) {
   const pct = Math.max(0, Math.min(100, (valor / EXPERIENCIA_MAXIMA) * 100))
   const pasado = valor > EXPERIENCIA_MAXIMA
   return (
@@ -97,51 +104,74 @@ export function BarraDeExperiencia({ valor, size = 'sm' }: { valor: number; size
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="shrink-0 text-mini tabular-nums text-ink-soft">
-        {valor} / {EXPERIENCIA_MAXIMA}
-      </span>
+      {!sinCifra && (
+        <span className="shrink-0 text-mini tabular-nums text-ink-soft">
+          {valor} / {EXPERIENCIA_MAXIMA}
+        </span>
+      )}
     </div>
   )
 }
 
-/** Distintivo de Personaje de Renombre, para reconocerlos de un vistazo allá donde salgan. */
+/**
+ * Distintivo de Personaje de Renombre, para reconocerlos de un vistazo allá
+ * donde salgan.
+ *
+ * NO ES UNA PASTILLA. Lo era, y dentro de la línea de datos del personaje una
+ * pastilla de texto normal pesaba el doble que todo lo que la rodea —el coste,
+ * los estados— y se llevaba el primer vistazo, que es del nombre. Una estrella
+ * y la palabra en versalita de bronce dicen lo mismo sin levantar la voz.
+ */
 export function DistintivoEspecial() {
   return (
-    <Badge tone="amber">
-      <StarIcon className="mr-1 h-3 w-3" filled />
+    <span className="inline-flex items-center gap-1 text-micro font-semibold uppercase tracking-[0.14em] text-bronze">
+      <StarIcon className="h-2.5 w-2.5" filled />
       Renombre
-    </Badge>
+    </span>
   )
 }
 
-/** El retrato con su marco doble. Sin foto, un hueco con el mismo marco: la rejilla no baila. */
+/**
+ * El retrato con su marco doble. Sin foto, un hueco con el mismo marco: la
+ * rejilla no baila.
+ *
+ * MÁS PEQUEÑO EN EL MÓVIL (96 px frente a 144): con los 160 de antes, en una
+ * pantalla de 390 px la columna del nombre y el trasfondo se quedaba en poco
+ * más de 190 y el texto bajaba a tres palabras por línea.
+ */
 function Retrato({ url, nombre }: { url: string | null; nombre: string }) {
   // `self-start`: el marco tiene que ceñirse a la foto. Sin él, al ser hijo de un
   // flex, se estiraba hasta el alto de la columna de texto y dejaba un rectángulo
   // de pergamino vacío colgando bajo el retrato.
   return (
-    <div className="shrink-0 self-start rounded-sm border border-rule-dark/50 bg-parchment-dark/30 p-1 shadow-sm shadow-black/15">
-      <div className="relative h-40 w-40 overflow-hidden rounded-[1px] bg-parchment-dark/50">
+    <div className="shrink-0 self-start rounded-sm border border-rule-dark/45 bg-parchment-dark/25 p-1 shadow-sm shadow-black/10">
+      <div className="relative h-24 w-24 overflow-hidden rounded-[1px] bg-parchment-dark/50 sm:h-36 sm:w-36">
         {url ? (
-          <img src={url} alt={`Retrato de ${nombre}`} className="h-full w-full object-contain" />
+          <img src={url} alt={`Retrato de ${nombre}`} className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-ink-soft/35">
-            <ImageIcon className="h-8 w-8" />
+          <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-ink-soft/30">
+            <ImageIcon className="h-7 w-7" />
             <span className="text-micro uppercase tracking-widest">Sin retrato</span>
           </div>
         )}
-        {/* Hilo de bronce + sombra interior: asientan la foto en el papel en vez
-            de dejarla como un recorte pegado encima (mismo recurso que
-            FactionEmblem). */}
+        {/* Hilo de bronce + sombra interior, los dos MÁS FLOJOS que antes: con
+            la foto sin recortar ni difuminar, una sombra fuerte por dentro se
+            comía los bordes de la imagen en vez de asentarla. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-[1px] ring-1 ring-inset ring-bronze/35"
-          style={{ boxShadow: 'inset 0 0 16px rgba(20,14,6,0.28)' }}
+          className="pointer-events-none absolute inset-0 rounded-[1px] ring-1 ring-inset ring-bronze/30"
+          style={{ boxShadow: 'inset 0 0 12px rgba(20,14,6,0.2)' }}
         />
       </div>
     </div>
   )
 }
+
+/** Un botón de la barra de abajo de la lámina. Todos pesan lo mismo salvo el primero. */
+const ACCION_DE_LAMINA =
+  'inline-flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs font-medium transition-colors ' +
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bronze/40 focus-visible:ring-offset-1 ' +
+  'focus-visible:ring-offset-parchment'
 
 export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: PersonajeEspecial; onCambio: () => void }) {
   const { user, actingAsAdmin } = useSession()
@@ -204,71 +234,101 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
         className="block h-[3px] w-full bg-gradient-to-r from-rule-dark/60 via-bronze/80 to-rule-dark/60"
       />
 
-      <div className="flex flex-1 gap-4 p-4">
+      <div className="flex flex-1 gap-3 p-3 sm:gap-4 sm:p-4">
         <Retrato url={personaje.portraitUrl} nombre={personaje.name} />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="min-w-0 truncate font-display text-2xl leading-none font-bold tracking-wide text-ink">
-              {personaje.name}
-            </h3>
-            <div className="flex shrink-0 items-center gap-1.5">
-              {personaje.hidden && <Badge tone="neutral">Oculto</Badge>}
-              <DistintivoEspecial />
+          {/* LA CABECERA, COMO EL ENCABEZADO DE UNA FICHA: el nombre a la
+              izquierda y la experiencia a la derecha, en su propio bloque.
+              Antes la barra cruzaba la lámina entera —mil doscientos píxeles
+              para decir "24 de 100"— y partía en dos la columna de texto,
+              dejando el nombre arriba y el trasfondo abajo sin relación. */}
+          {/* EN EL MÓVIL LA EXPERIENCIA BAJA A SU PROPIA LÍNEA. Compartiendo
+              fila con el nombre le robaba 128 px de los 270 que hay, y
+              "Grimgor Colmillo de Hierro" se quedaba en "Grimgor Col…": el
+              nombre es lo primero que hay que poder leer. */}
+          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+            <div className="min-w-0 basis-full sm:basis-auto">
+              <h3 className="line-clamp-2 font-display text-xl leading-tight font-bold tracking-wide text-ink">
+                {personaje.name}
+              </h3>
+              {/* UNA SOLA LÍNEA PARA TODO LO QUE "ES" EL PERSONAJE: coste,
+                  distintivo y estados. Estaban repartidos en tres sitios —el
+                  distintivo flotando arriba a la derecha, el coste en un
+                  renglón suelto— y cada uno pedía su propio vistazo.
+                  La FACCIÓN no se repite: ya la dice la cabecera del grupo
+                  bajo la que cuelga esta lámina. */}
+              <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-mini text-ink-soft">
+                <span className="tabular-nums">{personaje.baseCost} pts</span>
+                <span className="text-rule-dark/45">·</span>
+                <DistintivoEspecial />
+                {!personaje.active && (
+                  <>
+                    <span className="text-rule-dark/45">·</span>
+                    <span className="font-medium text-danger">Desactivado</span>
+                  </>
+                )}
+              </p>
+            </div>
+
+            {/* En el móvil es una línea —rótulo, cifra y barra—; en cuanto hay
+                sitio se apila a la derecha del nombre, como el recuadro de
+                datos de una ficha. */}
+            <div className="flex w-full items-center gap-2 sm:w-32 sm:shrink-0 sm:flex-col sm:items-end sm:gap-0">
+              <span className="shrink-0 text-micro font-semibold uppercase tracking-[0.16em] text-ink-soft/70">
+                Experiencia
+              </span>
+              <span className="shrink-0 font-display text-lg leading-none text-maroon tabular-nums sm:text-xl">
+                {personaje.experiencia}
+                <span className="text-xs text-ink-soft/70"> / {EXPERIENCIA_MAXIMA}</span>
+              </span>
+              <div className="min-w-0 flex-1 sm:mt-1.5 sm:w-full sm:flex-none">
+                <BarraDeExperiencia valor={personaje.experiencia} sinCifra />
+              </div>
             </div>
           </div>
 
-          {/* Filete bajo el nombre: rombo de bronce y regla que se apaga. */}
-          <span aria-hidden className="mt-2 flex items-center gap-1.5">
-            <span className="h-px w-8 bg-bronze/70" />
-            <span className="h-1 w-1 rotate-45 bg-bronze/70" />
-            <span className="h-px flex-1 bg-rule-dark/30" />
-          </span>
+          {/* Un filete y nada más. El de antes —raya corta, rombo de bronce y
+              regla que se apaga— es un gesto de portada, y repetido en cada
+              lámina de una lista de veinte se lee como un adorno suelto. */}
+          <span aria-hidden className="mt-2.5 h-px w-full bg-rule-dark/25" />
 
           {/* OCULTO, dicho con todas las letras y no solo con el distintivo.
               Un personaje oculto solo lo ve su autor, así que para el resto del
               grupo sencillamente NO EXISTE: no sale aquí, ni en el constructor
               de listas, ni en el buscador. Con un distintivo de dos palabras en
-              una esquina eso se olvida en cuanto cierras la pestaña, y lo
-              siguiente es preguntarse por qué los demás no ven al personaje.
+              una esquina eso se olvida en cuanto cierras la pestaña.
               Solo lo lee su autor: a los demás no les llega la lámina. */}
           {personaje.hidden && (
-            <p className="mt-2 flex items-start gap-1.5 rounded-sm border border-bronze/40 bg-bronze/10 px-2 py-1.5 text-mini leading-snug text-ink-soft">
+            <p className="mt-2.5 flex items-start gap-1.5 rounded-sm border border-bronze/35 bg-bronze/10 px-2 py-1.5 text-mini leading-snug text-ink-soft">
               <EyeOffIcon className="mt-px h-3.5 w-3.5 shrink-0 text-bronze" />
               <span>
-                <strong className="font-semibold text-ink">Oculto: solo lo ves tú.</strong> Nadie más lo encuentra, ni
-                puede meterlo en su ejército. Pulsa el ojo de abajo para que vuelva a verlo todo el grupo.
+                <strong className="font-semibold text-ink">Solo lo ves tú.</strong> Nadie más lo encuentra, ni puede
+                meterlo en su ejército. Pulsa el ojo de abajo para que vuelva a verlo todo el grupo.
               </span>
             </p>
           )}
 
-          {/* La FACCIÓN no se repite aquí: ya la dice la cabecera del grupo bajo
-              la que cuelga esta lámina, y repetirla en cada una es ruido. */}
-          <p className="mt-2 text-xs text-ink-soft">
-            <span className="tabular-nums">{personaje.baseCost} pts</span>
-            {!personaje.active && (
-              <>
-                <span className="mx-1.5 text-rule-dark/60">·</span>
-                <span className="text-danger">desactivado</span>
-              </>
-            )}
-          </p>
+          {/* EL TRASFONDO ES LO QUE SE VIENE A LEER, así que va suelto sobre el
+              papel: sin filete a la izquierda que lo encajone y con la medida
+              limitada a unos 68 caracteres. En una lámina de 1.100 px una línea
+              de borde a borde se pierde al volver, y eso en un texto que
+              precisamente se lee seguido.
 
-          <div className="mt-3">
-            <p className="mb-1 text-micro uppercase tracking-widest text-ink-soft/70">Experiencia</p>
-            <BarraDeExperiencia valor={personaje.experiencia} size="md" />
-          </div>
-
-          {/* Trasfondo A LA VISTA, y dentro de la misma columna que el nombre —no
-              en una banda debajo—. Puesto debajo del retrato dejaba un hueco a su
-              derecha del alto del retrato, y la lámina parecía rota por la mitad.
-              Antes ni siquiera se veía: vivía dentro del diálogo de edición, así
-              que un personaje se distinguía de otro por la foto y poco más. */}
-          <div className="mt-3 border-l-2 border-bronze/35 pl-3">
+              Plegado se DESVANECE en vez de cortarse a cuchillo: una línea
+              cortada por la mitad parece un fallo de dibujo; una que se apaga
+              dice "sigue". */}
+          <div className="mt-2.5">
             {tieneTrasfondo ? (
               <>
                 <div
-                  className={clsx(PROSA, !desplegado && largo && 'max-h-24 overflow-hidden')}
+                  className={clsx(
+                    PROSA,
+                    'max-w-[76ch]',
+                    !desplegado &&
+                      largo &&
+                      'max-h-20 overflow-hidden [mask-image:linear-gradient(to_bottom,black_55%,transparent)]',
+                  )}
                   // El trasfondo se guarda ya saneado (ver EditarPersonajeModal),
                   // pero se vuelve a sanear al pintarlo: es idempotente y barato, y
                   // así una fila antigua o tocada a mano en la base tampoco puede
@@ -279,14 +339,14 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
                   <button
                     type="button"
                     onClick={() => setDesplegado((v) => !v)}
-                    className="mt-1 text-xs font-medium text-maroon underline decoration-maroon/30 underline-offset-2 hover:decoration-maroon"
+                    className="mt-1 text-mini font-medium text-maroon underline decoration-maroon/30 underline-offset-2 hover:decoration-maroon"
                   >
                     {desplegado ? 'Plegar' : 'Seguir leyendo'}
                   </button>
                 )}
               </>
             ) : (
-              <p className="text-sm italic text-ink-soft/60">Sin trasfondo todavía.</p>
+              <p className="text-xs italic text-ink-soft/55">Sin trasfondo todavía.</p>
             )}
           </div>
         </div>
@@ -298,18 +358,36 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
         </p>
       )}
 
-      <div className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-rule-dark/25 bg-parchment-dark/25 px-3 py-2">
-        <Button variant="secondary" onClick={() => setSumando(true)}>
-          <PlusIcon className="h-4 w-4" />
+      {/* LA BARRA DE ABAJO: las tres cosas que se le hacen a un personaje, con
+          el mismo peso tipográfico y sin cajas. Antes eran dos botones con
+          borde y uno sin él, de tres tamaños aparentes distintos, y la barra
+          pesaba más que el propio personaje. Lo único que destaca es sumar
+          experiencia, en granate, que es lo que se hace después de cada
+          partida. */}
+      <div className="mt-auto flex flex-wrap items-center gap-0.5 border-t border-rule-dark/25 bg-parchment-dark/20 px-2 py-1.5">
+        <button
+          type="button"
+          onClick={() => setSumando(true)}
+          className={clsx(ACCION_DE_LAMINA, 'text-maroon hover:bg-maroon/10')}
+        >
+          <PlusIcon className="h-3.5 w-3.5" />
           Experiencia
-        </Button>
-        <Button variant="secondary" onClick={() => setViendoHabilidades(true)}>
+        </button>
+        <button
+          type="button"
+          onClick={() => setViendoHabilidades(true)}
+          className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
+        >
           Habilidades
-        </Button>
-        <Button variant="ghost" onClick={() => setEditando(true)}>
-          <PencilIcon className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditando(true)}
+          className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
+        >
+          <PencilIcon className="h-3.5 w-3.5" />
           Retrato y trasfondo
-        </Button>
+        </button>
 
         <div className="ml-auto flex items-center gap-1.5">
           {/* Ocultar es la ÚNICA cosa que no puede hacer cualquiera: un
@@ -494,7 +572,13 @@ function EditarPersonajeModal({
     setPreparando(true)
     setError(null)
     try {
-      const preparada = await prepararImagenDeEscenografia(file)
+      // SIN RETOCAR: ni se le quita el fondo, ni se recorta al contenido, ni
+      // se le difumina el canto. Solo se encoge para que no pese, y el recorte
+      // cuadrado lo decide luego el encuadre (ver recortarRetrato). Antes
+      // pasaba por prepararImagenDeEscenografia, que es lo que hay que hacerle
+      // a una pieza que va a ir suelta sobre la mesa; a la foto de un
+      // personaje, no: su fondo suele ser parte de la foto.
+      const preparada = await compressImageFile(file, { maxSize: 1600 })
       const url = urlDeBytes(preparada.bytes, preparada.mime)
       const { ancho, alto } = await medir(url)
       ponerFuente(preparada.bytes, preparada.mime, ancho, alto, url)
