@@ -23,3 +23,7 @@ _to_delete/
 
 # Copias que deja sed -i.bak cuando no se pueden borrar.
 *.bak
+
+# Carpeta donde la aplicación de escritorio deja los archivos que le mando.
+# Son copias de paso, no código del proyecto.
+Claude outputs/

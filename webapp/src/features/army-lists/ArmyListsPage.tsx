@@ -25,10 +25,14 @@ import { ShareArmyListModal } from '@/features/army-lists/ShareArmyListModal'
 /** Qué ejércitos se enseñan. Por defecto, todos. */
 type FiltroDeEstado = 'todos' | 'completados' | 'pendientes'
 
+// EN ORDEN DE TRABAJO, NO DE AMPLITUD: primero lo que queda por hacer, luego lo
+// terminado, y "Todos" al final. Es el orden en que se mira —se entra a seguir
+// con lo de en medio— y además el primero es el que viene puesto de entrada,
+// así que el filtro activo cae donde empieza la vista.
 const FILTROS: { clave: FiltroDeEstado; etiqueta: string }[] = [
-  { clave: 'todos', etiqueta: 'Todos' },
-  { clave: 'completados', etiqueta: 'Completados' },
   { clave: 'pendientes', etiqueta: 'Sin completar' },
+  { clave: 'completados', etiqueta: 'Completados' },
+  { clave: 'todos', etiqueta: 'Todos' },
 ]
 
 /**
@@ -326,16 +330,46 @@ export function ArmyListsPage() {
                 }}
                 size="sm"
               />
-              <button className="min-w-0 flex-1 basis-0 text-left" onClick={() => navigate(`/ejercitos/${list.id}`)}>
+              {/* UN <div> Y NO UN <button>, aunque se pulse igual. Dentro va el
+                  candado, que ES un botón: un botón dentro de otro es HTML
+                  inválido y el navegador lo desmonta por su cuenta, dejando el
+                  de dentro sin pulsar. Con `role` y `tabIndex` esto sigue
+                  siendo pulsable con el teclado y anunciándose como lo que es. */}
+              <div
+                role="button"
+                tabIndex={0}
+                className="min-w-0 flex-1 basis-0 cursor-pointer text-left"
+                onClick={() => navigate(`/ejercitos/${list.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    navigate(`/ejercitos/${list.id}`)
+                  }
+                }}
+              >
                 <p className="flex items-center gap-1.5 font-display text-lg font-semibold text-maroon">
                   {list.name}
-                  {/* El candado, aquí y en la propia lista al abrirla: hay que
-                      poder distinguir de un vistazo cuáles son tuyas antes de
-                      entrar, no descubrirlo al intentar cambiar algo. */}
+                  {/* EL CANDADO ES EL BOTÓN DE DEJAR DE VERLA.
+                      Sigue diciendo lo de siempre —que la lista es de otro y
+                      aquí solo se mira—, que es para lo que hay que poder
+                      distinguirlas de un vistazo antes de entrar. Pero además
+                      se pulsa, y esa es ahora la forma de quitársela de encima:
+                      antes había un "Dejar de ver" escrito al final de la fila,
+                      y era una palabra de más en un sitio donde ya hay tres.
+                      Lo que abre es una pregunta, no un borrado: ver más abajo. */}
                   {list.shared && (
-                    <Tooltip label="Compartida contigo: solo lectura" className="inline-flex text-ink-soft">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDescompartiendo(list)
+                      }}
+                      aria-label={`Dejar de ver ${list.name}`}
+                      title="Compartida contigo: solo lectura. Pulsa para dejar de verla."
+                      className="inline-flex text-ink-soft transition-colors hover:text-maroon"
+                    >
                       <LockIcon className="h-4 w-4" />
-                    </Tooltip>
+                    </button>
                   )}
                 </p>
                 <p className="mt-0.5 text-xs text-ink-soft">
@@ -343,7 +377,7 @@ export function ArmyListsPage() {
                   {list.pointsLimit != null && <> · límite {list.pointsLimit} pts</>}
                   {list.shared && list.ownerName && <> · de {list.ownerName}</>}
                 </p>
-              </button>
+              </div>
               {/* EL SELLO. Va al final de la fila y no pegado al nombre: los
                   nombres miden lo que miden, así que ahí el sello bailaría de una
                   fila a otra; al final forman una columna y el estado del montón
@@ -474,7 +508,12 @@ export function ArmyListsPage() {
                   otro. Sin esto, el ejército que te mandaron para una partida de
                   hace tres meses se queda en tu listado para siempre y el único
                   que puede quitarlo de ahí es alguien que ni lo ve. */}
-              {list.shared && (
+              {/* `(entryCount > 0 || ready)`: sin eso, una lista compartida
+                  vacía y sin completar dejaba aquí un <div> sin nada dentro
+                  que, en el móvil, se lleva una segunda línea de la fila para
+                  no enseñar nada. Ahora que el candado se pulsa desde el
+                  nombre, este bloque puede quedarse sin contenido. */}
+              {list.shared && (list.entryCount > 0 || list.ready) && (
                 <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:gap-3">
                   <MarcaDeDespliegue list={list} />
                   {list.ready && enBatalla?.has(list.id) && (
@@ -495,15 +534,6 @@ export function ArmyListsPage() {
                       Completado
                     </span>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setDescompartiendo(list)}
-                    aria-label={`Dejar de ver ${list.name}`}
-                    title="Quitarla de tu listado. Su dueño puede volver a compartírtela cuando quiera."
-                    className="shrink-0 rounded-sm px-2 py-0.5 text-mini font-medium text-ink-soft hover:bg-bronze/10 hover:text-bronze"
-                  >
-                    Dejar de ver
-                  </button>
                 </div>
               )}
             </div>
@@ -547,9 +577,10 @@ export function ArmyListsPage() {
           vez del rojo. */}
       {descompartiendo && user && (
         <ConfirmDialog
-          title="Dejar de ver este ejército"
+          title="¿Dejar de ver este ejército?"
           message={`"${descompartiendo.name}" desaparecerá de tu listado. No se borra: sigue siendo de ${descompartiendo.ownerName ?? 'su dueño'}, y puede volver a compartírtelo cuando quiera.`}
-          confirmLabel="Dejar de ver"
+          confirmLabel="Sí"
+          cancelLabel="No"
           danger={false}
           onCancel={() => setDescompartiendo(null)}
           onConfirm={async () => {

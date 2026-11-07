@@ -13,6 +13,23 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.170 — 07/11/2026 18:27
+
+- **Los filtros de Ejércitos, en orden de trabajo**: Sin completar, Completados,
+  Todos. Es el orden en que se miran —se entra a seguir con lo que está a
+  medias— y además el primero es el que viene puesto de entrada, así que el
+  filtro activo cae justo donde empieza la vista.
+
+- **Para dejar de ver un ejército compartido se pulsa el candado.** Ya decía lo
+  que hacía falta saber —que la lista es de otro y aquí solo se mira—, así que
+  ahora además se pulsa, y pregunta: *¿Dejar de ver este ejército?*, con **Sí**
+  y **No**. Fuera el "Dejar de ver" escrito al final de la fila: era una palabra
+  más en un sitio donde ya había tres.
+  - El bloque de confirmación admite ahora rótulo propio en el botón de salir.
+    "Cancelar" vale para casi todo, pero a una pregunta se responde "No".
+
+---
+
 ## 0.169 — 07/11/2026 18:23
 
 ### Ejércitos
