@@ -494,6 +494,23 @@ CREATE TABLE unit_equipment_options (
 -- llevar tanto los Gor como los Ungor, y con la clave (unit_id, equipment_id)
 -- de aquella tabla la misma opción no cabe dos veces. Aquí el perfil forma
 -- parte de la clave.
+-- LAS HABILIDADES DE UN PERSONAJE DE RENOMBRE: rangos, mejoras de atributo,
+-- habilidades y características sociales, compradas con experiencia.
+--
+-- Aquí va solo QUIÉN TIENE QUÉ. El catálogo —nombre, precio y qué hace cada
+-- una— es el reglamento y vive en el código (src/domain/habilidadesDeRenombre):
+-- no lo edita nadie desde el programa y es igual en todas las partidas.
+--
+-- `skill_key` es la clave estable del catálogo, no el nombre. Y no se guarda el
+-- coste: lo que se pagó está en unit_experience_log, que es donde se lee.
+CREATE TABLE unit_skills (
+    unit_id    INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+    skill_key  TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    PRIMARY KEY (unit_id, skill_key)
+);
+
 CREATE TABLE unit_equipment_profiles (
     unit_id      INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
     equipment_id INTEGER NOT NULL REFERENCES equipment_options(id) ON DELETE CASCADE,

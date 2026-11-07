@@ -79,3 +79,12 @@ CREATE TABLE IF NOT EXISTS unit_equipment_profiles (
   profile_id   INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
   PRIMARY KEY (unit_id, equipment_id, profile_id)
 );
+
+-- Habilidades de los Personajes de Renombre (el catálogo está en el código).
+CREATE TABLE IF NOT EXISTS unit_skills (
+  unit_id    INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+  skill_key  TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  PRIMARY KEY (unit_id, skill_key)
+);

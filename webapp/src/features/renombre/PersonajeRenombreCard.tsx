@@ -48,6 +48,14 @@ import { mensajeDeMigracionPendiente } from '@/data/repositories/schemaHealth'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
 import { Modal } from '@/shared/ui/Modal'
+import {
+  ETIQUETAS_DE_TIPO,
+  HABILIDAD_POR_CLAVE,
+  costeDeSocial,
+  habilidadesDeTipo,
+  type HabilidadDeRenombre,
+  type TipoDeHabilidad,
+} from '@/domain/habilidadesDeRenombre'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { TextField } from '@/shared/ui/TextField'
@@ -150,6 +158,7 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
   const [ocultando, setOcultando] = useState(false)
   const [errorOcultar, setErrorOcultar] = useState<string | null>(null)
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false)
+  const [viendoHabilidades, setViendoHabilidades] = useState(false)
 
   const trasfondo = personaje.background ?? ''
   const tieneTrasfondo = tieneTexto(trasfondo)
@@ -301,6 +310,10 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
           <PlusIcon className="h-4 w-4" />
           Experiencia
         </Button>
+        <Button variant="secondary" onClick={() => setViendoHabilidades(true)}>
+          <StarIcon className="h-4 w-4" />
+          Habilidades
+        </Button>
         <Button variant="ghost" onClick={() => setEditando(true)}>
           <PencilIcon className="h-4 w-4" />
           Retrato y trasfondo
@@ -403,6 +416,10 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
             onCambio()
           }}
         />
+      )}
+
+      {viendoHabilidades && (
+        <HabilidadesModal personaje={personaje} onClose={() => setViendoHabilidades(false)} onCambio={onCambio} />
       )}
     </article>
   )
@@ -765,6 +782,259 @@ function ExperienciaModal({
             ))}
           </ul>
         )}
+      </div>
+    </Modal>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Habilidades
+// ---------------------------------------------------------------------------
+
+/**
+ * LAS HABILIDADES DE UN PERSONAJE: rangos, atributos, habilidades y
+ * características sociales, que se COMPRAN con experiencia.
+ *
+ * El catálogo es el reglamento y vive en el código (ver
+ * domain/habilidadesDeRenombre); lo único que guarda la base es qué tiene cada
+ * personaje. Aquí se juntan las dos cosas.
+ *
+ * LO QUE TIENE VA ARRIBA Y SIEMPRE A LA VISTA, antes que el catálogo: lo que se
+ * viene a hacer aquí nueve de cada diez veces es consultar qué sabe hacer este
+ * personaje, no comprarle algo. Comprar es lo de abajo.
+ *
+ * SE COBRA AL AÑADIR, y no de propina: descontar la experiencia es la mitad del
+ * trabajo. Si no llega, el botón no está y se dice cuánto falta — avisar
+ * después de cobrar no sirve de nada. Y el descuento queda como un apunte más
+ * del libro de experiencia, con el nombre de lo que se compró, así que de dónde
+ * salió cada punto se sigue pudiendo leer entero.
+ */
+function HabilidadesModal({
+  personaje,
+  onClose,
+  onCambio,
+}: {
+  personaje: PersonajeEspecial
+  onClose: () => void
+  onCambio: () => void
+}) {
+  const { data: claves, reload } = useAsync(() => SpecialCharacterRepository.listHabilidades(personaje.id))
+  // La experiencia se recalcula aquí dentro y no se hereda de `personaje`: se
+  // gasta sin cerrar el diálogo, y un saldo congelado dejaría comprar dos veces
+  // lo que solo se puede pagar una.
+  const { data: experiencia, reload: recargarExperiencia } = useAsync(() =>
+    SpecialCharacterRepository.totalExperiencia(personaje.id),
+  )
+  const [tipo, setTipo] = useState<TipoDeHabilidad>('habilidad')
+  const [busqueda, setBusqueda] = useState('')
+  const [abierta, setAbierta] = useState<string | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const tiene = new Set(claves ?? [])
+  const saldo = experiencia ?? 0
+  const suyas = (claves ?? []).map((c) => HABILIDAD_POR_CLAVE.get(c)).filter((h) => h != null)
+  const socialesQueTiene = suyas.filter((h) => h.tipo === 'social').length
+  const tieneRango = suyas.some((h) => h.tipo === 'rango')
+
+  /** Lo que cuesta AHORA una entrada: las sociales dependen de cuántas lleve. */
+  function costeDe(h: HabilidadDeRenombre): number {
+    return h.coste ?? costeDeSocial(socialesQueTiene)
+  }
+
+  async function comprar(h: HabilidadDeRenombre) {
+    setOcupado(true)
+    setError(null)
+    try {
+      await SpecialCharacterRepository.anadirHabilidad(personaje.id, h.clave, h.nombre, costeDe(h))
+      reload()
+      recargarExperiencia()
+      onCambio()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setOcupado(false)
+    }
+  }
+
+  async function devolver(h: HabilidadDeRenombre) {
+    setOcupado(true)
+    setError(null)
+    try {
+      // Se devuelve lo que vale HOY. En las sociales eso puede no ser lo que se
+      // pagó (la primera son 8 y las siguientes 12), pero el libro de apuntes
+      // deja las dos cifras a la vista y cuadrarlo a mano es un apunte más.
+      await SpecialCharacterRepository.quitarHabilidad(personaje.id, h.clave, h.nombre, costeDe(h))
+      reload()
+      recargarExperiencia()
+      onCambio()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setOcupado(false)
+    }
+  }
+
+  const termino = busqueda.trim().toLowerCase()
+  const delCatalogo = habilidadesDeTipo(tipo).filter((h) => termino === '' || h.nombre.toLowerCase().includes(termino))
+
+  return (
+    <Modal
+      title={`Habilidades · ${personaje.name}`}
+      widthClassName="max-w-2xl"
+      onClose={onClose}
+      footer={
+        <Button variant="primary" onClick={onClose}>
+          Cerrar
+        </Button>
+      }
+    >
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-sm border border-rule-dark/30 bg-parchment/60 px-3 py-2">
+          <span className="text-xs text-ink-soft">
+            Experiencia disponible <b className="font-display text-base text-maroon tabular-nums">{saldo}</b>
+          </span>
+          <span className="text-xs text-ink-soft">
+            {suyas.length === 0 ? 'Sin habilidades todavía' : `${suyas.length} en total`}
+          </span>
+        </div>
+
+        {/* LO QUE YA TIENE */}
+        {suyas.length > 0 && (
+          <div>
+            <p className="mb-1.5 text-xs font-semibold tracking-wide text-ink-soft">Lo que sabe hacer</p>
+            <ul className="space-y-1">
+              {suyas.map((h) => (
+                <li key={h.clave} className="rounded-sm border border-maroon/30 bg-maroon/[0.06] px-2.5 py-1.5">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setAbierta(abierta === h.clave ? null : h.clave)}
+                      className="min-w-0 flex-1 text-left text-sm font-medium text-ink hover:text-maroon"
+                    >
+                      {h.nombre}
+                      <span className="ml-1.5 text-mini font-normal text-ink-soft">
+                        {ETIQUETAS_DE_TIPO[h.tipo].toLowerCase()}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={ocupado}
+                      onClick={() => void devolver(h)}
+                      title={`Quitarla y devolver ${costeDe(h)} de experiencia`}
+                      className="shrink-0 rounded-sm px-2 py-0.5 text-mini font-medium text-ink-soft hover:bg-maroon/10 hover:text-danger disabled:opacity-40"
+                    >
+                      Quitar (+{costeDe(h)})
+                    </button>
+                  </div>
+                  {abierta === h.clave && h.descripcion && (
+                    <p className="mt-1 text-xs leading-relaxed text-ink-soft">{h.descripcion}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* EL CATÁLOGO */}
+        <div className="border-t border-rule-dark/20 pt-3">
+          <div className="mb-2 flex flex-wrap items-end gap-2">
+            <div className="flex flex-wrap gap-1">
+              {(Object.keys(ETIQUETAS_DE_TIPO) as TipoDeHabilidad[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTipo(t)}
+                  className={clsx(
+                    'rounded-sm px-2 py-1 text-mini font-semibold transition-colors',
+                    t === tipo
+                      ? 'bg-maroon text-parchment'
+                      : 'border border-rule-dark/40 bg-parchment text-ink-soft hover:bg-parchment-dark',
+                  )}
+                >
+                  {ETIQUETAS_DE_TIPO[t]}
+                </button>
+              ))}
+            </div>
+            <div className="min-w-[10rem] flex-1">
+              <TextField
+                label="Buscar"
+                placeholder="Nombre…"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* El reglamento pide rango 1 para comprar una característica social.
+              Se avisa y no se impide: el programa no sabe de excepciones de
+              mesa, y quien lleva la partida sí. */}
+          {tipo === 'social' && !tieneRango && (
+            <p className="mb-2 rounded-sm bg-bronze/10 px-2 py-1.5 text-xs leading-relaxed text-ink">
+              El reglamento pide <b>rango 1 (Campeón veterano)</b> para tener características sociales, y este personaje
+              no tiene rango. Se puede añadir igualmente.
+            </p>
+          )}
+          {tipo === 'social' && (
+            <p className="mb-2 text-mini leading-relaxed text-ink-soft">
+              La primera cuesta 8 y las siguientes 12. Dos personajes del mismo ejército no pueden tener la misma
+              característica social: eso lo vigiláis vosotros, el programa no sabe quién juega con quién.
+            </p>
+          )}
+
+          <ul className="space-y-1">
+            {delCatalogo.map((h) => {
+              const yaLaTiene = tiene.has(h.clave)
+              const coste = costeDe(h)
+              const llega = saldo >= coste
+              return (
+                <li key={h.clave} className="rounded-sm border border-rule-dark/25 px-2.5 py-1.5">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setAbierta(abierta === h.clave ? null : h.clave)}
+                      className={clsx(
+                        'min-w-0 flex-1 text-left text-sm',
+                        yaLaTiene ? 'font-medium text-maroon' : 'text-ink hover:text-maroon',
+                      )}
+                    >
+                      {h.nombre}
+                      {h.descripcion && <span className="ml-1.5 text-mini text-ink-soft/60">·&nbsp;qué hace</span>}
+                    </button>
+                    <span className="shrink-0 text-xs tabular-nums text-ink-soft">{coste} exp.</span>
+                    {yaLaTiene ? (
+                      <span className="shrink-0 text-mini font-medium text-maroon">Ya la tiene</span>
+                    ) : llega ? (
+                      <button
+                        type="button"
+                        disabled={ocupado}
+                        onClick={() => void comprar(h)}
+                        className="shrink-0 rounded-sm border border-maroon/40 px-2 py-0.5 text-mini font-medium text-maroon hover:bg-maroon/10 disabled:opacity-40"
+                      >
+                        Añadir
+                      </button>
+                    ) : (
+                      // NO SE OFRECE LO QUE NO SE PUEDE PAGAR, y se dice cuánto
+                      // falta. Un botón que al pulsarlo contesta "no te llega"
+                      // hace perder un clic y no informa de nada.
+                      <span className="shrink-0 text-mini text-danger" title={`Hacen falta ${coste} y tiene ${saldo}`}>
+                        Faltan {coste - saldo}
+                      </span>
+                    )}
+                  </div>
+                  {abierta === h.clave && h.descripcion && (
+                    <p className="mt-1 text-xs leading-relaxed text-ink-soft">{h.descripcion}</p>
+                  )}
+                </li>
+              )
+            })}
+            {delCatalogo.length === 0 && (
+              <li className="px-2.5 py-2 text-xs italic text-ink-soft">No hay ninguna que se llame así.</li>
+            )}
+          </ul>
+        </div>
+
+        {error && <p className="rounded-sm bg-danger-dark/10 px-2 py-1.5 text-xs text-danger">{error}</p>}
       </div>
     </Modal>
   )

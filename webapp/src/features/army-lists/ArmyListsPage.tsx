@@ -14,7 +14,7 @@ import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
-import { CheckIcon, LockIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
+import { CheckIcon, LayersIcon, LockIcon, PlusIcon, SwordIcon, TrashIcon } from '@/shared/ui/icons'
 import { Tooltip } from '@/shared/ui/Tooltip'
 import { FactionEmblem } from '@/shared/ui/FactionEmblem'
 import { urlDelEmblemaDeLista } from '@/domain/armyEmblem'
@@ -78,6 +78,43 @@ function FiltroDeEstadoSelector({
 }
 
 /**
+ * LA MARCA DEL DESPLIEGUE: cuántas unidades están ya puestas sobre la mesa.
+ *
+ * Pequeña a propósito —un icono y dos cifras—, porque es un dato de apoyo y no
+ * el estado de la lista. Pero hace falta aquí y no solo dentro del Despliegue:
+ * dar una lista por completada CIERRA también su despliegue, así que esto es lo
+ * que avisa, antes de pulsar, de que la mesa está a medio poner.
+ *
+ * Tres lecturas de un vistazo por el color: apagado si no hay nada colocado,
+ * bronce si va a medias, y marcado cuando está entero. En una lista sin
+ * unidades no sale: no hay nada que desplegar y una marca en gris solo
+ * preguntaría por algo que no existe.
+ */
+function MarcaDeDespliegue({ list }: { list: ArmyListSummary }) {
+  if (list.entryCount === 0) return null
+  const completo = list.deployedCount >= list.entryCount
+  const vacio = list.deployedCount === 0
+  return (
+    <Tooltip
+      label={
+        vacio
+          ? 'Despliegue sin empezar: ninguna unidad colocada sobre la mesa'
+          : completo
+            ? `Despliegue hecho: las ${list.entryCount} unidades están colocadas`
+            : `Despliegue a medias: ${list.deployedCount} de ${list.entryCount} unidades colocadas`
+      }
+      className={clsx(
+        'flex shrink-0 items-center gap-1 text-mini tabular-nums',
+        vacio ? 'text-ink-soft/35' : completo ? 'text-success' : 'text-bronze',
+      )}
+    >
+      <LayersIcon className="h-3.5 w-3.5" />
+      {list.deployedCount}/{list.entryCount}
+    </Tooltip>
+  )
+}
+
+/**
  * "Mis ejércitos": listado de listas guardadas, con crear/renombrar/borrar y
  * abrir en el constructor. Sustituye al antiguo guardado/cargado como
  * fichero .json del "Hoja de Ejército" original — aquí todo vive en la BBDD
@@ -111,6 +148,8 @@ export function ArmyListsPage() {
   const [sharing, setSharing] = useState<ArmyListSummary | null>(null)
   /** Lista compartida que se está dejando de ver (confirmación abierta). */
   const [descompartiendo, setDescompartiendo] = useState<ArmyListSummary | null>(null)
+  /** Lista que se va a dar por completada SIN el despliegue hecho (ver `pedirCompletar`). */
+  const [completandoSinDesplegar, setCompletandoSinDesplegar] = useState<ArmyListSummary | null>(null)
   const [cerrandoId, setCerrandoId] = useState<number | null>(null)
   // Qué listas están metidas en alguna batalla. No se pueden reabrir (lo impide
   // ArmyListRepository.setReady); esto es solo para poder DECIRLO antes, en vez
@@ -145,6 +184,24 @@ export function ArmyListsPage() {
     } finally {
       setCerrandoId(null)
     }
+  }
+
+  /**
+   * COMPLETAR PIDE CONFIRMACIÓN SI EL DESPLIEGUE ESTÁ A MEDIAS.
+   *
+   * Dar una lista por completada cierra también su despliegue (ver setReady),
+   * así que cerrarla con la mesa a medio poner deja un trabajo que ya no se
+   * puede terminar sin reabrirla — y si además entra en una batalla, ni eso.
+   * El aviso dice cuántas faltan y deja seguir: hay listas que no se despliegan.
+   *
+   * Solo al MARCAR. Desmarcar no cierra nada y no necesita permiso de nadie.
+   */
+  function pedirCompletar(list: ArmyListSummary) {
+    if (list.entryCount > 0 && list.deployedCount < list.entryCount) {
+      setCompletandoSinDesplegar(list)
+      return
+    }
+    void alternarListo(list, true)
   }
 
   /**
@@ -188,7 +245,6 @@ export function ArmyListsPage() {
     <div>
       <PageHeader
         title="Ejércitos"
-        description="Tus listas de ejército guardadas: crea una nueva, retómala donde la dejaste o expórtala a PDF para llevarla a la partida."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {/* Configuración COMÚN a todos los ejércitos, de ahí que viva en el
@@ -307,12 +363,13 @@ export function ArmyListsPage() {
                   vuelve a leerse de un tirón. */}
               {!list.shared && (
                 <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:gap-3">
+                  <MarcaDeDespliegue list={list} />
                   <button
                     type="button"
                     role="switch"
                     aria-checked={list.ready}
                     disabled={cerrandoId === list.id || (enBatalla?.has(list.id) ?? false)}
-                    onClick={() => alternarListo(list, !list.ready)}
+                    onClick={() => (list.ready ? void alternarListo(list, false) : pedirCompletar(list))}
                     title={
                       enBatalla?.has(list.id)
                         ? 'Está en una batalla, así que no se puede reabrir: lo que la batalla enseña no puede cambiar. Borra la batalla o cámbiale el ejército.'
@@ -325,9 +382,11 @@ export function ArmyListsPage() {
                       // una fila a otra en vez de formar columna, que es justo lo
                       // que se venía a arreglar.
                       'flex w-32 shrink-0 items-center justify-center gap-1.5 rounded-sm px-2 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase transition-colors disabled:opacity-50',
-                      list.ready
-                        ? 'border border-maroon/45 bg-maroon/10 text-maroon hover:bg-maroon/15'
-                        : 'border border-dashed border-rule-dark/35 text-ink-soft/45 hover:border-bronze/60 hover:text-bronze',
+                      enBatalla?.has(list.id)
+                        ? 'border border-maroon bg-maroon/20 text-maroon'
+                        : list.ready
+                          ? 'border border-maroon/45 bg-maroon/10 text-maroon hover:bg-maroon/15'
+                          : 'border border-dashed border-rule-dark/35 text-ink-soft/45 hover:border-bronze/60 hover:text-bronze',
                     )}
                   >
                     {/* EL MISMO RÓTULO EN LOS DOS ESTADOS. Un interruptor no se
@@ -336,8 +395,26 @@ export function ArmyListsPage() {
                       sello frente al contorno de trazos, el candado frente al
                       visto, y `aria-checked` para quien no ve ninguno de los
                       dos. */}
-                    {list.ready ? <LockIcon className="h-3 w-3" /> : <CheckIcon className="h-3 w-3" />}
-                    Completado
+                    {/* TRES ESTADOS, no dos. Un ejército metido en una batalla
+                        está completado Y ADEMÁS atado: no se puede reabrir
+                        mientras la batalla exista, y un sello que decía
+                        "Completado" no explicaba por qué el botón no respondía.
+                        Ahora lo dice él.
+
+                        En los FILTROS sigue contando como completado, porque lo
+                        está: separarlo en una pestaña propia obligaría a mirar
+                        en dos sitios para ver lo que ya está listo. */}
+                    {enBatalla?.has(list.id) ? (
+                      <>
+                        <SwordIcon className="h-3 w-3" />
+                        En batalla
+                      </>
+                    ) : (
+                      <>
+                        {list.ready ? <LockIcon className="h-3 w-3" /> : <CheckIcon className="h-3 w-3" />}
+                        Completado
+                      </>
+                    )}
                   </button>
 
                   {/* Duplicar, compartir y borrar son cosa del dueño. En una lista
@@ -399,7 +476,17 @@ export function ArmyListsPage() {
                   que puede quitarlo de ahí es alguien que ni lo ve. */}
               {list.shared && (
                 <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:gap-3">
-                  {list.ready && (
+                  <MarcaDeDespliegue list={list} />
+                  {list.ready && enBatalla?.has(list.id) && (
+                    <span
+                      title="Está metida en una batalla"
+                      className="flex w-32 shrink-0 items-center justify-center gap-1.5 rounded-sm border border-maroon/50 bg-maroon/10 px-2 py-1 text-[10px] font-semibold tracking-[0.16em] text-maroon/80 uppercase"
+                    >
+                      <SwordIcon className="h-3 w-3" />
+                      En batalla
+                    </span>
+                  )}
+                  {list.ready && !enBatalla?.has(list.id) && (
                     <span
                       title={`${list.ownerName ?? 'Su dueño'} la ha dado por completada`}
                       className="flex w-32 shrink-0 items-center justify-center gap-1.5 rounded-sm border border-maroon/30 bg-maroon/5 px-2 py-1 text-[10px] font-semibold tracking-[0.16em] text-maroon/70 uppercase"
@@ -469,6 +556,25 @@ export function ArmyListsPage() {
             await ArmyListRepository.dejarDeVerCompartida(descompartiendo.id, user.id)
             setDescompartiendo(null)
             reload()
+          }}
+        />
+      )}
+
+      {completandoSinDesplegar && (
+        <ConfirmDialog
+          title="El despliegue no está hecho"
+          message={
+            completandoSinDesplegar.deployedCount === 0
+              ? `"${completandoSinDesplegar.name}" no tiene ninguna unidad colocada sobre la mesa. Al darla por completada se cierra también su despliegue, así que no podrás colocarlas sin volver a abrirla. ¿La completas igualmente?`
+              : `"${completandoSinDesplegar.name}" tiene ${completandoSinDesplegar.deployedCount} de ${completandoSinDesplegar.entryCount} unidades colocadas sobre la mesa. Al darla por completada se cierra también su despliegue, así que las que faltan se quedan fuera. ¿La completas igualmente?`
+          }
+          confirmLabel="Sí, completarla"
+          danger={false}
+          onCancel={() => setCompletandoSinDesplegar(null)}
+          onConfirm={async () => {
+            const lista = completandoSinDesplegar
+            setCompletandoSinDesplegar(null)
+            await alternarListo(lista, true)
           }}
         />
       )}

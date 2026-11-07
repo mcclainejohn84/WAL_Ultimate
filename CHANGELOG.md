@@ -13,6 +13,61 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.169 — 07/11/2026 18:23
+
+### Ejércitos
+
+- **Tres estados en vez de dos.** Un ejército metido en una batalla dice ahora
+  **"En batalla"**, no "Completado": está completado y ADEMÁS atado —no se puede
+  reabrir mientras la batalla exista—, y el sello de antes no explicaba por qué
+  el botón no respondía. En los filtros sigue contando como completado, que es
+  lo que es: separarlo en una pestaña propia obligaría a mirar en dos sitios
+  para ver lo que ya está listo.
+
+- **Una marca dice si el despliegue está hecho**: un icono y dos cifras
+  (`12/21`), apagado si no hay nada colocado, en bronce si va a medias y
+  marcado cuando está entero.
+
+- **Y avisa antes de completar sin desplegar.** Dar una lista por completada
+  cierra también su despliegue, así que cerrarla con la mesa a medio poner deja
+  un trabajo que ya no se puede terminar sin reabrirla. El aviso dice cuántas
+  unidades faltan y deja seguir: hay listas que no se despliegan.
+
+- Fuera el texto de la cabecera de Ejércitos.
+
+### Personajes de Renombre
+
+- **Botón "Habilidades"**, con el catálogo entero del reglamento: 3 rangos, 8
+  mejoras de atributo, 50 habilidades y 70 características sociales, cada una
+  con su precio en experiencia y **con lo que hace** (se despliega al pulsar su
+  nombre). Arriba, lo que el personaje ya sabe hacer; debajo, el catálogo por
+  pestañas y con buscador.
+
+- **Comprar una habilidad cuesta experiencia de verdad.** Se descuenta al
+  añadirla y queda como un apunte más del libro —*Añadida habilidad "Hijo de un
+  Dios", -50*—, así que de dónde salió y en qué se fue cada punto se sigue
+  leyendo entero.
+  - **Lo que no se puede pagar no se ofrece**: en vez de un botón que al
+    pulsarlo conteste "no te llega", pone cuántos puntos faltan.
+  - Las **características sociales** cuestan 8 la primera y 12 las siguientes,
+    como dice el libro, y el precio se calcula según las que ya lleve. Si el
+    personaje no tiene rango se avisa (el reglamento pide rango 1) pero no se
+    impide: el programa no sabe de excepciones de mesa.
+  - **Quitar una habilidad devuelve lo que costó**, con su apunte. Esto es un
+    grupo de amigos y lo que de verdad pasa es que alguien pulsa la de al lado;
+    sin devolución, un clic de más cuesta 50 puntos para siempre. El libro deja
+    las dos líneas a la vista, así que nadie puede hacer trampa en silencio.
+
+- El catálogo vive en el código y no en la base: es el reglamento, no datos del
+  grupo. Lo que va a la base es qué tiene cada personaje.
+
+- Fuera el texto de la cabecera de Personajes de Renombre.
+
+- **Hay que desplegar el Worker** (`npx wrangler deploy`) y abrir la aplicación
+  una vez: la tabla de habilidades va en sus migraciones.
+
+---
+
 ## 0.168 — 07/11/2026 17:53
 
 **UNIDADES DE VARIOS PERFILES.** Hasta ahora una unidad eran N miniaturas
