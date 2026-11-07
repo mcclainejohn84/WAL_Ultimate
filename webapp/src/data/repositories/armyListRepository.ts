@@ -72,8 +72,23 @@ export interface ArmyListSummary extends ArmyList {
    *
    * 0 si la tabla todavía no existe (Worker sin desplegar), que es la lectura
    * prudente: "no consta que esté desplegado" y no "está desplegado".
+   *
+   * EN UNA LISTA AJENA SIN DESPLIEGUE COMPARTIDO VIENE SIEMPRE 0, y no porque
+   * esté vacío: es que no se cuenta. Ver `deploymentVisible`.
    */
   deployedCount: number
+  /**
+   * SI SE PUEDE VER EL DESPLIEGUE DE ESTA LISTA. En las tuyas, siempre. En una
+   * que te han compartido, solo si quien la compartió marcó también el
+   * despliegue (`army_list_shares.share_deployment`), que es una casilla
+   * aparte justamente porque dónde pone uno sus unidades sobre la mesa es
+   * media partida.
+   *
+   * Cuando es `false` no se enseña la marca NI SE CUENTA en la consulta: un
+   * "0/12" en gris se lee como "no ha desplegado nada", que es información que
+   * no te han dado y además puede ser mentira.
+   */
+  deploymentVisible: boolean
 }
 
 /** Una persona con la que está compartida una lista. */
@@ -204,9 +219,21 @@ export const ArmyListRepository = {
     const conCompartidas = `
        SELECT al.*, f.name AS faction_name,
               (SELECT COUNT(*) FROM army_list_entries e WHERE e.army_list_id = al.id) AS entry_count,
-              (SELECT COUNT(*) FROM army_list_deployments d
-                 JOIN army_list_entries e2 ON e2.id = d.entry_id
-                WHERE e2.army_list_id = al.id) AS deployed_count,
+              -- EL DESPLIEGUE SOLO SE CUENTA SI SE PUEDE VER: la tuya siempre,
+              -- la de otro solo si te compartió también el despliegue. Si no,
+              -- ni se cuenta: así el dato no sale de la base, en vez de salir
+              -- y que la pantalla se acuerde de no pintarlo.
+              CASE WHEN al.user_id = ?1
+                    OR COALESCE((SELECT s2.share_deployment FROM army_list_shares s2
+                                  WHERE s2.army_list_id = al.id AND s2.user_id = ?1), 0) <> 0
+                   THEN (SELECT COUNT(*) FROM army_list_deployments d
+                           JOIN army_list_entries e2 ON e2.id = d.entry_id
+                          WHERE e2.army_list_id = al.id)
+                   ELSE 0 END AS deployed_count,
+              CASE WHEN al.user_id = ?1
+                    OR COALESCE((SELECT s3.share_deployment FROM army_list_shares s3
+                                  WHERE s3.army_list_id = al.id AND s3.user_id = ?1), 0) <> 0
+                   THEN 1 ELSE 0 END AS ve_despliegue,
               CASE WHEN al.user_id = ?1 THEN 1 ELSE 0 END AS es_mia,
               (SELECT u.username FROM users u WHERE u.id = al.user_id) AS owner_name
        FROM army_lists al
@@ -224,6 +251,9 @@ export const ArmyListRepository = {
         shared: !mia,
         ownerName: mia ? null : ((row.owner_name as string) ?? null),
         deployedCount: (row.deployed_count as number) ?? 0,
+        // Sin la columna (la consulta de respaldo, que solo trae las tuyas) se
+        // ve el despliegue: son todas propias.
+        deploymentVisible: mia || ((row.ve_despliegue as number) ?? 1) !== 0,
       }
     }
 
@@ -281,7 +311,11 @@ export const ArmyListRepository = {
           entryCount: row.entry_count as number,
           shared: !mia,
           ownerName: mia ? null : ((row.owner_name as string) ?? null),
+          // Aquí no se cuenta el despliegue de nadie (esto es el desplegable de
+          // montar una batalla, que solo necesita nombre, facción y dueño), así
+          // que tampoco hay nada que enseñar de las ajenas.
           deployedCount: 0,
+          deploymentVisible: mia,
         }
       },
     )

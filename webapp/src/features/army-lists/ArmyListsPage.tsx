@@ -93,9 +93,16 @@ function FiltroDeEstadoSelector({
  * bronce si va a medias, y marcado cuando está entero. En una lista sin
  * unidades no sale: no hay nada que desplegar y una marca en gris solo
  * preguntaría por algo que no existe.
+ *
+ * Y EN UNA LISTA AJENA NO SALE SALVO QUE TE HAYAN COMPARTIDO EL DESPLIEGUE.
+ * Compartir la lista y compartir el despliegue son dos casillas distintas
+ * porque son dos cosas distintas: la lista es con qué juega, el despliegue es
+ * dónde lo pone, y eso es media partida. El dato ni siquiera llega desde la
+ * base (ver deploymentVisible), así que esto es el segundo cierre, no el
+ * único.
  */
 function MarcaDeDespliegue({ list }: { list: ArmyListSummary }) {
-  if (list.entryCount === 0) return null
+  if (list.entryCount === 0 || !list.deploymentVisible) return null
   const completo = list.deployedCount >= list.entryCount
   const vacio = list.deployedCount === 0
   return (
@@ -517,12 +524,14 @@ export function ArmyListsPage() {
                   otro. Sin esto, el ejército que te mandaron para una partida de
                   hace tres meses se queda en tu listado para siempre y el único
                   que puede quitarlo de ahí es alguien que ni lo ve. */}
-              {/* `(entryCount > 0 || ready)`: sin eso, una lista compartida
-                  vacía y sin completar dejaba aquí un <div> sin nada dentro
-                  que, en el móvil, se lleva una segunda línea de la fila para
-                  no enseñar nada. Ahora que el candado se pulsa desde el
-                  nombre, este bloque puede quedarse sin contenido. */}
-              {list.shared && (list.entryCount > 0 || list.ready) && (
+              {/* LA CONDICIÓN ES "¿VA A HABER ALGO AQUÍ DENTRO?", y hay que
+                  preguntarla fuera: un <div> vacío se lleva, en el móvil, una
+                  segunda línea entera de la fila para no enseñar nada. Dentro
+                  solo pueden ir dos cosas, y las dos pueden faltar: la marca
+                  del despliegue —que necesita unidades Y que te hayan
+                  compartido el despliegue— y el sello, que necesita que su
+                  dueño la haya dado por completada. */}
+              {list.shared && ((list.entryCount > 0 && list.deploymentVisible) || list.ready) && (
                 <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:gap-3">
                   <MarcaDeDespliegue list={list} />
                   {list.ready && enBatalla?.has(list.id) && (

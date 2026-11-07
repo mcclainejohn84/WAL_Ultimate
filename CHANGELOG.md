@@ -13,6 +13,24 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.173 — 07/11/2026 23:41
+
+- **El despliegue de un ejército ajeno no se enseña si no te lo han
+  compartido.** Compartir la lista y compartir el despliegue son dos casillas
+  distintas al compartir —la lista es con qué juega el otro, el despliegue es
+  dónde lo pone, que es media partida—, pero la marca "4/9" salía igual en
+  todas las compartidas. Ahora sale solo en las tuyas y en las que llevan
+  marcada esa segunda casilla.
+  - **Y no es que se oculte: es que no se cuenta.** El dato ya no sale de la
+    base de datos cuando no te corresponde. Esconder un número que el programa
+    se ha traído igualmente deja la información a un clic de quien sepa mirar,
+    y aquí no hace ninguna falta traerla.
+  - Un "0/12" en gris tampoco valía como "no se sabe": se lee como "no ha
+    desplegado nada", que es información que nadie te ha dado y que además
+    puede ser falsa.
+
+---
+
 ## 0.172 — 07/11/2026 23:34
 
 - **El despliegue y el sello de completado, al borde derecho de la fila** en
