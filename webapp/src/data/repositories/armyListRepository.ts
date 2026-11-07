@@ -296,6 +296,23 @@ export const ArmyListRepository = {
     ])
   },
 
+  /**
+   * DEJA DE VER una lista que te han compartido.
+   *
+   * Borra UNA fila de `army_list_shares`: la tuya. Ni la lista, que no es
+   * tuya y no te corresponde, ni el reparto a los demás, que tampoco. Para
+   * quien la compartió no cambia nada visible, y puede volver a enviártela
+   * cuando quiera — por eso no hay aviso de "esto es irreversible": no lo es.
+   *
+   * Existe porque compartir es cosa de uno solo y la bandeja la sufre el otro:
+   * sin esto, un ejército que te mandaron para una partida de hace tres meses
+   * se queda en tu listado para siempre, y el único que puede quitarlo de ahí
+   * es alguien que ni lo ve.
+   */
+  async dejarDeVerCompartida(armyListId: number, userId: number): Promise<void> {
+    await exec('DELETE FROM army_list_shares WHERE army_list_id = ? AND user_id = ?', [armyListId, userId])
+  },
+
   /** Carga un mapa en el despliegue de una lista, o lo quita (null = mesa libre). */
   async setBattleMap(armyListId: number, battleMapId: number | null): Promise<void> {
     await exec('UPDATE army_lists SET battle_map_id = ? WHERE id = ?', [battleMapId, armyListId])

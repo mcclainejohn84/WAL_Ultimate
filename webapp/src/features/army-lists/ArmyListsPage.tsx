@@ -109,13 +109,19 @@ export function ArmyListsPage() {
   const [editingComposition, setEditingComposition] = useState(false)
   const [duplicateError, setDuplicateError] = useState<string | null>(null)
   const [sharing, setSharing] = useState<ArmyListSummary | null>(null)
+  /** Lista compartida que se está dejando de ver (confirmación abierta). */
+  const [descompartiendo, setDescompartiendo] = useState<ArmyListSummary | null>(null)
   const [cerrandoId, setCerrandoId] = useState<number | null>(null)
   // Qué listas están metidas en alguna batalla. No se pueden reabrir (lo impide
   // ArmyListRepository.setReady); esto es solo para poder DECIRLO antes, en vez
   // de dejar que el usuario pulse el sello y se coma un error.
   const { data: enBatalla } = useAsync(() => BattleRepository.idsDeListasEnBatalla(), [])
   const [readyError, setReadyError] = useState<string | null>(null)
-  const [filtro, setFiltro] = useState<FiltroDeEstado>('todos')
+  // SE ENTRA POR "SIN COMPLETAR". Un ejército terminado está terminado: lo que
+  // se viene a hacer aquí es seguir con el que está a medias. Los completados
+  // siguen a un clic, y el recuento al lado de cada filtro dice cuántos hay sin
+  // tener que ir a mirar.
+  const [filtro, setFiltro] = useState<FiltroDeEstado>('pendientes')
 
   /**
    * Marca o desmarca una lista como TERMINADA. Cerrada, el constructor se abre
@@ -220,9 +226,13 @@ export function ArmyListsPage() {
         />
       )}
 
-      {/* El filtro solo aparece si hay algo que filtrar: con una lista sola,
-          tres botones para elegir entre ella y ella misma son ruido. */}
-      {!loading && todas.length > 1 && (
+      {/* El filtro aparece EN CUANTO HAY UN EJÉRCITO, aunque sea uno solo.
+          Antes hacían falta dos, con el argumento de que elegir entre una lista
+          y ella misma es ruido — y era verdad mientras se entraba por "Todos".
+          Ahora se entra por "Sin completar", así que con un único ejército ya
+          terminado el listado saldría vacío y sin ningún mando a la vista para
+          deshacerlo: la pantalla diría que no tienes nada teniéndolo. */}
+      {!loading && todas.length > 0 && (
         <FiltroDeEstadoSelector valor={filtro} onChange={setFiltro} recuentos={recuentos} />
       )}
 
@@ -371,6 +381,44 @@ export function ArmyListsPage() {
                   </div>
                 </div>
               )}
+
+              {/* LO QUE SE VE EN UNA LISTA QUE TE HAN COMPARTIDO.
+                  Dos cosas, y ninguna de las dos la tenía antes.
+
+                  EL SELLO, SOLO DE LECTURA. Si su dueño la dio por completada,
+                  aquí se dice. Antes el sello no se pintaba en las compartidas
+                  —con el argumento de que cerrar la lista de otro no es cosa
+                  tuya, que sigue siendo cierto—, pero de ahí no se sigue que no
+                  puedas SABERLO: el filtro "Completados" ya las contaba y no
+                  había forma de ver cuáles eran. Es un <span>, no un botón: se
+                  lee y no se toca.
+
+                  DEJAR DE VER. Compartir lo decide uno y la bandeja la sufre el
+                  otro. Sin esto, el ejército que te mandaron para una partida de
+                  hace tres meses se queda en tu listado para siempre y el único
+                  que puede quitarlo de ahí es alguien que ni lo ve. */}
+              {list.shared && (
+                <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:gap-3">
+                  {list.ready && (
+                    <span
+                      title={`${list.ownerName ?? 'Su dueño'} la ha dado por completada`}
+                      className="flex w-32 shrink-0 items-center justify-center gap-1.5 rounded-sm border border-maroon/30 bg-maroon/5 px-2 py-1 text-[10px] font-semibold tracking-[0.16em] text-maroon/70 uppercase"
+                    >
+                      <LockIcon className="h-3 w-3" />
+                      Completado
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setDescompartiendo(list)}
+                    aria-label={`Dejar de ver ${list.name}`}
+                    title="Quitarla de tu listado. Su dueño puede volver a compartírtela cuando quiera."
+                    className="shrink-0 rounded-sm px-2 py-0.5 text-mini font-medium text-ink-soft hover:bg-bronze/10 hover:text-bronze"
+                  >
+                    Dejar de ver
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -405,6 +453,25 @@ export function ArmyListsPage() {
       )}
 
       {editingComposition && <CompositionRulesModal onClose={() => setEditingComposition(false)} />}
+
+      {/* Se confirma, pero SIN el tono de lo irreversible: no se borra nada de
+          nadie, solo se quita de tu listado, y su dueño puede volver a
+          enviártela. De ahí "Dejar de ver" y no "Borrar", y el botón normal en
+          vez del rojo. */}
+      {descompartiendo && user && (
+        <ConfirmDialog
+          title="Dejar de ver este ejército"
+          message={`"${descompartiendo.name}" desaparecerá de tu listado. No se borra: sigue siendo de ${descompartiendo.ownerName ?? 'su dueño'}, y puede volver a compartírtelo cuando quiera.`}
+          confirmLabel="Dejar de ver"
+          danger={false}
+          onCancel={() => setDescompartiendo(null)}
+          onConfirm={async () => {
+            await ArmyListRepository.dejarDeVerCompartida(descompartiendo.id, user.id)
+            setDescompartiendo(null)
+            reload()
+          }}
+        />
+      )}
 
       {deleting && (
         <ConfirmDialog

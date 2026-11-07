@@ -13,6 +13,56 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.167 — 07/11/2026 17:31
+
+- **Se entra por Ejércitos.** La primera pantalla era "Hojas de Unidad", que es
+  el catálogo; pero aquí se entra a montar la lista del sábado, no a leer
+  fichas. La ficha se consulta cuando hace falta.
+
+- **"Hojas de Unidad" se muda al menú Editor.** Ojo a la consecuencia: ese menú
+  solo aparece en modo administrador, así que quien no lo active deja de tener
+  un camino a Hojas por la barra. La ruta sigue abierta: un enlace guardado a
+  `/hojas` funciona igual para cualquiera.
+
+- **El listado de Ejércitos se abre por "Sin completar"**, que es donde están
+  los que te quedan por terminar. Y el filtro aparece ya con un solo ejército:
+  antes hacían falta dos, y con uno terminado el listado habría salido vacío sin
+  nada a la vista para deshacerlo.
+
+- **Los ejércitos compartidos contigo enseñan su sello de completado**, en
+  versión de solo lectura. El filtro "Completados" ya los contaba y no había
+  forma de distinguirlos. Cerrar la lista de otro sigue sin ser cosa tuya;
+  saberlo, sí.
+
+- **Y se pueden "dejar de ver".** Compartir lo decide uno y la bandeja la sufre
+  el otro: sin esto, el ejército que te mandaron para una partida de hace tres
+  meses se quedaba en tu listado para siempre, y el único que podía quitarlo era
+  alguien que ni lo veía. No borra nada —su dueño puede volver a compartírtelo
+  cuando quiera—, solo quita tu copia del reparto.
+
+- **Ningún campo numérico admite ya decimales.** No había uno solo en el
+  programa que tuviera sentido con coma —puntos, costes, atributos,
+  experiencia, tamaños, mínimos y máximos— y todos la aceptaban: de ahí salía un
+  ejército de 1.874,5 puntos. Se bloquea por teclado y también al pegar, y la
+  regla vive en TextField, así que la cumplen los catorce campos que pasan por
+  él sin tener que acordarse en cada pantalla.
+  - **Las medidas en centímetros se quedan como estaban**: una peana de 25x25 mm
+    son 2,5 cm, y el decorado de los mapas va por el mismo rasero. Ahí el medio
+    punto no es un desliz, es el dato.
+
+- **"Selección de puntos": las casillas de Base y Por tramo, cuadradas.** Las
+  columnas medían 5rem y 6rem porque un rótulo es más largo que el otro, así que
+  las dos casillas —que contienen lo mismo, un número de una cifra— salían de
+  distinto tamaño y desalineadas. Ahora miden igual, el valor va centrado y se
+  han quitado las flechitas, que a ese ancho se comen la cifra.
+
+- **En "Unidad y opciones" se ve lo que cuesta CADA miniatura**, a la derecha
+  del nombre, y con el equipo que lleve marcado: al activar "Lanza (+1)" el
+  precio por miniatura sube en el momento, en vez de tener que mirar el total y
+  dividir entre veinte.
+
+---
+
 ## 0.166 — 05/11/2026 22:13
 
 - **Fuera la explicación de la cabecera de Batallas** ("Dos ejércitos

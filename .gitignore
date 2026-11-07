@@ -14,3 +14,9 @@ Archive.zip
 !.env.example
 side/Archive.zip
 *.zip
+
+# La papelera de trabajo. En esta carpeta no se puede borrar (está montada sin
+# permiso de borrado), así que lo que sobra se APARTA aquí en vez de borrarse.
+# Es basura de taller, no código del programa: no tiene por qué viajar en el
+# repositorio, y cuatro archivos muertos ya se habían colado.
+_to_delete/

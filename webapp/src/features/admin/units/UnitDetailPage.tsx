@@ -22,6 +22,7 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { Button } from '@/shared/ui/Button'
 import { ArrowLeftIcon, CheckIcon, PlusIcon, WarningIcon } from '@/shared/ui/icons'
 import { TextField } from '@/shared/ui/TextField'
+import { EnteroInput } from '@/shared/ui/EnteroInput'
 import { Select } from '@/shared/ui/Select'
 import { RelationEditor } from '@/shared/ui/RelationEditor'
 import { AttributeTable, EditableAttributeTable, extractProfileInput } from '@/shared/ui/AttributeTable'
@@ -792,8 +793,7 @@ export function UnitDetailPage() {
                           />
                           <label className="flex shrink-0 items-center gap-1 text-ink-soft">
                             +
-                            <input
-                              type="number"
+                            <EnteroInput
                               min={0}
                               value={draft.commandCosts[role.id] ?? cost}
                               onChange={(e) => setCommandCost(role.id, Number(e.target.value) || 0)}
@@ -827,8 +827,7 @@ export function UnitDetailPage() {
                         <span className="text-ink-soft">{role.name}</span>
                         <label className="flex shrink-0 items-center gap-1 text-ink-soft">
                           +
-                          <input
-                            type="number"
+                          <EnteroInput
                             min={0}
                             value={draft.commandCosts[role.id] ?? cost}
                             onChange={(e) => setCommandCost(role.id, Number(e.target.value) || 0)}
