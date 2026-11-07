@@ -13,6 +13,31 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.174 — 07/11/2026 23:44
+
+- **El diálogo de habilidades, más apretado.** Con las mismas habilidades
+  ocupa un 20 % menos de alto (de 764 a 602 px en una pantalla de ordenador,
+  medido), que en un móvil es la diferencia entre verlo entero y tener que
+  rodar.
+  - **Letra un punto más pequeña** en todo lo que se repite: los nombres, los
+    costes, las notas desplegadas y los avisos. Los nombres son lo que se lee;
+    el resto acompaña, y acompañaba demasiado alto.
+  - **Menos filetes.** Cada grupo iba encerrado entre dos rayas además de la
+    de su propio rótulo y las que separan sus filas: ocho líneas que no
+    separaban nada que no estuviera ya separado. Queda el rótulo del grupo y
+    el hilo entre filas, más fino.
+  - Filas más bajas, iconos de papelera y de visto más pequeños, y una sola
+    raya bajo la cabecera de la experiencia en vez del filete doble.
+
+- **El icono de "qué hace", sin disfraz de botón.** Era una "i" dentro de un
+  círculo dibujado de 28 px: pesaba más que el nombre al que acompaña y en una
+  lista de setenta entradas formaba una columna de lunares. Ahora es solo la
+  "i", de trazo fino y apagada, y se enciende en granate al abrir su
+  descripción. Lo que se pulsa sigue midiendo 24 px, que es el mínimo para un
+  dedo.
+
+---
+
 ## 0.173 — 07/11/2026 23:41
 
 - **El despliegue de un ejército ajeno no se enseña si no te lo han

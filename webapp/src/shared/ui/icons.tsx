@@ -653,13 +653,13 @@ export function InfoIcon({ className = 'h-4 w-4' }: { className?: string }) {
       viewBox="0 0 20 20"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.6}
+      strokeWidth={1.25}
       className={className}
       aria-hidden="true"
     >
-      <circle cx="10" cy="10" r="7.25" />
-      <path d="M10 9v5" strokeLinecap="round" />
-      <path d="M10 6.4h.01" strokeLinecap="round" strokeWidth={2.2} />
+      <circle cx="10" cy="10" r="7.5" />
+      <path d="M10 9.2v4.6" strokeLinecap="round" />
+      <path d="M10 6.3h.01" strokeLinecap="round" strokeWidth={1.8} />
     </svg>
   )
 }

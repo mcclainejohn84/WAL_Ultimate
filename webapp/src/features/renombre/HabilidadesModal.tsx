@@ -164,26 +164,26 @@ export function HabilidadesModal({
         </Button>
       }
     >
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* EL SALDO, arriba y en grande: es el dato que decide si se puede
             comprar algo, y el que se viene a mirar antes de nada. */}
-        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-y border-double border-rule-dark/45 bg-parchment-dark/25 px-3 py-2">
+        <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1 border-b border-rule-dark/30 bg-parchment-dark/25 px-2.5 py-1.5">
           <div>
             <span className="block text-micro font-semibold uppercase tracking-[0.18em] text-ink-soft">
               Experiencia disponible
             </span>
-            <b className="font-display text-3xl leading-none text-maroon tabular-nums">{saldo}</b>
+            <b className="font-display text-2xl leading-none text-maroon tabular-nums">{saldo}</b>
           </div>
           <dl className="ml-auto flex gap-4 text-right">
             <div>
               <dt className="text-micro uppercase tracking-[0.12em] text-ink-soft/80">En total</dt>
-              <dd className="font-display text-base leading-tight text-ink tabular-nums">{suyas.length}</dd>
+              <dd className="font-display text-sm leading-tight text-ink tabular-nums">{suyas.length}</dd>
             </div>
             <div>
               <dt className="text-micro uppercase tracking-[0.12em] text-ink-soft/80">Sociales</dt>
               <dd
                 className={clsx(
-                  'font-display text-base leading-tight tabular-nums',
+                  'font-display text-sm leading-tight tabular-nums',
                   sinSitioParaSociales ? 'text-bronze' : 'text-ink',
                 )}
               >
@@ -195,23 +195,23 @@ export function HabilidadesModal({
 
         {/* LO QUE SABE HACER */}
         <section>
-          <h3 className="mb-2 font-display text-lg font-semibold tracking-wide text-ink">Habilidades de personaje</h3>
+          <h3 className="mb-1.5 font-display text-sm font-semibold text-ink">Habilidades de personaje</h3>
           {suyas.length === 0 ? (
-            <p className="rounded-sm border border-dashed border-rule-dark/35 px-3 py-4 text-center text-xs italic text-ink-soft">
+            <p className="rounded-sm border border-dashed border-rule-dark/30 px-3 py-3 text-center text-mini italic text-ink-soft">
               Todavía no tiene ninguna.
             </p>
           ) : (
             ORDEN_DE_TIPOS.filter((t) => suyas.some((h) => h.tipo === t)).map((t) => {
               const grupo = suyas.filter((h) => h.tipo === t)
               return (
-                <div key={t} className="mt-3 first:mt-0">
+                <div key={t} className="mt-2 first:mt-0">
                   <EncabezadoDeGrupo etiqueta={ETIQUETAS_DE_TIPO[t]} cuantas={grupo.length} />
-                  <ul className="divide-y divide-rule-dark/15 border-y border-rule-dark/15">
+                  <ul className="divide-y divide-rule-dark/12">
                     {grupo.map((h) => (
-                      <li key={h.clave} className="px-0.5 py-1.5">
+                      <li key={h.clave} className="px-0.5 py-1">
                         <div className="flex items-center gap-2">
                           <span className="flex min-w-0 flex-1 items-center gap-1.5">
-                            <span className="min-w-0 truncate text-sm font-medium text-ink">{h.nombre}</span>
+                            <span className="min-w-0 truncate text-xs font-medium text-ink">{h.nombre}</span>
                             {h.descripcion && (
                               <BotonDeInfo
                                 nombre={h.nombre}
@@ -220,7 +220,7 @@ export function HabilidadesModal({
                               />
                             )}
                           </span>
-                          <span className="shrink-0 text-xs tabular-nums text-ink-soft/80">
+                          <span className="shrink-0 text-mini tabular-nums text-ink-soft/80">
                             {costeDeDevolucion(h)} exp.
                           </span>
                           <button
@@ -229,9 +229,9 @@ export function HabilidadesModal({
                             onClick={() => setPorQuitar(h)}
                             aria-label={`Quitar ${h.nombre}`}
                             title={`Quitarla y devolver ${costeDeDevolucion(h)} de experiencia`}
-                            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-ink-soft transition-colors hover:bg-danger/10 hover:text-danger disabled:opacity-40"
+                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-ink-soft/70 transition-colors hover:bg-danger/10 hover:text-danger disabled:opacity-40"
                           >
-                            <TrashIcon className="h-4 w-4" />
+                            <TrashIcon className="h-3.5 w-3.5" />
                           </button>
                         </div>
                         {abierta === `suyas:${h.clave}` && h.descripcion && <Descripcion texto={h.descripcion} />}
@@ -252,19 +252,19 @@ export function HabilidadesModal({
             type="button"
             onClick={alternarCatalogo}
             aria-expanded={anadiendo}
-            className="flex w-full items-center justify-between gap-2 rounded-sm border border-rule-dark/40 bg-parchment-dark/35 px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-parchment-dark"
+            className="flex w-full items-center justify-between gap-2 rounded-sm border border-rule-dark/35 bg-parchment-dark/30 px-2.5 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-parchment-dark"
           >
             <span className="inline-flex items-center gap-1.5">
-              <PlusIcon className="h-4 w-4 text-maroon" />
+              <PlusIcon className="h-3.5 w-3.5 text-maroon" />
               Añadir habilidades
             </span>
             <ChevronDownIcon
-              className={clsx('h-4 w-4 shrink-0 text-ink-soft transition-transform', anadiendo && 'rotate-180')}
+              className={clsx('h-3.5 w-3.5 shrink-0 text-ink-soft transition-transform', anadiendo && 'rotate-180')}
             />
           </button>
 
           {anadiendo && (
-            <div className="mt-3 space-y-2.5">
+            <div className="mt-2 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex flex-wrap gap-0.5 rounded-sm border border-rule-dark/30 bg-parchment/70 p-0.5">
                   {ORDEN_DE_TIPOS.map((t) => (
@@ -275,7 +275,7 @@ export function HabilidadesModal({
                       title={ETIQUETAS_DE_TIPO[t]}
                       aria-pressed={t === tipo}
                       className={clsx(
-                        'rounded-sm px-2.5 py-1 text-mini font-semibold tracking-wide transition-colors',
+                        'rounded-sm px-2 py-0.5 text-mini font-semibold tracking-wide transition-colors',
                         t === tipo
                           ? 'bg-maroon text-parchment shadow-sm shadow-black/20'
                           : 'text-ink-soft hover:bg-parchment-dark',
@@ -293,24 +293,24 @@ export function HabilidadesModal({
                     value={busqueda}
                     onChange={(e) => setBusqueda(e.target.value)}
                     placeholder="Buscar…"
-                    className="w-full rounded-sm border border-rule-dark/50 bg-parchment/70 py-1 pl-7 pr-2 text-xs text-ink outline-none transition-colors focus:border-bronze focus:ring-2 focus:ring-bronze/25"
+                    className="w-full rounded-sm border border-rule-dark/45 bg-parchment/70 py-0.5 pl-7 pr-2 text-xs text-ink outline-none transition-colors focus:border-bronze focus:ring-2 focus:ring-bronze/25"
                   />
                 </label>
               </div>
 
-              <ul className="divide-y divide-rule-dark/15 border-y border-rule-dark/15">
+              <ul className="divide-y divide-rule-dark/12">
                 {delCatalogo.map((h) => {
                   const yaLaTiene = tiene.has(h.clave)
                   const coste = costeDeCompra(h)
                   const llega = saldo >= coste
                   const topeLlena = h.tipo === 'social' && sinSitioParaSociales
                   return (
-                    <li key={h.clave} className="px-0.5 py-1.5">
+                    <li key={h.clave} className="px-0.5 py-1">
                       <div className="flex items-center gap-2">
                         <span className="flex min-w-0 flex-1 items-center gap-1.5">
                           <span
                             className={clsx(
-                              'min-w-0 truncate text-sm',
+                              'min-w-0 truncate text-xs',
                               yaLaTiene ? 'font-medium text-maroon' : 'text-ink',
                             )}
                           >
@@ -324,13 +324,13 @@ export function HabilidadesModal({
                             />
                           )}
                         </span>
-                        <span className="w-14 shrink-0 text-right text-xs tabular-nums text-ink-soft/80">
+                        <span className="w-12 shrink-0 text-right text-mini tabular-nums text-ink-soft/80">
                           {coste} exp.
                         </span>
-                        <span className="flex w-24 shrink-0 justify-end">
+                        <span className="flex w-20 shrink-0 justify-end">
                           {yaLaTiene ? (
                             <span className="inline-flex items-center gap-1 text-mini font-medium text-maroon">
-                              <CheckIcon className="h-3.5 w-3.5" />
+                              <CheckIcon className="h-3 w-3" />
                               La tiene
                             </span>
                           ) : topeLlena ? (
@@ -366,7 +366,7 @@ export function HabilidadesModal({
                   )
                 })}
                 {delCatalogo.length === 0 && (
-                  <li className="px-1 py-3 text-center text-xs italic text-ink-soft">
+                  <li className="px-1 py-2 text-center text-mini italic text-ink-soft">
                     No hay ninguna que se llame así.
                   </li>
                 )}
@@ -375,7 +375,7 @@ export function HabilidadesModal({
           )}
         </section>
 
-        {error && <p className="rounded-sm bg-danger-dark/10 px-2 py-1.5 text-xs text-danger">{error}</p>}
+        {error && <p className="rounded-sm bg-danger-dark/10 px-2 py-1 text-mini text-danger">{error}</p>}
       </div>
 
       {porQuitar && (
@@ -395,7 +395,7 @@ export function HabilidadesModal({
 /** Cabecera de un grupo: rótulo, filete hasta el borde y cuántas hay. */
 function EncabezadoDeGrupo({ etiqueta, cuantas }: { etiqueta: string; cuantas: number }) {
   return (
-    <div className="mb-1 flex items-center gap-2">
+    <div className="mb-0.5 flex items-center gap-2">
       <span className="text-micro font-semibold uppercase tracking-[0.16em] text-bronze">{etiqueta}</span>
       <span className="h-px flex-1 bg-rule-dark/25" />
       <span className="text-micro tabular-nums text-ink-soft/70">{cuantas}</span>
@@ -421,13 +421,11 @@ function BotonDeInfo({ nombre, abierto, onClick }: { nombre: string; abierto: bo
       aria-label={`Qué hace: ${nombre}`}
       title={`Qué hace: ${nombre}`}
       className={clsx(
-        'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border transition-colors',
-        abierto
-          ? 'border-maroon/50 bg-maroon/10 text-maroon'
-          : 'border-rule-dark/35 text-ink-soft hover:border-bronze hover:bg-bronze/10 hover:text-bronze',
+        'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors',
+        abierto ? 'text-maroon' : 'text-ink-soft/45 hover:text-bronze',
       )}
     >
-      <InfoIcon className="h-4 w-4" />
+      <InfoIcon className="h-3.5 w-3.5" />
     </button>
   )
 }
@@ -435,7 +433,7 @@ function BotonDeInfo({ nombre, abierto, onClick }: { nombre: string; abierto: bo
 /** Lo que hace una habilidad, desplegado bajo su fila como una nota al margen. */
 function Descripcion({ texto }: { texto: string }) {
   return (
-    <p className="mt-1.5 border-l-2 border-bronze/45 bg-parchment-dark/25 px-2.5 py-1.5 text-xs leading-relaxed text-ink-soft">
+    <p className="mt-1 mb-0.5 border-l-2 border-bronze/40 bg-parchment-dark/20 px-2 py-1 text-mini leading-relaxed text-ink-soft">
       {texto}
     </p>
   )
