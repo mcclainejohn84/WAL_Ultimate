@@ -22,7 +22,16 @@ export function unifiedProfileRows(
 ): Array<{ key: string; label: string; profile: AttributeProfile }> {
   const rows: Array<{ key: string; label: string; profile: AttributeProfile }> = []
   if (unit.profiles.base) {
-    rows.push({ key: `base-${unit.profiles.base.id}`, label: unit.name, profile: unit.profiles.base })
+    // En una unidad COMPUESTA la fila de la principal lleva el nombre de SU
+    // tropa ("Gor") y no el de la unidad: al lado de "Ungor", repetir "Manada
+    // de Bestias" no dice cuál de las dos es. En una unidad normal sigue
+    // siendo el nombre de la unidad, que es como se ha leído siempre.
+    const esCompuesta = unit.profiles.tropas.length > 0
+    rows.push({
+      key: `base-${unit.profiles.base.id}`,
+      label: (esCompuesta ? unit.profiles.base.name : null) ?? unit.name,
+      profile: unit.profiles.base,
+    })
   }
   // Las otras tropas de una unidad compuesta, justo detrás de la principal:
   // son la misma unidad, no un añadido. En una unidad normal no hay ninguna.

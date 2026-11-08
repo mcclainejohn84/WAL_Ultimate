@@ -13,6 +13,23 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.179 — 08/11/2026 18:21
+
+- **El alta de la Manada de Bestias** (`webapp/db/manada-de-bestias.sql`): Gor
+  a 7 puntos como tropa principal y Ungor a 3 como secundaria, con sus fichas,
+  sus siete opciones de equipo repartidas por tropa, las incompatibilidades
+  entre ellas y las tres reglas especiales. Se lanza con wrangler, es
+  idempotente y no lleva ni un id escrito a mano: todo se busca por nombre, y
+  si una opción de equipo ya existe en el catálogo se reutiliza con su precio
+  en vez de duplicarla.
+
+- En la hoja de una unidad **compuesta**, la primera línea de atributos lleva
+  el nombre de SU tropa ("Gor") en lugar del de la unidad: al lado de "Ungor",
+  repetir "Manada de Bestias" no dice cuál de las dos es. En una unidad normal
+  no cambia nada.
+
+---
+
 ## 0.178 — 08/11/2026 11:32
 
 - **Unidades compuestas: el editor y la hoja** (primera parte de dos). Una
