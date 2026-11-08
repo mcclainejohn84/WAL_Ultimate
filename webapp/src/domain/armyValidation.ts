@@ -16,10 +16,14 @@ export interface EntryCostInput {
   quantity: number
   /**
    * El desglose de una unidad COMPUESTA: ficha de cada tropa -> cuántas
-   * miniaturas. Vacío o ausente en una normal, y entonces el cálculo es el de
-   * siempre.
+   * miniaturas. Vacío en una normal, y entonces el cálculo es el de siempre.
+   *
+   * OBLIGATORIO Y NO OPCIONAL, a propósito: siendo opcional se olvidó en el
+   * botón de "Añadir a la lista" y una unidad compuesta anunciaba solo el
+   * coste del grupo de mando, sin que nada fallara. Exigiéndolo, quien
+   * calcula un coste tiene que decir con qué tropas, aunque sea `{}`.
    */
-  troopQuantities?: Record<number, number>
+  troopQuantities: Record<number, number>
   equipmentIds: number[]
   upgradeIds: number[]
   hasStandardBearer: boolean

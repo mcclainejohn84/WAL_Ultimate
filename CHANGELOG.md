@@ -13,6 +13,20 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.183 — 08/11/2026 18:57
+
+- **"Añadir a la lista" ya suma lo que va a costar de verdad.** El número del
+  botón se calculaba aparte, con una copia a mano de lo que el cálculo
+  necesita, y a esa copia le faltaba el desglose por tropa: en una unidad
+  compuesta el coste sale entero de ahí, así que el botón anunciaba solo el
+  grupo de mando. Ahora el coste del borrador se calcula en un único sitio,
+  que es el que usa el botón.
+  - Y el desglose pasa a ser **obligatorio** en el tipo del cálculo: olvidarlo
+    ya no compila. Era opcional, y por eso el fallo no dio la cara en ninguna
+    comprobación.
+
+---
+
 ## 0.182 — 08/11/2026 18:51
 
 - **Las tropas de una unidad compuesta ya llegan al navegador.** El catálogo se

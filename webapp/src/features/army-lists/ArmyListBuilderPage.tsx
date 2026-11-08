@@ -1325,6 +1325,28 @@ export function ArmyListBuilderPage() {
   const reglasVisibles = [...reglasDestacadas, ...reglasResto]
   const destacadasCount = reglasDestacadas.length
 
+  /**
+   * LO QUE COSTARÍA LA ENTRADA tal y como está el borrador ahora mismo.
+   *
+   * En una sola variable y no escrito dentro del botón: así lleva SIEMPRE
+   * todo lo que el cálculo necesita. Escrito a mano allí se quedó sin
+   * `troopQuantities`, y una unidad compuesta —cuyo coste sale entero de ese
+   * campo— anunciaba solo el grupo de mando.
+   */
+  const costeDelBorrador = selectedUnit
+    ? computeEntryCost(selectedUnit, {
+        quantity: esCompuestaSel ? totalDeMiniaturas(selectedUnit, draft.troopQuantities) : draft.quantity,
+        troopQuantities: draft.troopQuantities,
+        equipmentIds: [...draft.equipmentIds],
+        upgradeIds: [...draft.upgradeIds],
+        hasStandardBearer: draft.hasStandardBearer,
+        hasMusician: draft.hasMusician,
+        hasChampion: draft.hasChampion,
+        mountProfileId: draft.mountProfileId,
+        chariotProfileId: draft.chariotProfileId,
+      })
+    : 0
+
   const optionsForm = selectedUnit && !loadingUnit && (
     <div className="mt-4 space-y-4">
       {/* El 0-1 ya no se explica aquí con una frase: se marca con el distintivo
@@ -1550,18 +1572,7 @@ export function ArmyListBuilderPage() {
 
       <div className="flex items-center gap-3">
         <Button variant="primary" onClick={handleSaveEntry}>
-          {draft.editingEntryId
-            ? 'Guardar cambios'
-            : `+ Añadir a la lista (${computeEntryCost(selectedUnit, {
-                quantity: draft.quantity,
-                equipmentIds: [...draft.equipmentIds],
-                upgradeIds: [...draft.upgradeIds],
-                hasStandardBearer: draft.hasStandardBearer,
-                hasMusician: draft.hasMusician,
-                hasChampion: draft.hasChampion,
-                mountProfileId: draft.mountProfileId,
-                chariotProfileId: draft.chariotProfileId,
-              })} pts)`}
+          {draft.editingEntryId ? 'Guardar cambios' : `+ Añadir a la lista (${costeDelBorrador} pts)`}
         </Button>
         {draft.editingEntryId && (
           <button onClick={cancelEdit} className="text-xs font-medium text-ink-soft hover:text-ink">
