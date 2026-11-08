@@ -262,6 +262,12 @@ export interface UnitBatchSaveInput {
    * aparezca, o con la lista vacía, es de TODA la unidad.
    */
   equipoPorTropa: Record<number, number[]>
+  /**
+   * El nombre de la tropa PRINCIPAL ("Gor"), que es el de su ficha de
+   * atributos. Solo se guarda en una unidad compuesta: en una normal la ficha
+   * base no necesita nombre, porque es la unidad entera y ya tiene el suyo.
+   */
+  nombreDeLaPrincipal: string | null
 }
 
 /**
@@ -1206,6 +1212,13 @@ export const UnitRepository = {
             params: [limpio ? limpio : null, tropa.profileId],
           })
         }
+        // Y el de la principal, que vive en su perfil base.
+        const nombrePrincipal = input.nombreDeLaPrincipal?.trim()
+        deCompuesta.push({
+          sql: `UPDATE attribute_profiles SET name = ?
+                 WHERE id = (SELECT profile_id FROM unit_profiles WHERE unit_id = ? AND role = 'base')`,
+          params: [nombrePrincipal ? nombrePrincipal : null, unitId],
+        })
         // El equipo por tropa se rehace entero: son pocas filas y así no hay
         // que llevar la cuenta de lo que se quitó.
         deCompuesta.push({ sql: 'DELETE FROM unit_equipment_profiles WHERE unit_id = ?', params: [unitId] })

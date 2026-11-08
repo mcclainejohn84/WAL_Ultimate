@@ -13,6 +13,23 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.185 — 08/11/2026 19:22
+
+- **Los nombres de las tropas ya no descuadran la fila de cantidades.** Cada
+  rótulo va en una sola línea, cortado si no cabe, con el nombre entero en el
+  `title`. "Manada de Bestias (Gors)" se partía en tres renglones sobre un
+  cuadro de dos cifras y descolocaba los de al lado.
+
+- **La tropa principal puede tener su propio nombre.** En el editor, cuando la
+  unidad tiene más de una tropa, el perfil base gana un campo "Nombre de esta
+  tropa": poniendo "Gor" ahí, el constructor y la hoja dejan de llamarla como
+  a la unidad entera. Una unidad normal no lo lleva, porque su ficha base ES
+  la unidad.
+
+- **Fuera el total de miniaturas** que acompañaba a los campos de cantidad.
+
+---
+
 ## 0.184 — 08/11/2026 19:09
 
 - En una unidad compuesta, **todas** las opciones de equipo dicen a qué tropas

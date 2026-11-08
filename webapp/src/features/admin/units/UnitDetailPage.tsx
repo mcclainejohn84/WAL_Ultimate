@@ -91,6 +91,8 @@ interface UnitDraft {
   tropas: TropaEnEdicion[]
   /** equipment_id -> qué tropas pueden llevarla. Sin entrada, o vacía: toda la unidad. */
   equipoPorTropa: Record<number, number[]>
+  /** Cómo se llama la tropa principal ("Gor"). Solo se usa en una unidad compuesta. */
+  nombreDeLaPrincipal: string
 }
 
 /** Una tropa secundaria mientras se edita. `profileId` es su ficha de atributos. */
@@ -171,6 +173,7 @@ function draftFromUnit(unit: UnitDetail): UnitDraft {
     commandCosts: Object.fromEntries(unit.commandOptions.map((opt) => [opt.role.id, opt.cost])),
     profileStats,
     tropas: unit.profiles.tropas.map(tropaEnEdicion),
+    nombreDeLaPrincipal: unit.profiles.base?.name ?? '',
     equipoPorTropa: Object.fromEntries(
       unit.equipmentOptions.filter((e) => e.profileIds.length > 0).map((e) => [e.id, e.profileIds]),
     ),
@@ -317,6 +320,7 @@ export function UnitDetailPage() {
         profileStats: draft.profileStats,
         tropas: draft.tropas.map((tropa) => ({ ...tropa, name: tropa.name.trim() || null })),
         equipoPorTropa: draft.equipoPorTropa,
+        nombreDeLaPrincipal: draft.nombreDeLaPrincipal.trim() || null,
       })
       setSavedFlash(true)
       setTimeout(() => setSavedFlash(false), 1500)
@@ -930,6 +934,21 @@ export function UnitDetailPage() {
               </label>
             }
           >
+            {/* EL NOMBRE DE LA TROPA PRINCIPAL, solo si la unidad tiene más.
+                Sin él, la principal se llama como la unidad entera, y en el
+                constructor —donde cada tropa tiene su cuadro de cantidad—
+                salía "Manada de Bestias (Gors)" sobre un campo de dos cifras
+                mientras la de al lado ponía "Ungor". */}
+            {baseProfile && draft.tropas.length > 0 && (
+              <div className="mb-3 w-40">
+                <TextField
+                  label="Nombre de esta tropa"
+                  value={draft.nombreDeLaPrincipal}
+                  placeholder="Gor"
+                  onChange={(e) => updateDraft((d) => ({ ...d, nombreDeLaPrincipal: e.target.value }))}
+                />
+              </div>
+            )}
             {baseProfile ? (
               <EditableAttributeTable
                 value={draft.profileStats[baseProfile.id] ?? extractProfileInput(baseProfile)}

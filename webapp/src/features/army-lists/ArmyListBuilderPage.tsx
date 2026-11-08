@@ -1369,12 +1369,19 @@ export function ArmyListBuilderPage() {
       {!isPersonaje && esCompuestaSel && (
         <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
           {tropasDeLaUnidad(selectedUnit).map((tropa) => (
-            <div key={tropa.profileId} className="w-24">
-              <TextField
-                label={tropa.nombre}
-                type="number"
+            <label key={tropa.profileId} className="block w-28">
+              {/* EL RÓTULO, EN UNA SOLA LÍNEA. La tropa principal se llama
+                  como la unidad cuando su ficha no tiene nombre propio, y
+                  "Manada de Bestias (Gors)" partido en tres renglones
+                  descuadraba la fila entera. Cortado cabe, y el nombre
+                  completo está en el `title`. */}
+              <span className="mb-1 block truncate text-xs font-medium text-ink-soft" title={tropa.nombre}>
+                {tropa.nombre}
+              </span>
+              <EnteroInput
                 min={0}
                 max={tropa.maxSize ?? undefined}
+                aria-label={tropa.nombre}
                 value={draft.troopQuantities[tropa.profileId] ?? 0}
                 onChange={(e) => {
                   const bruto = e.target.value
@@ -1386,6 +1393,7 @@ export function ArmyListBuilderPage() {
                     troopQuantities: { ...d.troopQuantities, [tropa.profileId]: siguiente },
                   }))
                 }}
+                className="w-full rounded-sm border border-rule-dark/50 bg-parchment/70 px-3 py-1 text-center text-xs text-ink outline-none transition-colors focus:border-bronze focus:ring-2 focus:ring-bronze/25"
               />
               {/* Solo el precio. El mínimo y el máximo SIGUEN VALIENDO —no
                   dejan guardar si no se cumplen—, pero escritos bajo cada
@@ -1395,14 +1403,8 @@ export function ArmyListBuilderPage() {
                 {tropa.cost} pts/m
                 {!tropa.countsTowardSize && <> · no suma</>}
               </p>
-            </div>
+            </label>
           ))}
-          <p className="pt-5 text-xs text-ink-soft">
-            <b className="font-display text-base text-ink tabular-nums">
-              {totalDeMiniaturas(selectedUnit, draft.troopQuantities)}
-            </b>{' '}
-            miniaturas
-          </p>
         </div>
       )}
 
