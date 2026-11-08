@@ -13,6 +13,14 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.193 — 08/11/2026 23:38
+
+- En el PDF, las **mejoras de atributo** de un personaje de renombre bajan a
+  su tabla, con la abreviatura desarrollada al lado ("+1 HA · Suma +1 a su
+  atributo de Habilidad de Armas"). Arriba se queda sólo el rango.
+
+---
+
 ## 0.192 — 08/11/2026 23:36
 
 - En el PDF, el apartado de personajes de renombre: las columnas pasan a

@@ -401,6 +401,33 @@ export function fichaDeRenombre(clavesDeHabilidad: string[], clavesDeCicatriz: s
   }
 }
 
+/**
+ * LO QUE DICE UNA MEJORA DE ATRIBUTO, escrita entera.
+ *
+ * El catálogo no les pone descripción porque en pantalla "+1 HA" se entiende
+ * solo (ver habilidadesDeRenombre), pero en la tabla del PDF la celda de la
+ * derecha quedaría vacía y una fila a medias se lee como un dato que falta.
+ *
+ * Aquí SOLO se desarrolla la abreviatura: no se añade ninguna regla que el
+ * reglamento no diga, y el asterisco de los atributos que lo llevan se queda
+ * donde está, en su nombre.
+ */
+const ATRIBUTO_EN_LETRA: Record<string, string> = {
+  'atributo:iniciativa': 'Iniciativa',
+  'atributo:hp': 'Habilidad de Proyectiles',
+  'atributo:ha': 'Habilidad de Armas',
+  'atributo:herida': 'Heridas',
+  'atributo:resistencia': 'Resistencia',
+  'atributo:liderazgo': 'Liderazgo',
+  'atributo:ataque': 'Ataques',
+  'atributo:fuerza': 'Fuerza',
+}
+
+function lineaDeAtributo(h: HabilidadDeRenombre): { nombre: string; descripcion: string | null } {
+  const atributo = ATRIBUTO_EN_LETRA[h.clave]
+  return { nombre: h.nombre, descripcion: atributo ? `Suma +1 a su atributo de ${atributo}.` : h.descripcion }
+}
+
 /** Si no tiene absolutamente nada, no se le imprime un apartado vacío. */
 export function fichaDeRenombreVacia(ficha: FichaDeRenombre): boolean {
   return (
@@ -846,10 +873,11 @@ export async function exportArmyListToPdf(
   // es texto largo que se consulta de vez en cuando y no cada turno:
   // intercalarlo partiría en dos la tabla que de verdad se mira en la mesa.
   //
-  // RANGOS Y ATRIBUTOS van en una línea, no como filas de tabla. "Héroe" y
-  // "+1 HA" no tienen descripción que poner al lado (ver el catálogo), y una
-  // fila por cada uno con la celda de la derecha vacía gastaría media página
-  // para no decir nada.
+  // EL RANGO va en una línea suelta y no como fila de tabla: es uno, no tiene
+  // descripción que poner al lado (ver el catálogo) y una fila entera con la
+  // celda de la derecha vacía gastaría sitio para no decir nada. Todo lo
+  // demás —atributos, habilidades, características sociales y cicatrices— va
+  // a la tabla, cada cosa con lo que hace.
   const entradasDeRenombre = sortedEntries.filter((e) => e.unit.isSpecialCharacter)
   if (entradasDeRenombre.length > 0) {
     const fichas = await Promise.all(
@@ -886,12 +914,11 @@ export async function exportArmyListToPdf(
         }
         yRenombre = dibujarSubtitulo(doc, nombreDeLaEntrada(entry), yRenombre, familiaTitulares, paleta)
 
-        const resumen = [
-          ficha.rangos.length ? `Rango: ${ficha.rangos.map((h) => h.nombre).join(', ')}` : '',
-          ficha.atributos.length ? `Atributos: ${ficha.atributos.map((h) => h.nombre).join(', ')}` : '',
-        ]
-          .filter(Boolean)
-          .join('  ·  ')
+        // Sólo el RANGO va en esta línea. Los atributos bajaron a la tabla
+        // —son algo que el personaje ha comprado, como una habilidad— y
+        // dejarlos además aquí sería decir dos veces lo mismo en cuatro
+        // centímetros de papel.
+        const resumen = ficha.rangos.length ? `Rango: ${ficha.rangos.map((h) => h.nombre).join(', ')}` : ''
         if (resumen) {
           doc.setFont('times', 'italic')
           doc.setFontSize(7)
@@ -911,6 +938,7 @@ export async function exportArmyListToPdf(
           filas.push([{ content: titulo.toUpperCase(), colSpan: 2 }])
           for (const c of cosas) filas.push([c.nombre, c.descripcion || '—'])
         }
+        apartado(ETIQUETAS_DE_TIPO.atributo, ficha.atributos.map(lineaDeAtributo))
         apartado(ETIQUETAS_DE_TIPO.habilidad, ficha.habilidades)
         apartado(ETIQUETAS_DE_TIPO.social, ficha.sociales)
         apartado('Cicatrices', ficha.cicatrices)
