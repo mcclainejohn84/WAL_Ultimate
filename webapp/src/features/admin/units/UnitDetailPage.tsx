@@ -847,7 +847,13 @@ export function UnitDetailPage() {
                       .filter((item) => draft.equipmentIds.has(item.id))
                       .map((item) => (
                         <tr key={item.id}>
-                          <td className="py-1 pr-2 text-ink">{item.name}</td>
+                          {/* Con el coste al lado: es lo que se mira al
+                              decidir quién la lleva, y en esta rejilla no se
+                              ve el de la lista de arriba. */}
+                          <td className="py-1 pr-2 text-ink">
+                            {item.name}
+                            {item.cost !== undefined && <span className="ml-1 text-ink-soft">({item.cost} pts)</span>}
+                          </td>
                           {tropasDeLaUnidad.map((tr) => (
                             <td key={tr.profileId} className="px-1 py-1 text-center">
                               <input

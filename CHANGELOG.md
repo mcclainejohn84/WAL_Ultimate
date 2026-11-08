@@ -13,6 +13,14 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.180 — 08/11/2026 18:29
+
+- En el editor, la rejilla de **equipo por tropa** enseña ahora lo que cuesta
+  cada opción, igual que la lista de arriba. Es el dato con el que se decide
+  quién la lleva, y allí no se veía.
+
+---
+
 ## 0.179 — 08/11/2026 18:21
 
 - **El alta de la Manada de Bestias** (`webapp/db/manada-de-bestias.sql`): Gor
