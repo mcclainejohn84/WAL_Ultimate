@@ -13,6 +13,19 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.184 — 08/11/2026 19:09
+
+- En una unidad compuesta, **todas** las opciones de equipo dicen a qué tropas
+  se aplican, no solo las repartidas: una opción que vale para todas las
+  nombra todas. Sin coletilla se leía como "a ninguna" justo al lado de las
+  que sí la llevaban.
+
+- **Fuera el mínimo y el máximo bajo cada cantidad.** Siguen valiendo igual —no
+  dejan guardar si no se cumplen—, pero escritos bajo los tres cuadros eran
+  tres rangos repetidos en una línea.
+
+---
+
 ## 0.183 — 08/11/2026 18:57
 
 - **"Añadir a la lista" ya suma lo que va a costar de verdad.** El número del

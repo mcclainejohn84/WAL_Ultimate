@@ -20,6 +20,7 @@ import {
   computeCategoryInsertIndex,
   computeEntryCost,
   computeListTotal,
+  equipoDeLaTropa,
   reconcileEntries,
   totalDeMiniaturas,
   tropasDeLaUnidad,
@@ -1221,16 +1222,17 @@ export function ArmyListBuilderPage() {
     : null
 
   /**
-   * En una unidad COMPUESTA, cada opción dice a qué tropa pertenece: "Lanza ·
-   * Ungor". Sin eso, una lista con el escudo de los Gor y el de los Ungor
-   * seguidos no se puede leer. Una opción sin tropas anotadas es de toda la
-   * unidad y se queda como está.
+   * En una unidad COMPUESTA, CADA opción dice a qué tropas se le aplica:
+   * "Lanza · Ungor", "Cuernos de guerra · Gor, Ungor". También las que valen
+   * para todas — que son las que no llevan ninguna tropa anotada —, porque
+   * "sin coletilla" se leía como "a ninguna" justo al lado de las que sí la
+   * llevaban.
    */
   const equipmentItems = (selectedUnit?.equipmentOptions ?? []).map((e) => {
     const deQuien =
-      selectedUnit && selectedUnit.profiles.tropas.length > 0 && e.profileIds.length > 0
+      selectedUnit && selectedUnit.profiles.tropas.length > 0
         ? tropasDeLaUnidad(selectedUnit)
-            .filter((tropa) => e.profileIds.includes(tropa.profileId))
+            .filter((tropa) => equipoDeLaTropa(e, tropa.profileId))
             .map((tropa) => tropa.nombre)
         : []
     return { id: e.id, name: deQuien.length > 0 ? `${e.name} · ${deQuien.join(', ')}` : e.name, cost: e.cost }
@@ -1385,14 +1387,12 @@ export function ArmyListBuilderPage() {
                   }))
                 }}
               />
+              {/* Solo el precio. El mínimo y el máximo SIGUEN VALIENDO —no
+                  dejan guardar si no se cumplen—, pero escritos bajo cada
+                  campo eran tres rangos repetidos en una fila de tres
+                  cuadros. */}
               <p className="mt-0.5 text-micro tabular-nums text-ink-soft/70">
                 {tropa.cost} pts/m
-                {(tropa.minSize != null || tropa.maxSize != null) && (
-                  <>
-                    {' '}
-                    · {tropa.minSize ?? 0}–{tropa.maxSize ?? '∞'}
-                  </>
-                )}
                 {!tropa.countsTowardSize && <> · no suma</>}
               </p>
             </div>
