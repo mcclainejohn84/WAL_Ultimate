@@ -7,6 +7,8 @@
 // unidad↔senda viva en su propia tabla y no en una columna.
 // ============================================================================
 
+import type { EntryMagicPath } from '@/domain/types'
+
 /** Los cuatro grupos de sendas. Es una lista cerrada: no se crean desde la interfaz. */
 export const MAGIC_GROUPS = ['ELEMENTALES', 'MISTICAS', 'OSCURAS', 'MANUSCRITOS'] as const
 
@@ -35,6 +37,38 @@ export const WIZARD_TAG_CODES = ['HECHICERO', 'ARCHIMAGO'] as const
 /** ¿Esta etiqueta de tipo hace que el personaje pueda llevar sendas? */
 export function isWizardTag(code: string | null | undefined): boolean {
   return code != null && (WIZARD_TAG_CODES as readonly string[]).includes(code)
+}
+
+/**
+ * ¿Esta unidad lanza hechizos? Vale cualquiera de las dos marcas que existen:
+ * la casilla "Hechicero" de su ficha (`is_wizard`) o una etiqueta de tipo de
+ * las de arriba. Son dos porque la casilla llegó después, y hay personajes
+ * antiguos que solo tienen la etiqueta y personajes nuevos que solo tienen la
+ * casilla. Exigir las dos dejaría a unos cuantos magos sin magia.
+ */
+export function esHechicero(unidad: { isWizard: boolean; typeTag?: { code: string } | null }): boolean {
+  return unidad.isWizard || isWizardTag(unidad.typeTag?.code)
+}
+
+/**
+ * LAS SENDAS QUE DE VERDAD LLEVA UNA ENTRADA de una lista.
+ *
+ * En un hechicero normal son las que se le eligieron al meterlo en la lista.
+ * En un PERSONAJE DE RENOMBRE son las suyas, las de su pantalla: su magia es
+ * parte del personaje y viaja con él a cualquier ejército, así que la lista no
+ * la decide ni la puede cambiar.
+ *
+ * El respaldo a las de la entrada en un renombre SIN sendas propias no es
+ * adorno: las listas montadas antes de que esto existiera llevan la magia
+ * apuntada en la entrada, y sin este respaldo se habrían quedado mudas de un
+ * día para otro.
+ */
+export function sendasDeLaEntrada(entrada: {
+  unit: { isSpecialCharacter: boolean; magicPaths: EntryMagicPath[] }
+  magicPaths: EntryMagicPath[]
+}): EntryMagicPath[] {
+  if (!entrada.unit.isSpecialCharacter) return entrada.magicPaths
+  return entrada.unit.magicPaths.length > 0 ? entrada.unit.magicPaths : entrada.magicPaths
 }
 
 /** Niveles de mago. El 0 no existe: una unidad sin magia simplemente no tiene nivel (null). */

@@ -12,7 +12,7 @@ import { useGlobalGrayscale } from '@/shared/theme/useGrayscaleMode'
 import { UserRepository, DEFAULT_ARMY_LIST_OPTIONS } from '@/data/repositories/userRepository'
 import { EntryMagicSection } from '@/features/army-lists/EntryMagicSection'
 import { checkComposition, compositionWarnings, formatRuleValue } from '@/domain/armyComposition'
-import { isWizardTag } from '@/domain/magic'
+import { esHechicero, sendasDeLaEntrada } from '@/domain/magic'
 import { esVisiblePara } from '@/domain/personajeRenombre'
 import { useVisibleFactions } from '@/shared/session/useVisibleFactions'
 import { useSession } from '@/shared/session/useSession'
@@ -771,7 +771,7 @@ export function ArmyListBuilderPage() {
 
     // "Sendas: Fuego 2 · Bestias 1". El nivel va pegado a su senda porque puede
     // ser distinto en cada una.
-    const listaSendas = entry.magicPaths
+    const listaSendas = sendasDeLaEntrada(entry)
       .map((mp) => {
         const senda = magicPaths?.find((p) => p.id === mp.pathId)
         return senda ? `${senda.name} ${mp.level}` : null
@@ -979,7 +979,13 @@ export function ArmyListBuilderPage() {
       // Solo los hechiceros llevan sendas: si se desmarca "Hechicero" en el
       // catálogo, las que hubiera dejan de guardarse en vez de quedarse
       // colgando en una entrada que ya no puede lanzarlas.
-      magicPaths: isWizardTag(selectedUnit.typeTag?.code) ? draft.magicPaths : [],
+      //
+      // En un PERSONAJE DE RENOMBRE esto no decide nada: su magia es suya y se
+      // guarda con él (ver MagiaModal). Lo que haya en la entrada se respeta
+      // tal cual —puede venir de una lista montada antes de que su magia fuera
+      // propia, y es el respaldo que usa sendasDeLaEntrada—, pero desde aquí
+      // ya no se puede cambiar.
+      magicPaths: esHechicero(selectedUnit) ? draft.magicPaths : [],
       equipmentIds: [...draft.equipmentIds],
       upgradeIds: [...draft.upgradeIds],
       // Se arrastra la marca que ya tuviera; una unidad nueva nace visible.
@@ -1557,18 +1563,28 @@ export function ArmyListBuilderPage() {
         </Select>
       )}
 
-      {/* Solo a los personajes marcados como HECHICERO en el Editor. Las
-          sendas y su nivel son de esta miniatura en esta lista, no del
-          catálogo. */}
-      {isWizardTag(selectedUnit.typeTag?.code) && (
-        <EntryMagicSection
-          paths={magicPaths ?? []}
-          value={draft.magicPaths}
-          onChange={(next) => setDraft((d) => ({ ...d, magicPaths: next }))}
-          open={entryMagicOpen}
-          onToggle={() => setEntryMagicOpen((v) => !v)}
-        />
-      )}
+      {/* Solo a los personajes marcados como HECHICERO en el Editor.
+          Normalmente las sendas y su nivel son de esta miniatura en esta
+          lista. En un PERSONAJE DE RENOMBRE no: su magia es suya, se asigna en
+          su pantalla y aquí solo se enseña. */}
+      {esHechicero(selectedUnit) &&
+        (selectedUnit.isSpecialCharacter ? (
+          <EntryMagicSection
+            paths={magicPaths ?? []}
+            value={sendasDeLaEntrada({ unit: selectedUnit, magicPaths: draft.magicPaths })}
+            open={entryMagicOpen}
+            onToggle={() => setEntryMagicOpen((v) => !v)}
+            readOnly
+          />
+        ) : (
+          <EntryMagicSection
+            paths={magicPaths ?? []}
+            value={draft.magicPaths}
+            onChange={(next) => setDraft((d) => ({ ...d, magicPaths: next }))}
+            open={entryMagicOpen}
+            onToggle={() => setEntryMagicOpen((v) => !v)}
+          />
+        ))}
 
       {entryIssues.length > 0 && (
         <div className="rounded-sm border border-danger-dark/40 bg-danger-dark/10 px-3 py-2">

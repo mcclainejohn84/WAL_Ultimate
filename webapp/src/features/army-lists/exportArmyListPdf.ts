@@ -37,7 +37,7 @@ import {
   type HabilidadDeRenombre,
   type TipoDeHabilidad,
 } from '@/domain/habilidadesDeRenombre'
-import { MAGIC_GROUP_LABELS, type MagicPathDetail, type MagicSpell } from '@/domain/magic'
+import { MAGIC_GROUP_LABELS, sendasDeLaEntrada, type MagicPathDetail, type MagicSpell } from '@/domain/magic'
 import { mergeSpecialRules } from '@/domain/unitFormat'
 import { mostrarPdf } from '@/features/army-lists/pdfWindow'
 import type { ArmyListDetail, ArmyListEntry, AttributeProfile, SpecialRule } from '@/domain/types'
@@ -744,7 +744,10 @@ export async function exportArmyListToPdf(
   // verdad puede llevar. Sacar los siete de cada senda obligaría a ir
   // descartando a ojo en plena partida, que es justo lo que este listado
   // existe para evitar.
-  const entradasConMagia = sortedEntries.filter((e) => e.magicPaths.length > 0)
+  // Las de la entrada, salvo en un PERSONAJE DE RENOMBRE, cuya magia es suya y
+  // viene con él a cualquier lista (ver sendasDeLaEntrada): en la hoja sale
+  // exactamente igual que la de cualquier otro mago.
+  const entradasConMagia = sortedEntries.filter((e) => sendasDeLaEntrada(e).length > 0)
   if (entradasConMagia.length > 0) {
     // El catálogo de sendas se pide una sola vez, ya con sus hechizos dentro.
     let sendas: MagicPathDetail[] = []
@@ -771,7 +774,7 @@ export async function exportArmyListToPdf(
         yMagia = 26
       }
 
-      const elegidas = entry.magicPaths
+      const elegidas = sendasDeLaEntrada(entry)
         .map((mp) => ({ senda: sendaPorId.get(mp.pathId), nivel: mp.level }))
         .filter((x): x is { senda: MagicPathDetail; nivel: number } => x.senda != null)
 

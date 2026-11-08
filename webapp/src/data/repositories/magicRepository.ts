@@ -8,7 +8,7 @@
 // texto corto pesan poco y se consultan al pintar cualquier ficha de
 // hechicero, así que no compensa ir a la red cada vez.
 // ============================================================================
-import { execCatalog, execCatalogBatch, type BatchStatement } from '@/data/sqlite/client'
+import { execCatalog, execCatalogBatch } from '@/data/sqlite/client'
 import { queryLocal } from '@/data/sqlite/localCatalog'
 import { ChangeLogRepository } from '@/data/repositories/changeLogRepository'
 import {
@@ -19,6 +19,7 @@ import {
   type MagicSpell,
   type MagicSpellInput,
 } from '@/domain/magic'
+import type { EntryMagicPath } from '@/domain/types'
 
 function mapPath(row: Record<string, unknown>): MagicPath {
   const group = row.group_code
@@ -119,6 +120,51 @@ export const MagicRepository = {
     await ChangeLogRepository.record('regla', 'borrar', `Borró la senda de magia "${path.name}"`, id)
   },
 
+  // --------------------------------------------------------------------------
+  // LAS SENDAS DE UNA UNIDAD (unit_magic_paths), que son las de los PERSONAJES
+  // DE RENOMBRE: su magia es suya y la misma en todas las listas, igual que
+  // sus habilidades. El resto de hechiceros eligen sendas al entrar en un
+  // ejército, y eso vive en army_list_entry_magic_paths (ver
+  // armyListRepository).
+  // --------------------------------------------------------------------------
+
+  /**
+   * Las sendas de una unidad con su nivel.
+   *
+   * `try/catch` porque la columna `level` es de una migración reciente: con un
+   * Worker sin desplegar, el personaje se enseña sin magia en vez de no
+   * enseñarse.
+   */
+  async listUnitPaths(unitId: number): Promise<EntryMagicPath[]> {
+    try {
+      return await queryLocal<EntryMagicPath>(
+        'SELECT path_id, level FROM unit_magic_paths WHERE unit_id = ?',
+        [unitId],
+        (row) => ({ pathId: row.path_id as number, level: (row.level as number) ?? 1 }),
+      )
+    } catch {
+      return []
+    }
+  },
+
+  /**
+   * Deja las sendas de una unidad EXACTAMENTE en lo que se le pasa: se borran
+   * todas y se vuelven a escribir.
+   *
+   * Reemplazar en vez de ir añadiendo y quitando una a una es lo mismo que
+   * hace el constructor con las de una entrada (ver replaceEntryRelations), y
+   * evita tener que distinguir qué cambió: son tres filas como mucho.
+   */
+  async setUnitPaths(unitId: number, paths: EntryMagicPath[]): Promise<void> {
+    await execCatalogBatch([
+      { sql: 'DELETE FROM unit_magic_paths WHERE unit_id = ?', params: [unitId] },
+      ...paths.map((p) => ({
+        sql: 'INSERT OR IGNORE INTO unit_magic_paths (unit_id, path_id, level) VALUES (?, ?, ?)',
+        params: [unitId, p.pathId, p.level] as (string | number | null)[],
+      })),
+    ])
+  },
+
   /** Reordena las sendas: se guarda el orden completo, que es lo que se ve en pantalla. */
   async reorderPaths(orderedIds: number[]): Promise<void> {
     if (orderedIds.length === 0) return
@@ -176,33 +222,5 @@ export const MagicRepository = {
 
   async removeSpell(id: number): Promise<void> {
     await execCatalog('DELETE FROM magic_spells WHERE id = ?', [id])
-  },
-
-  // --------------------------------------------------------------------------
-  // Sendas que conoce una unidad
-  // --------------------------------------------------------------------------
-
-  async listPathIdsByUnit(unitId: number): Promise<number[]> {
-    return queryLocal(
-      'SELECT path_id FROM unit_magic_paths WHERE unit_id = ?',
-      [unitId],
-      (row) => row.path_id as number,
-    )
-  },
-
-  /**
-   * Fija de una vez las sendas de una unidad. Se borra y se reinserta en vez
-   * de calcular altas y bajas: son un puñado de filas y así el resultado no
-   * depende de que el cliente haya calculado bien la diferencia.
-   */
-  async setUnitPaths(unitId: number, pathIds: number[]): Promise<void> {
-    const statements: BatchStatement[] = [{ sql: 'DELETE FROM unit_magic_paths WHERE unit_id = ?', params: [unitId] }]
-    for (const pathId of pathIds) {
-      statements.push({
-        sql: 'INSERT OR IGNORE INTO unit_magic_paths (unit_id, path_id) VALUES (?, ?)',
-        params: [unitId, pathId],
-      })
-    }
-    await execCatalogBatch(statements)
   },
 }

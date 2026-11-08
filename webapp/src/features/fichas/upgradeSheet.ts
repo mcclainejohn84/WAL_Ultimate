@@ -109,6 +109,7 @@ export function upgradeAsUnitDetail(
     equipmentExclusivePairs: [],
     upgradeOptions: [],
     commandOptions: [],
+    magicPaths: [],
   }
 }
 
@@ -174,6 +175,7 @@ export function mountAsUnitDetail(
     equipmentExclusivePairs: [],
     upgradeOptions: [],
     commandOptions: [],
+    magicPaths: [],
   }
 }
 

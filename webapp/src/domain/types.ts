@@ -367,6 +367,19 @@ export interface UnitDetail extends Unit {
     /** Ficha de atributos propia de este miembro del grupo de mando (de momento solo el Campeón la tiene). */
     profile: AttributeProfile | null
   }>
+  /**
+   * LAS SENDAS QUE CONOCE LA PROPIA UNIDAD, cada una con su nivel (ver
+   * unit_magic_paths).
+   *
+   * Es la magia de los PERSONAJES DE RENOMBRE: suya, y la misma en todas las
+   * listas en las que entren, igual que sus habilidades o sus cicatrices. Se
+   * asigna en su pantalla y en ningún otro sitio.
+   *
+   * En el resto de hechiceros llega normalmente vacío, porque sus sendas se
+   * eligen al meterlos en un ejército (ver ArmyListEntry.magicPaths). Quién
+   * manda en cada caso lo decide `sendasDeLaEntrada` (domain/magic).
+   */
+  magicPaths: EntryMagicPath[]
 }
 
 import type { SectionWidths } from '@/domain/sheetSections'

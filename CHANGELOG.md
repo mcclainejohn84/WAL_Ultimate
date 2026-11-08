@@ -13,6 +13,20 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.194 — 08/11/2026 23:53
+
+- **La magia de los Personajes de Renombre es suya.** El que sea hechicero
+  tiene un botón de **Magia** en su lámina, con las mismas sendas y los mismos
+  niveles que el constructor de ejércitos, y lo que se le asigne vale en todas
+  las listas en las que entre.
+- En el constructor, un personaje de renombre **enseña su magia pero no se le
+  puede tocar**: se cambia en su pantalla y en ningún otro sitio. El resto de
+  hechiceros siguen eligiendo sendas al montar la lista, como siempre.
+- En la hoja de ejército sale **como cualquier otro mago**: su nombre, sus
+  sendas y los hechizos que puede lanzar según el nivel de cada una.
+
+---
+
 ## 0.193 — 08/11/2026 23:38
 
 - En el PDF, las **mejoras de atributo** de un personaje de renombre bajan a

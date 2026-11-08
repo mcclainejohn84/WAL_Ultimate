@@ -49,6 +49,7 @@ import { useSession } from '@/shared/session/useSession'
 import { Modal } from '@/shared/ui/Modal'
 import { HabilidadesModal } from '@/features/renombre/HabilidadesModal'
 import { CicatricesModal } from '@/features/renombre/CicatricesModal'
+import { MagiaModal } from '@/features/renombre/MagiaModal'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { TextField } from '@/shared/ui/TextField'
@@ -196,6 +197,7 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false)
   const [viendoHabilidades, setViendoHabilidades] = useState(false)
   const [viendoCicatrices, setViendoCicatrices] = useState(false)
+  const [viendoMagia, setViendoMagia] = useState(false)
 
   const trasfondo = personaje.background ?? ''
   const tieneTrasfondo = tieneTexto(trasfondo)
@@ -459,6 +461,18 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
             >
               Cicatrices
             </button>
+            {/* Solo si es hechicero. Sus sendas se deciden AQUÍ y no al montar
+                el ejército, que es lo que hacen los magos del catálogo (ver
+                MagiaModal). */}
+            {personaje.isWizard && (
+              <button
+                type="button"
+                onClick={() => setViendoMagia(true)}
+                className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
+              >
+                Magia
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setEditando(true)}
@@ -582,6 +596,8 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
       {viendoCicatrices && (
         <CicatricesModal personaje={personaje} onClose={() => setViendoCicatrices(false)} onCambio={onCambio} />
       )}
+
+      {viendoMagia && <MagiaModal personaje={personaje} onClose={() => setViendoMagia(false)} onCambio={onCambio} />}
     </article>
   )
 }

@@ -1212,6 +1212,15 @@ const MIGRATIONS: string[] = [
      profile_id   INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
      PRIMARY KEY (unit_id, equipment_id, profile_id)
    )`,
+  // EL NIVEL DE CADA SENDA, para los Personajes de Renombre.
+  //
+  // `unit_magic_paths` ya guardaba qué sendas conoce una unidad; lo que no
+  // decía es a qué nivel, porque hasta ahora eso se elegía al meter la
+  // miniatura en una lista (army_list_entry_magic_paths). Un Personaje de
+  // Renombre no funciona así: su magia es SUYA y la misma en todas las
+  // listas, igual que sus habilidades o sus cicatrices, así que el nivel
+  // tiene que vivir con la senda. Por defecto 1, que es el de salida.
+  'ALTER TABLE unit_magic_paths ADD COLUMN level INTEGER NOT NULL DEFAULT 1',
   // Ahora las listas los ofrecen POR DEFECTO, al revés que antes.
   //
   // Es una columna NUEVA en vez de darle la vuelta a la anterior con un UPDATE

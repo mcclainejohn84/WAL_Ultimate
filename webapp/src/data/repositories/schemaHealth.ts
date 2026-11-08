@@ -61,6 +61,7 @@ const CHECKS: SchemaCheck[] = [
   { label: 'Habilidades de los Personajes de Renombre', probe: 'SELECT skill_key FROM unit_skills LIMIT 1' },
   { label: 'Coste que no cuenta en los personajes de renombre', probe: 'SELECT hide_cost FROM units LIMIT 1' },
   { label: 'Cicatrices de los Personajes de Renombre', probe: 'SELECT scar_key FROM unit_scars LIMIT 1' },
+  { label: 'Nivel de las sendas de un personaje', probe: 'SELECT level FROM unit_magic_paths LIMIT 1' },
   { label: 'Tropas de una unidad compuesta', probe: 'SELECT counts_toward_size FROM unit_troop_profiles LIMIT 1' },
   { label: 'Equipo por tropa', probe: 'SELECT profile_id FROM unit_equipment_profiles LIMIT 1' },
   { label: 'Miniaturas por tropa en la lista', probe: 'SELECT quantity FROM army_list_entry_profiles LIMIT 1' },

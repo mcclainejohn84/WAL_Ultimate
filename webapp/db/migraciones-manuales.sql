@@ -106,3 +106,7 @@ CREATE TABLE IF NOT EXISTS unit_scars (
   user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
   PRIMARY KEY (unit_id, scar_key)
 );
+
+-- El nivel de cada senda conocida por una unidad: la magia de los Personajes
+-- de Renombre, que es suya y no de la lista en la que entren.
+ALTER TABLE unit_magic_paths ADD COLUMN level INTEGER NOT NULL DEFAULT 1;

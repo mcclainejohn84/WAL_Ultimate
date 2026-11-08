@@ -15,6 +15,7 @@ import type {
   AttributeProfile,
   AttributeProfileInput,
   CommandRole,
+  EntryMagicPath,
   EquipmentOption,
   SpecialRule,
   TropaSecundaria,
@@ -82,6 +83,25 @@ async function tropasSecundariasDe(unitId: number): Promise<TropaSecundaria[]> {
         countsTowardSize: row.counts_toward_size == null || Boolean(row.counts_toward_size),
         sortOrder: (row.sort_order as number) ?? 0,
       }),
+    )
+  } catch {
+    return []
+  }
+}
+
+/**
+ * Las sendas de magia de la unidad, con su nivel (ver unit_magic_paths).
+ *
+ * Son la magia de los Personajes de Renombre. Vacío en casi todas las
+ * unidades, y también si la columna `level` todavía no existe (Worker sin
+ * desplegar): una ficha sin magia es mejor que una ficha que no carga.
+ */
+async function sendasDe(unitId: number): Promise<EntryMagicPath[]> {
+  try {
+    return await queryLocal<EntryMagicPath>(
+      'SELECT path_id, level FROM unit_magic_paths WHERE unit_id = ?',
+      [unitId],
+      (row) => ({ pathId: row.path_id as number, level: (row.level as number) ?? 1 }),
     )
   } catch {
     return []
@@ -404,6 +424,7 @@ export const UnitRepository = {
       upgradeOptions,
       tropas,
       equipoPorTropa,
+      magicPaths,
       commandOptions,
     ] = await Promise.all([
       queryLocalOne('SELECT * FROM units WHERE id = ?', [id], mapUnit),
@@ -473,6 +494,7 @@ export const UnitRepository = {
       ),
       tropasSecundariasDe(id),
       equipoPorTropaDe(id),
+      sendasDe(id),
       queryLocal<UnitDetail['commandOptions'][number]>(
         `SELECT cr.id AS role_id, cr.code AS role_code, cr.name AS role_name, uco.cost AS cost,
                 uco.custom_name AS custom_name, ap.id AS profile_id, ap.*
@@ -556,6 +578,7 @@ export const UnitRepository = {
       equipmentExclusivePairs,
       upgradeOptions,
       commandOptions,
+      magicPaths,
     }
   },
 
@@ -814,16 +837,14 @@ export const UnitRepository = {
     // UnitDetail: se leen aparte. Antes no se copiaban, y el hechicero copiado
     // salía marcado como hechicero pero sin una sola senda que echarse a la
     // boca.
-    const sendas = await queryLocal(
-      'SELECT path_id FROM unit_magic_paths WHERE unit_id = ?',
-      [unitId],
-      (row) => row.path_id as number,
-    )
+    const sendas = await sendasDe(unitId)
     if (sendas.length > 0) {
       await execCatalogBatch(
-        sendas.map((pathId) => ({
-          sql: 'INSERT OR IGNORE INTO unit_magic_paths (unit_id, path_id) VALUES (?, ?)',
-          params: [newUnitId, pathId],
+        sendas.map((senda) => ({
+          // Con su NIVEL: un Personaje de Renombre sacado de otro que ya tenía
+          // magia la hereda tal cual, no toda a nivel 1.
+          sql: 'INSERT OR IGNORE INTO unit_magic_paths (unit_id, path_id, level) VALUES (?, ?, ?)',
+          params: [newUnitId, senda.pathId, senda.level],
         })),
       )
     }

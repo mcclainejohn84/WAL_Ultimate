@@ -672,11 +672,17 @@ CREATE TABLE magic_spells (
 
 CREATE INDEX idx_magic_spells_path ON magic_spells(path_id);
 
--- Sendas que conoce una unidad. Tabla de unión y no una columna porque un
--- hechicero puede conocer VARIAS sendas a la vez.
+-- Sendas que conoce una unidad, cada una con su NIVEL. Tabla de unión y no una
+-- columna porque un hechicero puede conocer VARIAS sendas a la vez, y a
+-- niveles distintos.
+--
+-- Es la magia de los PERSONAJES DE RENOMBRE, que es suya y la misma en todas
+-- las listas. El resto de hechiceros eligen sendas al entrar en un ejército
+-- (ver army_list_entry_magic_paths).
 CREATE TABLE unit_magic_paths (
     unit_id INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
     path_id INTEGER NOT NULL REFERENCES magic_paths(id) ON DELETE CASCADE,
+    level   INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (unit_id, path_id)
 );
 
