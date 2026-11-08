@@ -13,6 +13,13 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.191 — 08/11/2026 23:30
+
+- En el catálogo de cicatrices, las que ya tiene el personaje ponen
+  **"Ya adquirida"**, igual que las habilidades.
+
+---
+
 ## 0.190 — 08/11/2026 20:47
 
 - **Cicatrices** en los personajes de renombre, al lado de las habilidades y

@@ -170,7 +170,7 @@ export function CicatricesModal({
                         {yaLaTiene ? (
                           <span className="inline-flex items-center gap-1 text-mini font-medium text-maroon">
                             <CheckIcon className="h-3 w-3" />
-                            La tiene
+                            Ya adquirida
                           </span>
                         ) : (
                           <button
