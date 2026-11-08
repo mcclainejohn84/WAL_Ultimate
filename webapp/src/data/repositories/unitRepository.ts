@@ -95,6 +95,14 @@ function mapUnit(row: Record<string, unknown>): Unit {
     // sin autor. Ante la duda se ENSEÑA: esconder un personaje porque falta una
     // columna sería hacerlo desaparecer sin que nadie lo haya pedido.
     isSpecialCharacter: Boolean(row.is_special_character),
+    // El coste que no cuenta es COSA DE LOS DE RENOMBRE y de nadie más. La
+    // columna la llevan todas las unidades porque ALTER TABLE no sabe de
+    // condiciones y su valor de fábrica es 1, así que leerla a secas pondría a
+    // coste cero el catálogo entero. Se fuerza aquí, en el único punto por el
+    // que entra una unidad a la aplicación, igual que con `isUnique`.
+    // Sin la columna (D1 sin migrar), un personaje de renombre no cuenta: es
+    // el valor de fábrica y lo que se hace en la mesa.
+    hideCost: Boolean(row.is_special_character) && (row.hide_cost == null || Boolean(row.hide_cost)),
     background: (row.background as string) ?? null,
     portraitKey: (row.portrait_key as string) ?? null,
     hidden: Boolean(row.hidden),

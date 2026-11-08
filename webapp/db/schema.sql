@@ -374,6 +374,11 @@ CREATE TABLE units (
     -- mapas: poder tener uno a medio escribir sin que le estorbe a nadie. En
     -- una unidad normal no se usa: ahí lo que decide si se ofrece es `active`.
     hidden            INTEGER NOT NULL DEFAULT 0,
+    -- Si el coste de este personaje de renombre NO cuenta en los ejércitos
+    -- (él, su equipo y su montura valen 0). Por defecto sí se oculta, que es
+    -- lo que se hace en la mesa. El coste no se borra, solo deja de sumar.
+    -- Solo se mira en los de renombre.
+    hide_cost         INTEGER NOT NULL DEFAULT 1,
     -- Autor del personaje de renombre. Solo sirve para saber a quién le sigue
     -- apareciendo si está oculto; el resto del catálogo no tiene dueño. NULL =
     -- sin autor conocido (los creados antes de que existiera esta columna).

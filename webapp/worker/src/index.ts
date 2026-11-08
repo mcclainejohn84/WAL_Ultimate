@@ -1116,6 +1116,19 @@ const MIGRATIONS: string[] = [
   // exigida tumbaba la carga entera del catálogo. Ver la nota larga en
   // db/schema.sql.
   'ALTER TABLE units ADD COLUMN user_id INTEGER',
+  // EL COSTE DE UN PERSONAJE DE RENOMBRE NO SE PAGA, por defecto.
+  //
+  // En la mesa, un personaje con nombre propio se acuerda entre los jugadores y
+  // entra en la partida sin pagar puntos: ni él, ni su equipo, ni su montura.
+  // Pero su coste SIGUE ESCRITO en la ficha —es el del personaje del que se
+  // copió y se quiere poder consultarlo—, así que no se borra: se deja de
+  // contar. Ver computeEntryCost.
+  //
+  // DEFAULT 1 y no 0: lo normal es que no cuente, y así los personajes que ya
+  // existían se comportan como se espera sin tocar ninguno a mano. La columna
+  // la llevan todas las unidades porque ALTER TABLE no sabe de condiciones,
+  // pero solo se mira en los de renombre (ver mapUnit).
+  'ALTER TABLE units ADD COLUMN hide_cost INTEGER NOT NULL DEFAULT 1',
   // Ahora las listas los ofrecen POR DEFECTO, al revés que antes.
   //
   // Es una columna NUEVA en vez de darle la vuelta a la anterior con un UPDATE

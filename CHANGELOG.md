@@ -13,6 +13,34 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.176 — 08/11/2026 09:21
+
+- **Un personaje de renombre no cuesta puntos**, y de fábrica. En la mesa se
+  acuerda entre los jugadores y entra sin pagar: ni él, ni su equipo, ni su
+  montura, ni su grupo de mando. Ahora cada personaje lleva su propio
+  interruptor y se decide uno por uno.
+  - **El coste NO se borra.** Sigue escrito —es el del personaje del que se
+    copió—, se sigue viendo en el editor y en su hoja, y al volver a
+    encenderlo suma exactamente lo que ponía. Lo único que pasa mientras está
+    apagado es que vale 0 al montar la lista.
+  - **Se pulsa en la propia lámina**, en la línea de datos: el coste aparece
+    tachado con un "no cuenta" al lado. Tachado y no escondido, porque dice
+    las dos cosas a la vez: cuánto pondría y que ahora no pone.
+  - En el explorador de unidades del constructor, un personaje así pone **"sin
+    coste"** en lugar de sus puntos: enseñar ahí los 145 que tiene escritos
+    sería prometer un gasto que luego no ocurre.
+  - **No se le puede escribir el coste a mano** mientras no cuenta: un campo
+    que admite "50" y sigue poniendo 0 solo engaña. Y por lo mismo, el
+    interruptor manda sobre un coste a mano que ya estuviera puesto — que
+    sigue guardado y vuelve en cuanto el coste se active.
+  - Vale para todo lo que mira los puntos, porque todo pasa por el mismo
+    cálculo: el total de la lista, el resumen por categorías, la selección de
+    puntos, el orden por coste, el despliegue, las batallas y los dos PDF.
+  - Los personajes que ya existían nacen con el coste apagado, que es lo
+    normal; el que quiera cobrarlo lo enciende.
+
+---
+
 ## 0.175 — 07/11/2026 23:56
 
 - **Al subir un retrato ya no se le toca la foto.** Pasaba por el mismo arreglo

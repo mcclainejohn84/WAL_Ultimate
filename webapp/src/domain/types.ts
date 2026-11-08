@@ -214,6 +214,21 @@ export interface Unit {
    */
   portraitKey: string | null
   /**
+   * SU COSTE NO CUENTA EN LOS EJÉRCITOS: ni el suyo, ni el de su equipo, ni el
+   * de su montura. Es lo normal en un personaje con nombre propio, que se
+   * acuerda entre los jugadores en vez de pagarse con puntos, y por eso viene
+   * puesto de fábrica.
+   *
+   * NO BORRA NADA. El coste sigue escrito en la ficha —es el del personaje del
+   * que se copió— y se sigue viendo en el editor y en su hoja; lo único que
+   * pasa es que vale 0 al montar la lista (ver computeEntryCost). Quitándolo,
+   * vuelve a sumar tal cual.
+   *
+   * Solo tiene sentido en los personajes de renombre: en el resto llega
+   * siempre `false`, pase lo que pase en la base (ver mapUnit).
+   */
+  hideCost: boolean
+  /**
    * OCULTO: fuera del listado y del constructor de todos menos de su autor.
    *
    * Es la ÚNICA excepción a que los Personajes de Renombre sean comunes —

@@ -45,6 +45,12 @@ export interface EntryCostInput {
  * valga a todos los efectos sin tener que acordarse en cada pantalla.
  */
 export function computeEntryCost(unit: UnitDetail, input: EntryCostInput): number {
+  // UN PERSONAJE DE RENOMBRE CON EL COSTE OCULTO NO SUMA NADA: ni él, ni su
+  // equipo, ni su montura, ni su grupo de mando. Va ANTES que el coste a mano
+  // a propósito: "este personaje no paga puntos" es una decisión sobre el
+  // personaje entero, más fuerte que un número retocado en una entrada suelta
+  // —que además seguirá ahí, intacto, en cuanto se vuelva a activar el coste.
+  if (unit.hideCost) return 0
   if (input.costOverride != null) return input.costOverride
 
   const equipmentCost = unit.equipmentOptions

@@ -179,7 +179,9 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
   const [sumando, setSumando] = useState(false)
   const [desplegado, setDesplegado] = useState(false)
   const [ocultando, setOcultando] = useState(false)
-  const [errorOcultar, setErrorOcultar] = useState<string | null>(null)
+  const [cambiandoCoste, setCambiandoCoste] = useState(false)
+  /** Un único sitio donde se cuenta lo que ha fallado, venga de donde venga. */
+  const [errorAccion, setErrorAccion] = useState<string | null>(null)
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false)
   const [viendoHabilidades, setViendoHabilidades] = useState(false)
 
@@ -200,7 +202,7 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
    */
   async function alternarOculto() {
     setOcultando(true)
-    setErrorOcultar(null)
+    setErrorAccion(null)
     try {
       await SpecialCharacterRepository.setHidden(personaje.id, !personaje.hidden)
       onCambio()
@@ -211,10 +213,43 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
         onCambio()
       } catch (err) {
         console.error('[WHArmy] No se pudo cambiar la visibilidad:', primerErr, err)
-        setErrorOcultar(mensajeDeMigracionPendiente(err) ?? (err instanceof Error ? err.message : String(err)))
+        setErrorAccion(
+          'No se pudo cambiar la visibilidad: ' +
+            (mensajeDeMigracionPendiente(err) ?? (err instanceof Error ? err.message : String(err))),
+        )
       }
     } finally {
       setOcultando(false)
+    }
+  }
+
+  /**
+   * Que su coste cuente o no en los ejércitos.
+   *
+   * Mismo apaño que `alternarOculto` para la columna recién creada: si falla,
+   * se aplican las migraciones y se reintenta una vez, y solo entonces se
+   * cuenta lo que pasó de verdad.
+   */
+  async function alternarCoste() {
+    setCambiandoCoste(true)
+    setErrorAccion(null)
+    try {
+      await SpecialCharacterRepository.setCosteOculto(personaje.id, !personaje.hideCost)
+      onCambio()
+    } catch (primerErr) {
+      try {
+        await runMigrations()
+        await SpecialCharacterRepository.setCosteOculto(personaje.id, !personaje.hideCost)
+        onCambio()
+      } catch (err) {
+        console.error('[WHArmy] No se pudo cambiar el coste:', primerErr, err)
+        setErrorAccion(
+          'No se pudo cambiar el coste: ' +
+            (mensajeDeMigracionPendiente(err) ?? (err instanceof Error ? err.message : String(err))),
+        )
+      }
+    } finally {
+      setCambiandoCoste(false)
     }
   }
 
@@ -259,7 +294,38 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
                   La FACCIÓN no se repite: ya la dice la cabecera del grupo
                   bajo la que cuelga esta lámina. */}
               <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-mini text-ink-soft">
-                <span className="tabular-nums">{personaje.baseCost} pts</span>
+                {/* EL COSTE SE PULSA. Un personaje de renombre se acuerda
+                    entre los jugadores y normalmente entra sin pagar puntos
+                    —ni él, ni su equipo, ni su montura—, así que nace sin
+                    cobrar y aquí se enciende cuando toque.
+                    Tachado y no escondido: el coste no se borra, sigue siendo
+                    el del personaje del que se copió, y al volver a
+                    encenderlo suma exactamente eso. Verlo tachado dice las
+                    dos cosas a la vez: cuánto pondría y que ahora no pone. */}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={!personaje.hideCost}
+                  aria-label={`El coste de ${personaje.name} cuenta en los ejércitos`}
+                  disabled={cambiandoCoste}
+                  onClick={() => void alternarCoste()}
+                  title={
+                    personaje.hideCost
+                      ? 'Su coste NO cuenta en los ejércitos: ni el suyo, ni el de su equipo, ni el de su montura. Pulsa para que vuelva a contar.'
+                      : 'Su coste cuenta en los ejércitos, con su equipo y su montura. Pulsa para que no cuente.'
+                  }
+                  className={clsx(
+                    '-mx-1 inline-flex items-center gap-1 rounded-sm px-1 transition-colors disabled:opacity-50',
+                    personaje.hideCost ? 'hover:text-bronze' : 'text-ink hover:text-maroon',
+                  )}
+                >
+                  <span className={clsx('tabular-nums', personaje.hideCost && 'text-ink-soft/50 line-through')}>
+                    {personaje.baseCost} pts
+                  </span>
+                  {personaje.hideCost && (
+                    <span className="text-micro font-semibold uppercase tracking-[0.12em] text-bronze">no cuenta</span>
+                  )}
+                </button>
                 <span className="text-rule-dark/45">·</span>
                 <DistintivoEspecial />
                 {!personaje.active && (
@@ -352,9 +418,9 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
         </div>
       </div>
 
-      {errorOcultar && (
-        <p className="mx-4 mb-3 rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
-          No se pudo cambiar la visibilidad: {errorOcultar}
+      {errorAccion && (
+        <p className="mx-3 mb-3 rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-mini text-danger sm:mx-4">
+          {errorAccion}
         </p>
       )}
 

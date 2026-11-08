@@ -189,6 +189,31 @@ export const SpecialCharacterRepository = {
    * invisibles para todo el mundo —incluido quien acaba de ocultarlos—, que es
    * la peor versión posible de este botón.
    */
+  /**
+   * Que el coste de este personaje cuente o no en los ejércitos.
+   *
+   * No borra el coste: la columna `base_cost` y los costes de su equipo y sus
+   * monturas se quedan donde estaban, y se siguen viendo en el editor y en su
+   * hoja. Lo único que cambia es que al montar una lista valen 0 (ver
+   * computeEntryCost), y que volviéndolo a activar suman otra vez lo que
+   * siempre pusieron.
+   *
+   * SE APUNTA EN EL LOG, al revés que ocultar el personaje: esto cambia lo que
+   * suman los ejércitos de todo el grupo, así que no puede pasar en silencio.
+   * Y el nombre del personaje no es un secreto aquí: uno con el coste
+   * encendido o apagado es visible para todos por definición.
+   */
+  async setCosteOculto(unitId: number, oculto: boolean): Promise<void> {
+    await execCatalog('UPDATE units SET hide_cost = ? WHERE id = ?', [oculto ? 1 : 0, unitId])
+    await ChangeLogRepository.record(
+      'unidad',
+      'editar',
+      oculto
+        ? 'Dejó de cobrar el coste de un personaje de renombre'
+        : 'Hizo que el coste de un personaje de renombre vuelva a contar',
+    )
+  },
+
   async setHidden(unitId: number, oculto: boolean): Promise<void> {
     // DOS SENTENCIAS, y en este orden. Ocultar es lo que se ha pedido y va
     // primero, solo; apuntar el autor es un apaño para los personajes que no lo

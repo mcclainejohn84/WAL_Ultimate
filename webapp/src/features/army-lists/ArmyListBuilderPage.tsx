@@ -1238,10 +1238,11 @@ export function ArmyListBuilderPage() {
    * por unidad, no por miniatura, y meterlos aquí daría un "por miniatura" que
    * no es por miniatura.
    */
-  const costeUnitario = selectedUnit
-    ? selectedUnit.baseCost +
-      selectedUnit.equipmentOptions.filter((e) => draft.equipmentIds.has(e.id)).reduce((suma, e) => suma + e.cost, 0)
-    : 0
+  const costeUnitario =
+    selectedUnit && !selectedUnit.hideCost
+      ? selectedUnit.baseCost +
+        selectedUnit.equipmentOptions.filter((e) => draft.equipmentIds.has(e.id)).reduce((suma, e) => suma + e.cost, 0)
+      : 0
 
   // Reglas que se muestran en el panel "Ficha": las propias de la unidad más
   // las que aporta la montura ELEGIDA para esta entrada. Una montura no
@@ -1820,7 +1821,15 @@ export function ArmyListBuilderPage() {
                                     {u.isUnique && <Badge tone="amber">0-1</Badge>}
                                   </span>
                                   <span className="flex shrink-0 items-center gap-3">
-                                    <span className="text-xs font-medium text-maroon">{u.baseCost} pts</span>
+                                    {/* Un personaje de renombre con el coste
+                                        apagado no entra por puntos: enseñar
+                                        aquí los 145 que tiene escritos sería
+                                        prometer un gasto que luego no ocurre. */}
+                                    {u.hideCost ? (
+                                      <span className="text-xs font-medium text-bronze">sin coste</span>
+                                    ) : (
+                                      <span className="text-xs font-medium text-maroon">{u.baseCost} pts</span>
+                                    )}
                                     <span
                                       className={clsx(
                                         'text-xs text-ink-soft transition-transform',
@@ -2301,6 +2310,17 @@ export function ArmyListBuilderPage() {
                                   </Tooltip>
                                 )}
                               </>
+                            ) : entry.unit.hideCost ? (
+                              // NO SE DEJA RETOCAR UN COSTE QUE NO SE VA A
+                              // COBRAR. El personaje entra sin pagar puntos
+                              // (ver computeEntryCost), así que un campo que
+                              // admite "50" y sigue poniendo 0 solo engaña.
+                              <Tooltip
+                                label="Este personaje de renombre no cuenta puntos. Se enciende desde su lámina, en Personajes de Renombre."
+                                className="inline-flex text-ink-soft"
+                              >
+                                <span className="tabular-nums">0</span>
+                              </Tooltip>
                             ) : editingCostId === entry.id ? (
                               <EnteroInput
                                 min={0}

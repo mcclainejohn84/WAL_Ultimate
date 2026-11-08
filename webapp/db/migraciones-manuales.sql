@@ -63,3 +63,7 @@ CREATE TABLE IF NOT EXISTS unit_skills (
   user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
   PRIMARY KEY (unit_id, skill_key)
 );
+
+-- El coste de un personaje de renombre no cuenta en los ejércitos salvo que se
+-- active a mano. No borra nada: el coste sigue escrito, solo deja de sumar.
+ALTER TABLE units ADD COLUMN hide_cost INTEGER NOT NULL DEFAULT 1;

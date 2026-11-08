@@ -81,6 +81,7 @@ export function upgradeAsUnitDetail(
     // son ni una unidad, son fichas sintéticas para poder pintarlas como tales.
     // Por lo mismo no se pueden ocultar ni tienen autor.
     isSpecialCharacter: false,
+    hideCost: false,
     background: null,
     portraitKey: null,
     hidden: false,
@@ -145,6 +146,7 @@ export function mountAsUnitDetail(
     // son ni una unidad, son fichas sintéticas para poder pintarlas como tales.
     // Por lo mismo no se pueden ocultar ni tienen autor.
     isSpecialCharacter: false,
+    hideCost: false,
     background: null,
     portraitKey: null,
     hidden: false,
