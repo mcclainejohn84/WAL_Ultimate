@@ -13,6 +13,14 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.189 — 08/11/2026 20:18
+
+- En "Unidad y opciones", fuera la **facción entre paréntesis** detrás del
+  nombre de la unidad. La lista entera es de una facción y ya lo dice la
+  cabecera de la pantalla.
+
+---
+
 ## 0.188 — 08/11/2026 19:58
 
 - **La columna del equipo va siempre**, tenga opciones o no; sin ninguna pone

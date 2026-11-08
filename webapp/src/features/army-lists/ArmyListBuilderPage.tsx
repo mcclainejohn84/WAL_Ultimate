@@ -1832,10 +1832,10 @@ export function ArmyListBuilderPage() {
                   {draft.editingEntryId ? (
                     <div>
                       <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
-                        <span>
-                          {selectedUnit?.name}
-                          {selectedUnit && <span className="text-ink-soft"> ({selectedUnit.faction.name})</span>}
-                        </span>
+                        {/* Sin la facción entre paréntesis: la lista entera es
+                            de una facción y ya lo dice la cabecera de la
+                            pantalla. */}
+                        <span>{selectedUnit?.name}</span>
                         {/* Al editar una entrada no se ve la lista de unidades, así
                       que el distintivo tiene que aparecer también aquí. */}
                         {selectedUnit?.isUnique && <Badge tone="amber">0-1</Badge>}
