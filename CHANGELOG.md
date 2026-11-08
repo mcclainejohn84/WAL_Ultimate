@@ -13,6 +13,15 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.192 — 08/11/2026 23:36
+
+- En el PDF, el apartado de personajes de renombre: las columnas pasan a
+  llamarse **"Regla"** y **"Descripción"**, el fondo se reserva para el título
+  de cada apartado (fuera las franjas alternas) y las descripciones salen
+  **justificadas**.
+
+---
+
 ## 0.191 — 08/11/2026 23:30
 
 - En el catálogo de cicatrices, las que ya tiene el personaje ponen

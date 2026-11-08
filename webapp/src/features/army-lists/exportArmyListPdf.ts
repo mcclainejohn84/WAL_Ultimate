@@ -919,7 +919,7 @@ export async function exportArmyListToPdf(
           autoTable(doc, {
             startY: yRenombre,
             margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
-            head: [['CONCEPTO', 'QUÉ HACE']],
+            head: [['REGLA', 'DESCRIPCIÓN']],
             body: filas,
             theme: 'plain',
             styles: {
@@ -937,9 +937,15 @@ export async function exportArmyListToPdf(
             },
             columnStyles: {
               0: { cellWidth: 40, halign: 'left', fontStyle: 'bold' },
-              1: { cellWidth: 'auto', halign: 'left' },
+              // La descripción va JUSTIFICADA: son párrafos de tres o cuatro
+              // líneas uno debajo de otro, y con el borde derecho recto el
+              // apartado se lee como un texto y no como una lista de trozos.
+              1: { cellWidth: 'auto', halign: 'justify' },
             },
-            alternateRowStyles: { fillColor: rgb(paleta.fondoAlt) },
+            // SIN ZEBRA, a diferencia de las tablas de arriba. Aquí el fondo
+            // ya significa algo —marca el título de cada apartado— y pintar
+            // además una fila sí y otra no deja la página a rayas y el título
+            // deja de distinguirse de lo que hay debajo.
             didParseCell: (data) => {
               centrarCabecera(data)
               if (data.section !== 'body') return
