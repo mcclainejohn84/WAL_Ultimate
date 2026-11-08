@@ -2316,7 +2316,7 @@ export function ArmyListBuilderPage() {
                               // (ver computeEntryCost), así que un campo que
                               // admite "50" y sigue poniendo 0 solo engaña.
                               <Tooltip
-                                label="Este personaje de renombre no cuenta puntos. Se enciende desde su lámina, en Personajes de Renombre."
+                                label="Su coste no cuenta"
                                 className="inline-flex text-ink-soft"
                               >
                                 <span className="tabular-nums">0</span>

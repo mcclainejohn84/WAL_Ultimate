@@ -13,6 +13,21 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.177 — 08/11/2026 09:48
+
+- **La aplicación deja de explicarse a sí misma.** Queda apuntado como regla de
+  la casa en CLAUDE.md: nada de párrafos de ayuda ni de rótulos que cuenten en
+  prosa lo que hace un control o lo que ha cambiado. En pantalla, datos y
+  controles; lo que haya que explicar va en los comentarios del código y aquí.
+  - Fuera el **"no cuenta"** junto al coste del personaje. El coste tachado ya
+    lo dice, y el interruptor es ahora **un ojo pequeño** al lado.
+  - Fuera el **párrafo de "Solo lo ves tú…"** de los personajes ocultos. En su
+    lugar, la palabra **Oculto** con su icono en la línea de estados, donde ya
+    están "Desactivado" y los demás.
+  - El aviso del coste en el constructor se queda en tres palabras.
+
+---
+
 ## 0.176 — 08/11/2026 09:21
 
 - **Un personaje de renombre no cuesta puntos**, y de fábrica. En la mesa se

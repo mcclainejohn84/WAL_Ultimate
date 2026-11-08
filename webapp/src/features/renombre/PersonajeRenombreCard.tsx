@@ -294,37 +294,26 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
                   La FACCIÓN no se repite: ya la dice la cabecera del grupo
                   bajo la que cuelga esta lámina. */}
               <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-mini text-ink-soft">
-                {/* EL COSTE SE PULSA. Un personaje de renombre se acuerda
-                    entre los jugadores y normalmente entra sin pagar puntos
-                    —ni él, ni su equipo, ni su montura—, así que nace sin
-                    cobrar y aquí se enciende cuando toque.
-                    Tachado y no escondido: el coste no se borra, sigue siendo
-                    el del personaje del que se copió, y al volver a
-                    encenderlo suma exactamente eso. Verlo tachado dice las
-                    dos cosas a la vez: cuánto pondría y que ahora no pone. */}
+                {/* El coste tachado cuando no cuenta, y un ojo al lado para
+                    encenderlo y apagarlo. Tachado y no escondido porque el
+                    coste sigue siendo el que es; lo dice el propio número. */}
+                <span className={clsx('tabular-nums', personaje.hideCost && 'text-ink-soft/45 line-through')}>
+                  {personaje.baseCost} pts
+                </span>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={!personaje.hideCost}
-                  aria-label={`El coste de ${personaje.name} cuenta en los ejércitos`}
+                  aria-label={`Contar el coste de ${personaje.name} en los ejércitos`}
                   disabled={cambiandoCoste}
                   onClick={() => void alternarCoste()}
-                  title={
-                    personaje.hideCost
-                      ? 'Su coste NO cuenta en los ejércitos: ni el suyo, ni el de su equipo, ni el de su montura. Pulsa para que vuelva a contar.'
-                      : 'Su coste cuenta en los ejércitos, con su equipo y su montura. Pulsa para que no cuente.'
-                  }
+                  title={personaje.hideCost ? 'El coste no cuenta' : 'El coste cuenta'}
                   className={clsx(
-                    '-mx-1 inline-flex items-center gap-1 rounded-sm px-1 transition-colors disabled:opacity-50',
-                    personaje.hideCost ? 'hover:text-bronze' : 'text-ink hover:text-maroon',
+                    'inline-flex rounded-sm p-0.5 transition-colors disabled:opacity-50',
+                    personaje.hideCost ? 'text-ink-soft/45 hover:text-bronze' : 'text-bronze hover:text-maroon',
                   )}
                 >
-                  <span className={clsx('tabular-nums', personaje.hideCost && 'text-ink-soft/50 line-through')}>
-                    {personaje.baseCost} pts
-                  </span>
-                  {personaje.hideCost && (
-                    <span className="text-micro font-semibold uppercase tracking-[0.12em] text-bronze">no cuenta</span>
-                  )}
+                  {personaje.hideCost ? <EyeOffIcon className="h-3 w-3" /> : <EyeIcon className="h-3 w-3" />}
                 </button>
                 <span className="text-rule-dark/45">·</span>
                 <DistintivoEspecial />
@@ -332,6 +321,15 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
                   <>
                     <span className="text-rule-dark/45">·</span>
                     <span className="font-medium text-danger">Desactivado</span>
+                  </>
+                )}
+                {personaje.hidden && (
+                  <>
+                    <span className="text-rule-dark/45">·</span>
+                    <span className="inline-flex items-center gap-1 font-medium text-bronze">
+                      <EyeOffIcon className="h-3 w-3" />
+                      Oculto
+                    </span>
                   </>
                 )}
               </p>
@@ -358,22 +356,6 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
               regla que se apaga— es un gesto de portada, y repetido en cada
               lámina de una lista de veinte se lee como un adorno suelto. */}
           <span aria-hidden className="mt-2.5 h-px w-full bg-rule-dark/25" />
-
-          {/* OCULTO, dicho con todas las letras y no solo con el distintivo.
-              Un personaje oculto solo lo ve su autor, así que para el resto del
-              grupo sencillamente NO EXISTE: no sale aquí, ni en el constructor
-              de listas, ni en el buscador. Con un distintivo de dos palabras en
-              una esquina eso se olvida en cuanto cierras la pestaña.
-              Solo lo lee su autor: a los demás no les llega la lámina. */}
-          {personaje.hidden && (
-            <p className="mt-2.5 flex items-start gap-1.5 rounded-sm border border-bronze/35 bg-bronze/10 px-2 py-1.5 text-mini leading-snug text-ink-soft">
-              <EyeOffIcon className="mt-px h-3.5 w-3.5 shrink-0 text-bronze" />
-              <span>
-                <strong className="font-semibold text-ink">Solo lo ves tú.</strong> Nadie más lo encuentra, ni puede
-                meterlo en su ejército. Pulsa el ojo de abajo para que vuelva a verlo todo el grupo.
-              </span>
-            </p>
-          )}
 
           {/* EL TRASFONDO ES LO QUE SE VIENE A LEER, así que va suelto sobre el
               papel: sin filete a la izquierda que lo encajone y con la medida

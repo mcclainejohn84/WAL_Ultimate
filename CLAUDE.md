@@ -58,3 +58,15 @@ Antes de dar algo por terminado: `npx tsc -b --force`, `npx oxlint`,
 
 Todo en español: los comentarios, los nombres de las cosas del dominio
 (`piezas`, `mesa`, `peana`), los mensajes de la interfaz y los de commit.
+
+## La aplicación NO se explica a sí misma
+
+Nada de textos que cuenten lo que hace un control, por qué es así o qué ha
+cambiado. Ni párrafos de ayuda, ni avisos de "ahora esto funciona así", ni
+rótulos que describan el estado en prosa. Lo que haya que explicar se explica
+en los comentarios del código y en el CHANGELOG, que es donde se lee sin
+estorbar.
+
+En la pantalla van los datos y los controles. Si un control necesita
+aclaración, un icono reconocible con su `title` y su `aria-label` —cortos y
+sobre lo que hace, nunca sobre lo que cambió.
