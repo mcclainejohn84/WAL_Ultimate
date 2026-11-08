@@ -72,6 +72,12 @@ const CATALOG_TABLES = [
   'unit_magic_paths',
   'category_composition_rules',
   'unit_appendices',
+  // Las tropas de una unidad compuesta y el reparto de su equipo. Van en
+  // paralelo con SNAPSHOT_TABLES del Worker: sin ellas aquí, el navegador
+  // tiene las tablas (las crea schema.sql) pero vacías, y una unidad
+  // compuesta se lee como si fuera normal.
+  'unit_troop_profiles',
+  'unit_equipment_profiles',
 ] as const
 
 type CatalogSnapshot = Partial<Record<(typeof CATALOG_TABLES)[number], Record<string, unknown>[]>>

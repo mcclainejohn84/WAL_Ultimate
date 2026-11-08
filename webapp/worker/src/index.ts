@@ -158,6 +158,13 @@ const SNAPSHOT_TABLES = [
   // Apéndices: texto largo con formato, pero se lee siempre junto a la ficha
   // de la unidad, así que viaja con el resto del catálogo.
   'unit_appendices',
+  // Las tropas de una unidad COMPUESTA y a qué tropa pertenece cada opción de
+  // equipo. Son catálogo puro —forman parte de la definición de la unidad,
+  // como unit_profiles— y sin ellas el navegador ve la unidad pero no sus
+  // tropas: una Manada de Bestias se quedaba en sus Gor, sin Ungor y sin el
+  // reparto del equipo, y el constructor no tenía ni qué preguntar.
+  'unit_troop_profiles',
+  'unit_equipment_profiles',
 ] as const
 
 /** Representación serializable en JSON de un BLOB (ver shared/image.ts en el frontend: mismo esquema base64). */

@@ -13,6 +13,21 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.182 — 08/11/2026 18:51
+
+- **Las tropas de una unidad compuesta ya llegan al navegador.** El catálogo se
+  sirve en un único `/snapshot` con una lista fija de tablas, y las dos nuevas
+  no estaban en ella: el navegador tenía las tablas (las crea el esquema) pero
+  vacías, así que una Manada de Bestias se leía como una unidad normal —sus
+  Ungor no existían y el constructor no tenía ni qué preguntar—. Pasaba sobre
+  todo con lo dado de alta por SQL, que no pasa por la aplicación.
+  - Las dos listas que tienen que ir en paralelo —la del Worker y la del
+    navegador— ahora se comprueban: hay una prueba que las compara y que
+    además verifica que ninguna tabla que se lea de la copia local se quede
+    fuera del snapshot.
+
+---
+
 ## 0.181 — 08/11/2026 18:43
 
 - **Unidades compuestas en los ejércitos** (segunda parte). Ya se pueden meter
