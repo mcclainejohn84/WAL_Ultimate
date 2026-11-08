@@ -1177,6 +1177,19 @@ const MIGRATIONS: string[] = [
   // aquella es (unit_id, equipment_id): el escudo lo pueden llevar los Gor Y
   // los Ungor, y así la misma opción no cabe dos veces. Aquí la tropa forma
   // parte de la clave.
+  // LAS CICATRICES DE UN PERSONAJE DE RENOMBRE. Igual que unit_skills y por lo
+  // mismo: aquí va solo QUIÉN TIENE QUÉ, y el catálogo —nombre y qué hace cada
+  // una— es el reglamento y vive en el código (domain/cicatricesDeRenombre).
+  //
+  // NO LLEVAN COSTE, ni aquí ni en ningún sitio: una cicatriz no se compra, se
+  // sufre, así que tampoco deja apunte en el libro de experiencia.
+  `CREATE TABLE IF NOT EXISTS unit_scars (
+     unit_id    INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+     scar_key   TEXT NOT NULL,
+     created_at TEXT NOT NULL,
+     user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+     PRIMARY KEY (unit_id, scar_key)
+   )`,
   // CUÁNTAS MINIATURAS DE CADA TROPA lleva UNA entrada de la lista.
   //
   // `army_list_entries.quantity` SIGUE SIENDO EL TOTAL, y es deliberado: el

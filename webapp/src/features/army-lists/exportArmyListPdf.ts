@@ -16,6 +16,8 @@
 //     guarda, lo imprime o solo lo consulta.
 //   - Hay una cuarta sección, "Listado de hechizos", que el original no tenía
 //     porque no manejaba magia. Sigue la misma retícula y la misma paleta.
+//   - Y una quinta, "Personajes de renombre", por lo mismo: el original no
+//     tenía personajes que fueran mejorando partida a partida.
 //   - Hay una variante en BLANCO Y NEGRO (ver PALETA_BN), que sigue al
 //     interruptor de la barra superior. No es el PDF de color desaturado: se
 //     quita el fondo de pergamino y se separan los grises, porque el objetivo
@@ -27,6 +29,14 @@ import { jsPDF } from 'jspdf'
 import autoTable, { type CellHookData } from 'jspdf-autotable'
 import { computeEntryCost } from '@/domain/armyValidation'
 import { MagicRepository } from '@/data/repositories/magicRepository'
+import { SpecialCharacterRepository } from '@/data/repositories/specialCharacterRepository'
+import { CICATRIZ_POR_CLAVE, type CicatrizDeRenombre } from '@/domain/cicatricesDeRenombre'
+import {
+  ETIQUETAS_DE_TIPO,
+  HABILIDAD_POR_CLAVE,
+  type HabilidadDeRenombre,
+  type TipoDeHabilidad,
+} from '@/domain/habilidadesDeRenombre'
 import { MAGIC_GROUP_LABELS, type MagicPathDetail, type MagicSpell } from '@/domain/magic'
 import { mergeSpecialRules } from '@/domain/unitFormat'
 import { mostrarPdf } from '@/features/army-lists/pdfWindow'
@@ -346,6 +356,60 @@ function dibujarSubtitulo(doc: jsPDF, texto: string, y: number, familiaTitulares
  */
 function nombreDeLaEntrada(entry: ArmyListEntry): string {
   return entry.alias ? `${entry.alias} (${entry.unit.name})` : entry.unit.name
+}
+
+/**
+ * TODO LO QUE UN PERSONAJE DE RENOMBRE HA GANADO Y PERDIDO, resuelto desde las
+ * claves que guarda la base (ver specialCharacterRepository) contra los
+ * catálogos, que viven en el código.
+ *
+ * Separado de la función que dibuja —y exportado— para poder comprobarlo sin
+ * montar un PDF: es la parte donde se puede colar un dato, no la del tipo de
+ * letra.
+ *
+ * Una clave que no está en el catálogo se IGNORA en silencio: pasa si el
+ * personaje se apuntó con una versión más nueva del programa, y vale más
+ * imprimir su hoja sin esa línea que no imprimirla.
+ */
+export interface FichaDeRenombre {
+  rangos: HabilidadDeRenombre[]
+  atributos: HabilidadDeRenombre[]
+  habilidades: HabilidadDeRenombre[]
+  sociales: HabilidadDeRenombre[]
+  cicatrices: CicatrizDeRenombre[]
+}
+
+export function fichaDeRenombre(clavesDeHabilidad: string[], clavesDeCicatriz: string[]): FichaDeRenombre {
+  const suyas = clavesDeHabilidad
+    .map((clave) => HABILIDAD_POR_CLAVE.get(clave))
+    .filter((h): h is HabilidadDeRenombre => h != null)
+  // Rangos y atributos se quedan en el ORDEN DEL CATÁLOGO, que es el del
+  // reglamento (de más barato a más caro): son tres y ocho, se leen de un
+  // vistazo y así "Héroe" va siempre antes que "Comandante". Las otras tres
+  // listas son largas y se buscan por nombre, así que van alfabéticas.
+  const porTipo = (tipo: TipoDeHabilidad) => suyas.filter((h) => h.tipo === tipo)
+  const porNombre = (a: { nombre: string }, b: { nombre: string }) => a.nombre.localeCompare(b.nombre, 'es')
+  return {
+    rangos: porTipo('rango'),
+    atributos: porTipo('atributo'),
+    habilidades: porTipo('habilidad').sort(porNombre),
+    sociales: porTipo('social').sort(porNombre),
+    cicatrices: clavesDeCicatriz
+      .map((clave) => CICATRIZ_POR_CLAVE.get(clave))
+      .filter((c): c is CicatrizDeRenombre => c != null)
+      .sort(porNombre),
+  }
+}
+
+/** Si no tiene absolutamente nada, no se le imprime un apartado vacío. */
+export function fichaDeRenombreVacia(ficha: FichaDeRenombre): boolean {
+  return (
+    ficha.rangos.length === 0 &&
+    ficha.atributos.length === 0 &&
+    ficha.habilidades.length === 0 &&
+    ficha.sociales.length === 0 &&
+    ficha.cicatrices.length === 0
+  )
 }
 
 /**
@@ -767,6 +831,136 @@ export async function exportArmyListToPdf(
       })
 
       yMagia = ((doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? yMagia) + 6
+    }
+  }
+
+  // --- Sección 5: Personajes de renombre, al final del todo. ---
+  //
+  // Lo que cada personaje ha ganado partida a partida —su rango, sus mejoras
+  // de atributo, sus habilidades, sus características sociales— y lo que ha
+  // ido perdiendo por el camino, que son las cicatrices. Nada de esto está en
+  // el catálogo de la unidad: es de ESTE personaje y de nadie más, así que si
+  // no sale aquí no sale en ninguna parte del PDF.
+  //
+  // Va al final, y no en la fila que le toca de la lista de unidades, porque
+  // es texto largo que se consulta de vez en cuando y no cada turno:
+  // intercalarlo partiría en dos la tabla que de verdad se mira en la mesa.
+  //
+  // RANGOS Y ATRIBUTOS van en una línea, no como filas de tabla. "Héroe" y
+  // "+1 HA" no tienen descripción que poner al lado (ver el catálogo), y una
+  // fila por cada uno con la celda de la derecha vacía gastaría media página
+  // para no decir nada.
+  const entradasDeRenombre = sortedEntries.filter((e) => e.unit.isSpecialCharacter)
+  if (entradasDeRenombre.length > 0) {
+    const fichas = await Promise.all(
+      entradasDeRenombre.map(async (entry) => {
+        const [habilidades, cicatrices] = await Promise.all([
+          SpecialCharacterRepository.listHabilidades(entry.unit.id),
+          SpecialCharacterRepository.listCicatrices(entry.unit.id),
+        ])
+        return { entry, ficha: fichaDeRenombre(habilidades, cicatrices) }
+      }),
+    )
+    const conAlgo = fichas.filter((f) => !fichaDeRenombreVacia(f.ficha))
+
+    if (conAlgo.length > 0) {
+      let finalYAnterior = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y3
+      if (finalYAnterior + ALTURA_MINIMA > doc.internal.pageSize.getHeight() - ALTURA_PIE) {
+        doc.addPage()
+        finalYAnterior = 26
+      }
+      let yRenombre = dibujarEtiquetaSeccion(
+        doc,
+        'Personajes de renombre',
+        finalYAnterior + 8,
+        familiaTitulares,
+        paleta,
+      )
+
+      for (const { entry, ficha } of conAlgo) {
+        // Un nombre solo al pie de la página, con su tabla empezando en la
+        // siguiente, queda huérfano. Mismo criterio que en los hechizos.
+        if (yRenombre + ALTURA_MINIMA > doc.internal.pageSize.getHeight() - ALTURA_PIE) {
+          doc.addPage()
+          yRenombre = 26
+        }
+        yRenombre = dibujarSubtitulo(doc, nombreDeLaEntrada(entry), yRenombre, familiaTitulares, paleta)
+
+        const resumen = [
+          ficha.rangos.length ? `Rango: ${ficha.rangos.map((h) => h.nombre).join(', ')}` : '',
+          ficha.atributos.length ? `Atributos: ${ficha.atributos.map((h) => h.nombre).join(', ')}` : '',
+        ]
+          .filter(Boolean)
+          .join('  ·  ')
+        if (resumen) {
+          doc.setFont('times', 'italic')
+          doc.setFontSize(7)
+          doc.setTextColor(...paleta.inkSuave)
+          const lineas = doc.splitTextToSize(resumen, doc.internal.pageSize.getWidth() - MARGEN * 2) as string[]
+          doc.text(lineas, MARGEN, yRenombre + 1.5)
+          yRenombre += 1.5 + lineas.length * 2.9
+        }
+
+        // Una fila de grupo a todo lo ancho por apartado y debajo sus líneas,
+        // igual que las sendas en el listado de hechizos: así el nombre del
+        // apartado no se repite en una columna y el ancho entero queda para la
+        // descripción, que es lo que ocupa.
+        const filas: (string | { content: string; colSpan: number })[][] = []
+        const apartado = (titulo: string, cosas: { nombre: string; descripcion: string | null }[]) => {
+          if (cosas.length === 0) return
+          filas.push([{ content: titulo.toUpperCase(), colSpan: 2 }])
+          for (const c of cosas) filas.push([c.nombre, c.descripcion || '—'])
+        }
+        apartado(ETIQUETAS_DE_TIPO.habilidad, ficha.habilidades)
+        apartado(ETIQUETAS_DE_TIPO.social, ficha.sociales)
+        apartado('Cicatrices', ficha.cicatrices)
+
+        if (filas.length > 0) {
+          autoTable(doc, {
+            startY: yRenombre,
+            margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
+            head: [['CONCEPTO', 'QUÉ HACE']],
+            body: filas,
+            theme: 'plain',
+            styles: {
+              font: 'times',
+              fontSize: 7,
+              textColor: rgb(paleta.ink),
+              cellPadding: { top: 0.9, bottom: 0.9, left: 2.2, right: 2.2 },
+              overflow: 'linebreak',
+            },
+            headStyles: {
+              textColor: rgb(paleta.inkSuave),
+              fontStyle: 'bold',
+              fontSize: 6.8,
+              cellPadding: { top: 0.8, bottom: 0.8, left: 2.2, right: 2.2 },
+            },
+            columnStyles: {
+              0: { cellWidth: 40, halign: 'left', fontStyle: 'bold' },
+              1: { cellWidth: 'auto', halign: 'left' },
+            },
+            alternateRowStyles: { fillColor: rgb(paleta.fondoAlt) },
+            didParseCell: (data) => {
+              centrarCabecera(data)
+              if (data.section !== 'body') return
+              const cruda = data.row.raw
+              const esGrupo = Array.isArray(cruda) && cruda.length === 1
+              if (esGrupo) {
+                data.cell.styles.fillColor = rgb(paleta.fondoAlt)
+                data.cell.styles.fontStyle = 'bold'
+                data.cell.styles.textColor = rgb(paleta.inkSuave)
+                data.cell.styles.halign = 'left'
+                data.cell.styles.fontSize = 6.6
+              }
+            },
+            didDrawCell: (data) => dibujarBordeInferiorCabecera(data, paleta),
+          })
+          yRenombre =
+            ((doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? yRenombre) + 6
+        } else {
+          yRenombre += 4
+        }
+      }
     }
   }
 

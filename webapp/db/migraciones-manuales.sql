@@ -97,3 +97,12 @@ CREATE TABLE IF NOT EXISTS army_list_entry_profiles (
   quantity   INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (entry_id, profile_id)
 );
+
+-- Cicatrices de los Personajes de Renombre (el catálogo está en el código).
+CREATE TABLE IF NOT EXISTS unit_scars (
+  unit_id    INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+  scar_key   TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  PRIMARY KEY (unit_id, scar_key)
+);

@@ -391,6 +391,47 @@ export const SpecialCharacterRepository = {
     }
   },
 
+  // --------------------------------------------------------------------------
+  // Cicatrices
+  //
+  // Las lleva su propia tabla y no `unit_skills` porque no son lo mismo: una
+  // habilidad se compra con experiencia y una cicatriz se sufre. Mezclarlas
+  // obligaría a mirar el catálogo para saber si hay algo que cobrar.
+  // --------------------------------------------------------------------------
+
+  /** Las cicatrices de un personaje, por su CLAVE del catálogo (ver domain/cicatricesDeRenombre). */
+  async listCicatrices(unitId: number): Promise<string[]> {
+    try {
+      return await query<string>(
+        'SELECT scar_key FROM unit_scars WHERE unit_id = ? ORDER BY created_at, scar_key',
+        [unitId],
+        (row) => row.scar_key as string,
+      )
+    } catch {
+      // Sin la tabla (Worker sin desplegar), el personaje se enseña sin
+      // cicatrices en vez de no enseñarse.
+      return []
+    }
+  },
+
+  /**
+   * Le queda una cicatriz. NO cuesta experiencia y no deja apunte en el libro:
+   * no se ha pagado nada, ha pasado algo.
+   */
+  async anadirCicatriz(unitId: number, clave: string): Promise<void> {
+    await exec('INSERT OR IGNORE INTO unit_scars (unit_id, scar_key, created_at, user_id) VALUES (?, ?, ?, ?)', [
+      unitId,
+      clave,
+      new Date().toISOString(),
+      getCurrentUser()?.id ?? null,
+    ])
+  },
+
+  /** Se la quita. Tampoco devuelve nada, por lo mismo. */
+  async quitarCicatriz(unitId: number, clave: string): Promise<void> {
+    await exec('DELETE FROM unit_scars WHERE unit_id = ? AND scar_key = ?', [unitId, clave])
+  },
+
   /**
    * Deja de ser personaje de renombre y vuelve a ser un personaje normal. No se
    * borra nada: la unidad se queda, con sus atributos y su equipo. Borrarla del

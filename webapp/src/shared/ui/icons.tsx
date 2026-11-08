@@ -664,6 +664,27 @@ export function InfoIcon({ className = 'h-4 w-4' }: { className?: string }) {
   )
 }
 
+/**
+ * Una moneda, para lo que tiene que ver con PUNTOS. Nació porque el
+ * interruptor de "este personaje cuesta puntos o no" usaba un ojo, y el ojo en
+ * este programa significa otra cosa: que algo se ve o no se ve.
+ */
+export function MonedaIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.3}
+      className={className}
+      aria-hidden="true"
+    >
+      <circle cx="10" cy="10" r="7.25" />
+      <circle cx="10" cy="10" r="3.75" />
+    </svg>
+  )
+}
+
 export function SearchIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <svg

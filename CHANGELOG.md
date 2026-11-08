@@ -13,6 +13,22 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.190 — 08/11/2026 20:47
+
+- **Cicatrices** en los personajes de renombre, al lado de las habilidades y
+  con su propia ventana: las nueve del reglamento, con lo que hace cada una.
+  No cuestan experiencia y no dejan apunte en el libro, porque no se compran.
+- Un personaje de renombre **solo lo toca su autor** (y el administrador):
+  quien no es ninguno de los dos lo ve entero pero no puede cambiarlo ni
+  borrarlo.
+- El interruptor de "el coste cuenta" ya no usa el icono del ojo, que en toda
+  la aplicación significa *ver*, sino uno de monedas.
+- El PDF del ejército termina con un apartado de **personajes de renombre**:
+  rango y mejoras de atributo en una línea, y debajo sus habilidades,
+  características sociales y cicatrices con la descripción de cada una.
+
+---
+
 ## 0.189 — 08/11/2026 20:18
 
 - En "Unidad y opciones", fuera la **facción entre paréntesis** detrás del

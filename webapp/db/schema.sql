@@ -450,6 +450,18 @@ CREATE TABLE unit_troop_profiles (
     PRIMARY KEY (unit_id, profile_id)
 );
 
+-- LAS CICATRICES de un personaje de renombre: lo que le queda después de una
+-- mala tirada. Igual que unit_skills —solo quién tiene qué; el catálogo vive
+-- en el código (domain/cicatricesDeRenombre)— pero SIN COSTE: una cicatriz no
+-- se compra, se sufre, y no deja apunte en el libro de experiencia.
+CREATE TABLE unit_scars (
+    unit_id    INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+    scar_key   TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    PRIMARY KEY (unit_id, scar_key)
+);
+
 -- CUÁNTAS MINIATURAS DE CADA TROPA lleva una entrada de una lista.
 --
 -- `army_list_entries.quantity` sigue siendo el TOTAL: el despliegue, el orden

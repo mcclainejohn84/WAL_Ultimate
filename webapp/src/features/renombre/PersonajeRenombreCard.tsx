@@ -48,12 +48,23 @@ import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
 import { Modal } from '@/shared/ui/Modal'
 import { HabilidadesModal } from '@/features/renombre/HabilidadesModal'
+import { CicatricesModal } from '@/features/renombre/CicatricesModal'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { TextField } from '@/shared/ui/TextField'
 import { RichTextEditor } from '@/shared/ui/RichTextEditor'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
-import { EyeIcon, EyeOffIcon, ImageIcon, PencilIcon, PlusIcon, StarIcon, TrashIcon } from '@/shared/ui/icons'
+import {
+  EyeIcon,
+  EyeOffIcon,
+  ImageIcon,
+  LockIcon,
+  MonedaIcon,
+  PencilIcon,
+  PlusIcon,
+  StarIcon,
+  TrashIcon,
+} from '@/shared/ui/icons'
 
 /**
  * A partir de cuántos caracteres de trasfondo se pliega el texto y aparece el
@@ -184,11 +195,22 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
   const [errorAccion, setErrorAccion] = useState<string | null>(null)
   const [confirmandoBorrado, setConfirmandoBorrado] = useState(false)
   const [viendoHabilidades, setViendoHabilidades] = useState(false)
+  const [viendoCicatrices, setViendoCicatrices] = useState(false)
 
   const trasfondo = personaje.background ?? ''
   const tieneTrasfondo = tieneTexto(trasfondo)
   const largo = aTextoPlano(trasfondo).length > TRASFONDO_LARGO
   const propio = personaje.userId == null || personaje.userId === user?.id
+  /**
+   * UN PERSONAJE ES DE QUIEN LO HIZO. Su experiencia, sus habilidades, sus
+   * cicatrices, su retrato y su trasfondo solo los toca su autor: son la
+   * crónica de SUS partidas, y cualquiera podía reescribirla.
+   *
+   * Los de antes de que existiera el autor no tienen ninguno y siguen siendo
+   * de todos; si no, se quedarían congelados y sin dueño que los descongele.
+   * En modo administrador se puede tocar todo, como en el resto del programa.
+   */
+  const puedeEditar = propio || actingAsAdmin
 
   /**
    * Ocultar / volver a enseñar.
@@ -305,7 +327,7 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
                   role="switch"
                   aria-checked={!personaje.hideCost}
                   aria-label={`Contar el coste de ${personaje.name} en los ejércitos`}
-                  disabled={cambiandoCoste}
+                  disabled={cambiandoCoste || !puedeEditar}
                   onClick={() => void alternarCoste()}
                   title={personaje.hideCost ? 'El coste no cuenta' : 'El coste cuenta'}
                   className={clsx(
@@ -313,7 +335,7 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
                     personaje.hideCost ? 'text-ink-soft/45 hover:text-bronze' : 'text-bronze hover:text-maroon',
                   )}
                 >
-                  {personaje.hideCost ? <EyeOffIcon className="h-3 w-3" /> : <EyeIcon className="h-3 w-3" />}
+                  <MonedaIcon className="h-3.5 w-3.5" />
                 </button>
                 <span className="text-rule-dark/45">·</span>
                 <DistintivoEspecial />
@@ -413,29 +435,45 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
           experiencia, en granate, que es lo que se hace después de cada
           partida. */}
       <div className="mt-auto flex flex-wrap items-center gap-0.5 border-t border-rule-dark/25 bg-parchment-dark/20 px-2 py-1.5">
-        <button
-          type="button"
-          onClick={() => setSumando(true)}
-          className={clsx(ACCION_DE_LAMINA, 'text-maroon hover:bg-maroon/10')}
-        >
-          <PlusIcon className="h-3.5 w-3.5" />
-          Experiencia
-        </button>
-        <button
-          type="button"
-          onClick={() => setViendoHabilidades(true)}
-          className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
-        >
-          Habilidades
-        </button>
-        <button
-          type="button"
-          onClick={() => setEditando(true)}
-          className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
-        >
-          <PencilIcon className="h-3.5 w-3.5" />
-          Retrato y trasfondo
-        </button>
+        {puedeEditar ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setSumando(true)}
+              className={clsx(ACCION_DE_LAMINA, 'text-maroon hover:bg-maroon/10')}
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+              Experiencia
+            </button>
+            <button
+              type="button"
+              onClick={() => setViendoHabilidades(true)}
+              className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
+            >
+              Habilidades
+            </button>
+            <button
+              type="button"
+              onClick={() => setViendoCicatrices(true)}
+              className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
+            >
+              Cicatrices
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditando(true)}
+              className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
+            >
+              <PencilIcon className="h-3.5 w-3.5" />
+              Retrato y trasfondo
+            </button>
+          </>
+        ) : (
+          <span className={clsx(ACCION_DE_LAMINA, 'text-ink-soft/60')} title="Es de otro jugador">
+            <LockIcon className="h-3.5 w-3.5" />
+            De otro jugador
+          </span>
+        )}
 
         <div className="ml-auto flex items-center gap-1.5">
           {/* Ocultar es la ÚNICA cosa que no puede hacer cualquiera: un
@@ -463,20 +501,21 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
               {personaje.hidden ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
             </button>
           )}
-          {/* Borrar es de todos, como el resto de la sección (mismo criterio que
-              los mapas). Lo que evita el accidente no es esconder el botón sino
-              el aviso, que enumera lo que se lleva por delante — sobre todo la
-              experiencia, que es lo único aquí que no se puede volver a montar
-              a mano. */}
-          <button
-            type="button"
-            onClick={() => setConfirmandoBorrado(true)}
-            aria-label={`Borrar ${personaje.name}`}
-            title="Borrar este personaje"
-            className="rounded-sm p-1.5 text-ink-soft transition-colors hover:bg-maroon/10 hover:text-danger"
-          >
-            <TrashIcon className="h-4 w-4" />
-          </button>
+          {/* Borrar es la modificación más grande que hay, así que es de su
+              autor como todo lo demás. El aviso, que enumera lo que se lleva
+              por delante —sobre todo la experiencia, lo único que no se puede
+              volver a montar a mano—, se queda igual. */}
+          {puedeEditar && (
+            <button
+              type="button"
+              onClick={() => setConfirmandoBorrado(true)}
+              aria-label={`Borrar ${personaje.name}`}
+              title="Borrar este personaje"
+              className="rounded-sm p-1.5 text-ink-soft transition-colors hover:bg-maroon/10 hover:text-danger"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          )}
           {/* Los atributos, el equipo y el coste se editan en la ficha de
               unidad, que sigue estando en "Editor" y por tanto solo se ofrece en
               modo administrador. */}
@@ -538,6 +577,10 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
 
       {viendoHabilidades && (
         <HabilidadesModal personaje={personaje} onClose={() => setViendoHabilidades(false)} onCambio={onCambio} />
+      )}
+
+      {viendoCicatrices && (
+        <CicatricesModal personaje={personaje} onClose={() => setViendoCicatrices(false)} onCambio={onCambio} />
       )}
     </article>
   )
