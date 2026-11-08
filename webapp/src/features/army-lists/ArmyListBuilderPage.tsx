@@ -856,10 +856,11 @@ export function ArmyListBuilderPage() {
       // ese tipo caben en el ejército, no cuántas miniaturas la forman), así
       // que arranca en su tamaño habitual como cualquier otro regimiento.
       quantity: detail.unitType === 'personaje' ? 1 : (detail.defaultSize ?? detail.minSize ?? 1),
-      // Una unidad compuesta arranca con el mínimo de cada tropa (o 0 si no
-      // tiene), que es el punto de partida legal más pequeño.
+      // Cada tropa arranca en su "inicial": el de la unidad para la principal
+      // —el mismo campo que precarga la cantidad de cualquier otra unidad— y
+      // el mínimo para las demás, que no tienen uno propio.
       troopQuantities: Object.fromEntries(
-        tropasDeLaUnidad(detail).map((tropa) => [tropa.profileId, tropa.minSize ?? 0]),
+        tropasDeLaUnidad(detail).map((tropa) => [tropa.profileId, tropa.defaultSize ?? tropa.minSize ?? 0]),
       ),
       // Equipo/opciones marcadas como "por defecto" desde Administración
       // (unit_equipment_options.is_default / unit_upgrade_options.is_default)

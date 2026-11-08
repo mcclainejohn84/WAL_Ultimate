@@ -68,6 +68,8 @@ export function tropasDeLaUnidad(unit: UnitDetail): Array<{
   cost: number
   minSize: number | null
   maxSize: number | null
+  /** Con cuántas arranca al añadir la unidad a una lista. No es un límite. */
+  defaultSize: number | null
   countsTowardSize: boolean
   esPrincipal: boolean
 }> {
@@ -79,8 +81,13 @@ export function tropasDeLaUnidad(unit: UnitDetail): Array<{
             profileId: unit.profiles.base.id,
             nombre: unit.profiles.base.name?.trim() || unit.name,
             cost: unit.baseCost,
+            // EL MÍNIMO, EL MÁXIMO Y EL INICIAL DE LA TROPA PRINCIPAL SON LOS
+            // DE LA UNIDAD, los de "Datos generales": la principal ES la
+            // unidad, y tener que repetirlos en otro sitio solo daría dos
+            // verdades que pueden discrepar.
             minSize: unit.minSize,
             maxSize: unit.maxSize,
+            defaultSize: unit.defaultSize,
             countsTowardSize: true,
             esPrincipal: true,
           },
@@ -93,6 +100,9 @@ export function tropasDeLaUnidad(unit: UnitDetail): Array<{
       cost: tropa.cost,
       minSize: tropa.minSize,
       maxSize: tropa.maxSize,
+      // Una tropa secundaria no tiene "inicial" propio: arranca en su mínimo,
+      // que es el número más pequeño con el que es legal llevarla.
+      defaultSize: tropa.minSize,
       countsTowardSize: tropa.countsTowardSize,
       esPrincipal: false,
     })),

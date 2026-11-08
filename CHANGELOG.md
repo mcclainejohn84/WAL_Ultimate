@@ -13,6 +13,16 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.186 — 08/11/2026 19:26
+
+- **El "Inicial" de la unidad ya precarga la cantidad de la tropa principal.**
+  El mínimo y el máximo de "Datos generales" sí se le aplicaban —no dejan
+  guardar si no se cumplen—, pero la cantidad arrancaba en el mínimo e
+  ignoraba el inicial, que es justo el campo que existe para eso. Las tropas
+  secundarias no tienen inicial propio y siguen arrancando en su mínimo.
+
+---
+
 ## 0.185 — 08/11/2026 19:22
 
 - **Los nombres de las tropas ya no descuadran la fila de cantidades.** Cada
