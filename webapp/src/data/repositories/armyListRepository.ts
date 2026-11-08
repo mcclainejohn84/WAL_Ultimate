@@ -116,7 +116,7 @@ async function resolveEntry(row: Record<string, unknown>): Promise<ArmyListEntry
   // Las tres consultas son independientes entre sí (ninguna depende del
   // resultado de otra: unit_id y row.id ya se conocen desde el principio),
   // así que se lanzan en paralelo en vez de una detrás de otra.
-  const [unit, equipmentIds, upgradeIds, magicPaths] = await Promise.all([
+  const [unit, equipmentIds, upgradeIds, magicPaths, troopRows] = await Promise.all([
     UnitRepository.getDetailById(row.unit_id as number),
     query<number>(
       'SELECT equipment_id FROM army_list_entry_equipment WHERE entry_id = ?',
@@ -135,6 +135,14 @@ async function resolveEntry(row: Record<string, unknown>): Promise<ArmyListEntry
       [row.id as number],
       (r) => ({ pathId: r.path_id as number, level: (r.level as number) ?? 1 }),
     ).catch(() => [] as EntryMagicPath[]),
+    // El desglose de una unidad compuesta. `.catch` como las sendas: si la
+    // tabla todavía no existe —Worker sin desplegar— la entrada se lee como
+    // la de una unidad normal en vez de no leerse.
+    query<{ profileId: number; quantity: number }>(
+      'SELECT profile_id, quantity FROM army_list_entry_profiles WHERE entry_id = ?',
+      [row.id as number],
+      (r) => ({ profileId: r.profile_id as number, quantity: (r.quantity as number) ?? 0 }),
+    ).catch(() => [] as Array<{ profileId: number; quantity: number }>),
   ])
   if (!unit) return null // unidad borrada después de añadirla a la lista: se omite en vez de romper la carga
 
@@ -143,6 +151,7 @@ async function resolveEntry(row: Record<string, unknown>): Promise<ArmyListEntry
     armyListId: row.army_list_id as number,
     unit,
     quantity: row.quantity as number,
+    troopQuantities: Object.fromEntries(troopRows.map((r) => [r.profileId, r.quantity])),
     mountProfileId: (row.mount_profile_id as number) ?? null,
     chariotProfileId: (row.chariot_profile_id as number) ?? null,
     hasStandardBearer: Boolean(row.has_standard_bearer),
@@ -653,6 +662,7 @@ export const ArmyListRepository = {
         source.entries.map((e) => ({
           unitId: e.unit.id,
           quantity: e.quantity,
+          troopQuantities: e.troopQuantities,
           mountProfileId: e.mountProfileId,
           chariotProfileId: e.chariotProfileId,
           hasStandardBearer: e.hasStandardBearer,
@@ -882,6 +892,14 @@ export const ArmyListRepository = {
           entry.hidden ? 1 : 0,
         ],
       })
+      // El desglose por tropa, solo si lo hay: en una unidad normal no se
+      // escribe ni una fila y la entrada se guarda exactamente como siempre.
+      for (const [profileId, cantidad] of Object.entries(entry.troopQuantities)) {
+        statements.push({
+          sql: 'INSERT OR IGNORE INTO army_list_entry_profiles (entry_id, profile_id, quantity) VALUES (?, ?, ?)',
+          params: [entryId, Number(profileId), cantidad],
+        })
+      }
       for (const equipmentId of entry.equipmentIds) {
         statements.push({
           sql: 'INSERT OR IGNORE INTO army_list_entry_equipment (entry_id, equipment_id) VALUES (?, ?)',

@@ -527,7 +527,23 @@ export interface ArmyListEntry {
   id: number
   armyListId: number
   unit: UnitDetail
+  /**
+   * CUÁNTAS MINIATURAS EN TOTAL. En una unidad compuesta es la suma de las
+   * tropas que cuentan para el tamaño (ver `troopQuantities` y
+   * TropaSecundaria.countsTowardSize); en una normal, las que son.
+   *
+   * Es el número que usan el despliegue, el orden de batalla y los PDF, que
+   * no necesitan saber de qué tropa es cada miniatura.
+   */
   quantity: number
+  /**
+   * El desglose de una unidad COMPUESTA: id de la ficha de cada tropa ->
+   * cuántas miniaturas de ella. La principal entra con el id de su perfil
+   * base.
+   *
+   * VACÍO en una unidad normal, que es lo que son casi todas.
+   */
+  troopQuantities: Record<number, number>
   /** Cuál de unit.profiles.montura se ha elegido (si la unidad ofrece más de una); null si no lleva o solo tiene una (implícita). */
   mountProfileId: number | null
   chariotProfileId: number | null
@@ -586,7 +602,10 @@ export interface ArmyListDetail extends ArmyList {
 /** Datos mínimos para crear/editar una entrada — lo que de verdad decide el usuario en el constructor. */
 export interface ArmyListEntryInput {
   unitId: number
+  /** El total (ver ArmyListEntry.quantity). */
   quantity: number
+  /** El desglose por tropa de una unidad compuesta; vacío en una normal (ver ArmyListEntry.troopQuantities). */
+  troopQuantities: Record<number, number>
   mountProfileId: number | null
   chariotProfileId: number | null
   hasStandardBearer: boolean

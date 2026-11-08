@@ -450,6 +450,18 @@ CREATE TABLE unit_troop_profiles (
     PRIMARY KEY (unit_id, profile_id)
 );
 
+-- CUÁNTAS MINIATURAS DE CADA TROPA lleva una entrada de una lista.
+--
+-- `army_list_entries.quantity` sigue siendo el TOTAL: el despliegue, el orden
+-- de batalla y los PDF solo necesitan eso, y así no se enteran de que existe
+-- el desglose. Sin filas aquí, la entrada es de una unidad normal.
+CREATE TABLE army_list_entry_profiles (
+    entry_id   INTEGER NOT NULL REFERENCES army_list_entries(id) ON DELETE CASCADE,
+    profile_id INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+    quantity   INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (entry_id, profile_id)
+);
+
 -- QUIÉN PUEDE LLEVAR CADA OPCIÓN DE EQUIPO en una unidad compuesta. Sin filas,
 -- la opción es de toda la unidad; con filas, solo de esas tropas. Es una tabla
 -- y no una columna de unit_equipment_options porque la misma opción (el

@@ -14,6 +14,12 @@ export interface ArmyListIssue {
 /** Lo mínimo que hace falta para calcular el coste de una entrada (real o en borrador, antes de tener id). */
 export interface EntryCostInput {
   quantity: number
+  /**
+   * El desglose de una unidad COMPUESTA: ficha de cada tropa -> cuántas
+   * miniaturas. Vacío o ausente en una normal, y entonces el cálculo es el de
+   * siempre.
+   */
+  troopQuantities?: Record<number, number>
   equipmentIds: number[]
   upgradeIds: number[]
   hasStandardBearer: boolean
@@ -44,6 +50,69 @@ export interface EntryCostInput {
  * ordenar por coste y el resumen por categorías, para que un coste retocado
  * valga a todos los efectos sin tener que acordarse en cada pantalla.
  */
+/**
+ * Las tropas de una unidad, con su precio por miniatura: la PRINCIPAL (el
+ * perfil base, a `baseCost`) y después las secundarias. En una unidad normal
+ * es una sola.
+ *
+ * Se exporta porque el constructor pinta exactamente esta lista: un campo de
+ * cantidad por tropa, en este mismo orden.
+ */
+export function tropasDeLaUnidad(unit: UnitDetail): Array<{
+  profileId: number
+  nombre: string
+  cost: number
+  minSize: number | null
+  maxSize: number | null
+  countsTowardSize: boolean
+  esPrincipal: boolean
+}> {
+  const principal =
+    unit.profiles.base == null
+      ? []
+      : [
+          {
+            profileId: unit.profiles.base.id,
+            nombre: unit.profiles.base.name?.trim() || unit.name,
+            cost: unit.baseCost,
+            minSize: unit.minSize,
+            maxSize: unit.maxSize,
+            countsTowardSize: true,
+            esPrincipal: true,
+          },
+        ]
+  return [
+    ...principal,
+    ...unit.profiles.tropas.map((tropa) => ({
+      profileId: tropa.id,
+      nombre: tropa.name?.trim() || 'Tropa',
+      cost: tropa.cost,
+      minSize: tropa.minSize,
+      maxSize: tropa.maxSize,
+      countsTowardSize: tropa.countsTowardSize,
+      esPrincipal: false,
+    })),
+  ]
+}
+
+/** Si esta opción de equipo la puede llevar esta tropa. Sin tropas anotadas, la lleva toda la unidad. */
+export function equipoDeLaTropa(opcion: { profileIds: number[] }, profileId: number): boolean {
+  return opcion.profileIds.length === 0 || opcion.profileIds.includes(profileId)
+}
+
+/**
+ * Cuántas miniaturas CUENTAN para el tamaño de la unidad. Es lo que se guarda
+ * en `army_list_entries.quantity` y lo que ven el despliegue, el orden de
+ * batalla y los PDF.
+ *
+ * Una tropa con `countsTowardSize` apagado se paga pero no engorda la unidad.
+ */
+export function totalDeMiniaturas(unit: UnitDetail, troopQuantities: Record<number, number>): number {
+  return tropasDeLaUnidad(unit)
+    .filter((tropa) => tropa.countsTowardSize)
+    .reduce((suma, tropa) => suma + (troopQuantities[tropa.profileId] ?? 0), 0)
+}
+
 export function computeEntryCost(unit: UnitDetail, input: EntryCostInput): number {
   // UN PERSONAJE DE RENOMBRE CON EL COSTE OCULTO NO SUMA NADA: ni él, ni su
   // equipo, ni su montura, ni su grupo de mando. Va ANTES que el coste a mano
@@ -71,6 +140,25 @@ export function computeEntryCost(unit: UnitDetail, input: EntryCostInput): numbe
   const mountCost = unit.profiles.montura.find((p) => p.id === input.mountProfileId)?.cost ?? 0
   const chariotCost = unit.profiles.carro.find((p) => p.id === input.chariotProfileId)?.cost ?? 0
 
+  // UNA UNIDAD COMPUESTA SE PAGA TROPA A TROPA: cada una tiene su precio por
+  // miniatura y su propio equipo, y un escudo que solo pueden llevar los Gor
+  // no se le puede cobrar también a los Ungor. Las opciones sin tropa anotada
+  // son de toda la unidad y se cobran a todas, que es lo que pasa siempre en
+  // una unidad normal.
+  //
+  // Lo de fuera de la tropa —mejoras, grupo de mando, montura y carro— se
+  // paga una vez por unidad, igual que antes.
+  if (unit.profiles.tropas.length > 0) {
+    const porTropa = tropasDeLaUnidad(unit).reduce((suma, tropa) => {
+      const cuantas = input.troopQuantities?.[tropa.profileId] ?? 0
+      const suEquipo = unit.equipmentOptions
+        .filter((e) => input.equipmentIds.includes(e.id) && equipoDeLaTropa(e, tropa.profileId))
+        .reduce((s, e) => s + e.cost, 0)
+      return suma + cuantas * (tropa.cost + suEquipo)
+    }, 0)
+    return porTropa + upgradeCost + commandCost + mountCost + chariotCost
+  }
+
   return input.quantity * (unit.baseCost + equipmentCost) + upgradeCost + commandCost + mountCost + chariotCost
 }
 
@@ -89,7 +177,7 @@ export function computeListTotal(entries: ArmyListEntry[]): number {
  */
 export function validateEntryInput(
   unit: UnitDetail,
-  input: { quantity: number; equipmentIds: number[]; upgradeIds: number[] },
+  input: { quantity: number; equipmentIds: number[]; upgradeIds: number[]; troopQuantities?: Record<number, number> },
   incompatiblePairs: Array<[number, number]>,
   otherEntries: ArmyListEntry[],
   excludeEntryId?: number,
@@ -100,16 +188,44 @@ export function validateEntryInput(
   if (input.quantity < 1) {
     issues.push({ severity: 'error', message: `La cantidad debe ser al menos 1.` })
   }
+
+  // EN UNA UNIDAD COMPUESTA el tamaño se mira TROPA A TROPA, y el de la unidad
+  // entera no se mira: sumar Gor y Ungor y compararlo con un solo mínimo no
+  // dice nada (una manada de 20 Ungor y ningún Gor sumaría 20 y seguiría
+  // siendo ilegal).
+  //
+  // Una tropa a CERO no se valida: no llevarla es una opción —una manada puede
+  // ser solo de Gor—, y exigirle su mínimo a algo que no está obligaría a
+  // meter de todo en todas las unidades.
+  if (unit.profiles.tropas.length > 0) {
+    for (const tropa of tropasDeLaUnidad(unit)) {
+      const cuantas = input.troopQuantities?.[tropa.profileId] ?? 0
+      if (cuantas === 0) continue
+      if (tropa.minSize != null && cuantas < tropa.minSize) {
+        issues.push({ severity: 'error', message: `${tropa.nombre}: el mínimo es ${tropa.minSize}.` })
+      }
+      if (tropa.maxSize != null && cuantas > tropa.maxSize) {
+        issues.push({ severity: 'error', message: `${tropa.nombre}: el máximo es ${tropa.maxSize}.` })
+      }
+    }
+    if (tropasDeLaUnidad(unit).every((tropa) => (input.troopQuantities?.[tropa.profileId] ?? 0) === 0)) {
+      issues.push({ severity: 'error', message: `${unit.name}: no lleva ninguna miniatura.` })
+    }
+  }
   // "0-1" NO dice nada sobre el tamaño: limita cuántas UNIDADES de ese tipo
   // caben en el ejército (una), no cuántas miniaturas tiene la unidad — que
   // seguirá siendo un regimiento normal, casi siempre de más de una. Esa
   // comprobación de "ya está añadida" está más abajo; aquí el tamaño se
   // valida como en cualquier otra unidad.
-  if (unit.minSize != null && input.quantity < unit.minSize) {
-    issues.push({ severity: 'error', message: `${unit.name}: el tamaño mínimo es ${unit.minSize}.` })
-  }
-  if (unit.maxSize != null && input.quantity > unit.maxSize) {
-    issues.push({ severity: 'error', message: `${unit.name}: el tamaño máximo es ${unit.maxSize}.` })
+  // El tamaño de la unidad ENTERA, solo si no es compuesta: en una compuesta
+  // ese mínimo es el de su tropa principal y ya se ha mirado arriba.
+  if (unit.profiles.tropas.length === 0) {
+    if (unit.minSize != null && input.quantity < unit.minSize) {
+      issues.push({ severity: 'error', message: `${unit.name}: el tamaño mínimo es ${unit.minSize}.` })
+    }
+    if (unit.maxSize != null && input.quantity > unit.maxSize) {
+      issues.push({ severity: 'error', message: `${unit.name}: el tamaño máximo es ${unit.maxSize}.` })
+    }
   }
 
   const selected = new Set(input.equipmentIds)

@@ -88,3 +88,12 @@ CREATE TABLE IF NOT EXISTS unit_equipment_profiles (
   profile_id   INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
   PRIMARY KEY (unit_id, equipment_id, profile_id)
 );
+
+-- Cuántas miniaturas de cada tropa lleva una entrada de una lista. Sin filas,
+-- la entrada es de una unidad normal (army_list_entries.quantity es el total).
+CREATE TABLE IF NOT EXISTS army_list_entry_profiles (
+  entry_id   INTEGER NOT NULL REFERENCES army_list_entries(id) ON DELETE CASCADE,
+  profile_id INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+  quantity   INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (entry_id, profile_id)
+);

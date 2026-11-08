@@ -13,6 +13,37 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.181 — 08/11/2026 18:43
+
+- **Unidades compuestas en los ejércitos** (segunda parte). Ya se pueden meter
+  en una lista y se pagan como deben.
+  - Al añadir la unidad hay **una cantidad por tropa**, cada una con lo que
+    cuesta su miniatura y entre qué números se puede mover, y al lado el total
+    de miniaturas. Una tropa marcada como que no cuenta para el tamaño se paga
+    pero no engorda la unidad.
+  - **El coste se calcula tropa a tropa**: cantidad × (su precio + el equipo
+    que ESA tropa puede llevar). Un escudo que solo pueden llevar los Gor no
+    se le cobra a los Ungor; una opción sin tropa anotada es de toda la unidad
+    y se cobra a todas. Las mejoras, el grupo de mando, la montura y el carro
+    se siguen pagando una vez por unidad.
+  - En la lista de equipo, cada opción dice **de qué tropa es** ("Lanza ·
+    Ungor").
+  - **El mínimo y el máximo se miran por tropa** e impiden guardar, como el
+    tamaño de una unidad normal. Una tropa a cero no se valida: no llevarla es
+    una opción (una manada puede ser solo de Gor). Lo que no se admite es una
+    unidad sin ninguna miniatura.
+  - En "Unidades en la lista", bajo el nombre se lee el **desglose** ("10 Gor ·
+    15 Ungor"): en la columna de cantidad solo cabe el total, y "25" no dice
+    cómo está repartido.
+  - La ficha del constructor enseña **la línea de atributos de cada tropa**.
+  - El despliegue, el orden de batalla y los PDF no se enteran de nada: siguen
+    leyendo el total de miniaturas, que es lo único que necesitan.
+
+- Una unidad normal no cambia en nada: sin tropas secundarias no se escribe ni
+  se lee ninguna de las tablas nuevas y el coste se calcula como siempre.
+
+---
+
 ## 0.180 — 08/11/2026 18:29
 
 - En el editor, la rejilla de **equipo por tropa** enseña ahora lo que cuesta

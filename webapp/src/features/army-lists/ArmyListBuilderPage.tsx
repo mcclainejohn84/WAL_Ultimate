@@ -21,6 +21,8 @@ import {
   computeEntryCost,
   computeListTotal,
   reconcileEntries,
+  totalDeMiniaturas,
+  tropasDeLaUnidad,
   validateEntryInput,
   validateList,
   type EntryReconcileNote,
@@ -94,6 +96,18 @@ function etiquetaDeSeccion(cat: string): string {
 }
 
 /** En qué pestaña del explorador se enseña una unidad. Ver SECCION_ESPECIALES. */
+/**
+ * "10 Gor · 15 Ungor" para una unidad compuesta; null para una normal, que no
+ * tiene nada que desglosar.
+ */
+function desgloseDeTropas(entry: ArmyListEntry): string | null {
+  if (entry.unit.profiles.tropas.length === 0) return null
+  const partes = tropasDeLaUnidad(entry.unit)
+    .map((tropa) => ({ nombre: tropa.nombre, cuantas: entry.troopQuantities[tropa.profileId] ?? 0 }))
+    .filter((parte) => parte.cuantas > 0)
+  return partes.length === 0 ? null : partes.map((p) => `${p.cuantas} ${p.nombre}`).join(' · ')
+}
+
 function seccionDeUnidad(unidad: { isSpecialCharacter: boolean; categoryName: string | null }): string {
   return unidad.isSpecialCharacter ? SECCION_ESPECIALES : (unidad.categoryName ?? SIN_CATEGORIA_KEY)
 }
@@ -400,6 +414,11 @@ function FichasDeLaLista({
 }
 
 interface EntryDraft {
+  /**
+   * Cuántas miniaturas de cada tropa, en una unidad COMPUESTA. Vacío en una
+   * normal, donde manda `quantity` como siempre.
+   */
+  troopQuantities: Record<number, number>
   editingEntryId: number | null
   unitId: number | null
   quantity: number
@@ -415,6 +434,7 @@ interface EntryDraft {
 }
 
 const EMPTY_DRAFT: EntryDraft = {
+  troopQuantities: {},
   editingEntryId: null,
   unitId: null,
   quantity: 1,
@@ -835,6 +855,11 @@ export function ArmyListBuilderPage() {
       // ese tipo caben en el ejército, no cuántas miniaturas la forman), así
       // que arranca en su tamaño habitual como cualquier otro regimiento.
       quantity: detail.unitType === 'personaje' ? 1 : (detail.defaultSize ?? detail.minSize ?? 1),
+      // Una unidad compuesta arranca con el mínimo de cada tropa (o 0 si no
+      // tiene), que es el punto de partida legal más pequeño.
+      troopQuantities: Object.fromEntries(
+        tropasDeLaUnidad(detail).map((tropa) => [tropa.profileId, tropa.minSize ?? 0]),
+      ),
       // Equipo/opciones marcadas como "por defecto" desde Administración
       // (unit_equipment_options.is_default / unit_upgrade_options.is_default)
       // vienen ya seleccionadas, para no tener que marcarlas cada vez.
@@ -895,6 +920,7 @@ export function ArmyListBuilderPage() {
       editingEntryId: entry.id,
       unitId: entry.unit.id,
       quantity: entry.unit.unitType === 'personaje' ? 1 : entry.quantity,
+      troopQuantities: { ...entry.troopQuantities },
       equipmentIds: new Set(entry.equipmentIds),
       upgradeIds: new Set(entry.upgradeIds),
       hasStandardBearer: entry.hasStandardBearer,
@@ -916,9 +942,19 @@ export function ArmyListBuilderPage() {
   /** Añade o actualiza una entrada EN EL BORRADOR LOCAL (sin tocar la red). Se persiste al pulsar "Guardar ejército". */
   function handleSaveEntry() {
     if (!list || !selectedUnit || !draft.unitId) return
+    const esCompuesta = selectedUnit.profiles.tropas.length > 0
     const input: ArmyListEntryInput = {
       unitId: draft.unitId,
-      quantity: selectedUnit.unitType === 'personaje' ? 1 : draft.quantity,
+      // EN UNA COMPUESTA EL TOTAL SE CALCULA, no se escribe: es la suma de
+      // las tropas que cuentan para el tamaño. Así el despliegue, el orden de
+      // batalla y los PDF siguen leyendo un número de miniaturas y no se
+      // enteran del desglose.
+      quantity: esCompuesta
+        ? totalDeMiniaturas(selectedUnit, draft.troopQuantities)
+        : selectedUnit.unitType === 'personaje'
+          ? 1
+          : draft.quantity,
+      troopQuantities: esCompuesta ? draft.troopQuantities : {},
       mountProfileId: draft.mountProfileId,
       chariotProfileId: draft.chariotProfileId,
       hasStandardBearer: draft.hasStandardBearer,
@@ -950,7 +986,12 @@ export function ArmyListBuilderPage() {
 
     const issues = validateEntryInput(
       selectedUnit,
-      { quantity: draft.quantity, equipmentIds: input.equipmentIds, upgradeIds: input.upgradeIds },
+      {
+        quantity: input.quantity,
+        equipmentIds: input.equipmentIds,
+        upgradeIds: input.upgradeIds,
+        troopQuantities: input.troopQuantities,
+      },
       incompatiblePairs ?? [],
       currentEntries,
       draft.editingEntryId ?? undefined,
@@ -968,6 +1009,7 @@ export function ArmyListBuilderPage() {
       armyListId: list.id,
       unit: selectedUnit,
       quantity: input.quantity,
+      troopQuantities: input.troopQuantities,
       mountProfileId: input.mountProfileId,
       chariotProfileId: input.chariotProfileId,
       hasStandardBearer: input.hasStandardBearer,
@@ -1085,6 +1127,7 @@ export function ArmyListBuilderPage() {
       const inputs: ArmyListEntryInput[] = currentEntries.map((e) => ({
         unitId: e.unit.id,
         quantity: e.quantity,
+        troopQuantities: e.troopQuantities,
         mountProfileId: e.mountProfileId,
         chariotProfileId: e.chariotProfileId,
         hasStandardBearer: e.hasStandardBearer,
@@ -1177,7 +1220,21 @@ export function ArmyListBuilderPage() {
     ? (commandRoleAvailable.campeon.customName ?? commandRoleAvailable.campeon.role.name)
     : null
 
-  const equipmentItems = (selectedUnit?.equipmentOptions ?? []).map((e) => ({ id: e.id, name: e.name, cost: e.cost }))
+  /**
+   * En una unidad COMPUESTA, cada opción dice a qué tropa pertenece: "Lanza ·
+   * Ungor". Sin eso, una lista con el escudo de los Gor y el de los Ungor
+   * seguidos no se puede leer. Una opción sin tropas anotadas es de toda la
+   * unidad y se queda como está.
+   */
+  const equipmentItems = (selectedUnit?.equipmentOptions ?? []).map((e) => {
+    const deQuien =
+      selectedUnit && selectedUnit.profiles.tropas.length > 0 && e.profileIds.length > 0
+        ? tropasDeLaUnidad(selectedUnit)
+            .filter((tropa) => e.profileIds.includes(tropa.profileId))
+            .map((tropa) => tropa.nombre)
+        : []
+    return { id: e.id, name: deQuien.length > 0 ? `${e.name} · ${deQuien.join(', ')}` : e.name, cost: e.cost }
+  })
   const upgradeItems = (selectedUnit?.upgradeOptions ?? []).map((u) => ({ id: u.id, name: u.name, cost: u.cost }))
 
   /**
@@ -1223,6 +1280,8 @@ export function ArmyListBuilderPage() {
   // handlePickUnit/startEditEntry/handleSaveEntry más arriba): el campo ni
   // siquiera se muestra, sería un dato redundante para el jugador.
   const isPersonaje = selectedUnit?.unitType === 'personaje'
+  /** Una unidad de varias tropas: la cantidad no es un número sino uno por tropa. */
+  const esCompuestaSel = (selectedUnit?.profiles.tropas.length ?? 0) > 0
 
   /**
    * LO QUE CUESTA CADA MINIATURA con lo que lleva marcado AHORA MISMO.
@@ -1272,13 +1331,60 @@ export function ArmyListBuilderPage() {
           que acompaña al nombre de la unidad (ver más arriba), igual que en
           Editor > Unidades y personajes. Esta línea es solo el TAMAÑO, que es
           otra cosa: cuántas miniaturas forman la unidad. */}
-      {!isPersonaje && (selectedUnit.minSize != null || selectedUnit.maxSize != null) && (
+      {!isPersonaje && !esCompuestaSel && (selectedUnit.minSize != null || selectedUnit.maxSize != null) && (
         <p className="text-xs text-ink-soft">
           Tamaño: {selectedUnit.minSize ?? 0} a {selectedUnit.maxSize ?? 'sin límite'} miniaturas.
         </p>
       )}
 
-      {!isPersonaje && (
+      {/* UNA CANTIDAD POR TROPA. Cada una lleva debajo lo que cuesta cada
+          miniatura suya y entre qué números se puede mover; al final, cuántas
+          miniaturas son en total, que es lo que acaba sobre la mesa. Una
+          tropa que no cuenta para el tamaño se paga pero no entra en esa
+          suma. */}
+      {!isPersonaje && esCompuestaSel && (
+        <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
+          {tropasDeLaUnidad(selectedUnit).map((tropa) => (
+            <div key={tropa.profileId} className="w-24">
+              <TextField
+                label={tropa.nombre}
+                type="number"
+                min={0}
+                max={tropa.maxSize ?? undefined}
+                value={draft.troopQuantities[tropa.profileId] ?? 0}
+                onChange={(e) => {
+                  const bruto = e.target.value
+                  const leido = bruto === '' ? 0 : Number(bruto)
+                  let siguiente = Number.isNaN(leido) ? 0 : Math.max(0, leido)
+                  if (tropa.maxSize != null && siguiente > tropa.maxSize) siguiente = tropa.maxSize
+                  setDraft((d) => ({
+                    ...d,
+                    troopQuantities: { ...d.troopQuantities, [tropa.profileId]: siguiente },
+                  }))
+                }}
+              />
+              <p className="mt-0.5 text-micro tabular-nums text-ink-soft/70">
+                {tropa.cost} pts/m
+                {(tropa.minSize != null || tropa.maxSize != null) && (
+                  <>
+                    {' '}
+                    · {tropa.minSize ?? 0}–{tropa.maxSize ?? '∞'}
+                  </>
+                )}
+                {!tropa.countsTowardSize && <> · no suma</>}
+              </p>
+            </div>
+          ))}
+          <p className="pt-5 text-xs text-ink-soft">
+            <b className="font-display text-base text-ink tabular-nums">
+              {totalDeMiniaturas(selectedUnit, draft.troopQuantities)}
+            </b>{' '}
+            miniaturas
+          </p>
+        </div>
+      )}
+
+      {!isPersonaje && !esCompuestaSel && (
         <div className="w-24">
           <TextField
             label="Cantidad"
@@ -1718,7 +1824,10 @@ export function ArmyListBuilderPage() {
                             había que deducirlo del total. Se dice "por
                             miniatura" salvo en los personajes, que son una
                             sola y ahí ese rótulo sobra. */}
-                        {selectedUnit && (
+                        {/* En una compuesta no hay UN precio por miniatura:
+                            cada tropa tiene el suyo y se enseña en su propio
+                            campo de cantidad. */}
+                        {selectedUnit && !esCompuestaSel && (
                           <span className="ml-auto shrink-0 text-xs font-semibold text-maroon tabular-nums">
                             {costeUnitario}
                             <span className="font-normal text-ink-soft">{isPersonaje ? ' pts' : ' pts/miniatura'}</span>
@@ -1906,10 +2015,26 @@ export function ArmyListBuilderPage() {
                       </div>
                       {selectedUnit.profiles.base && (
                         <div>
-                          <p className="mb-1 text-xs font-medium text-ink-soft">{selectedUnit.name}</p>
+                          {/* En una compuesta, cada línea lleva el nombre de SU
+                              tropa: al lado de "Ungor", repetir el de la
+                              unidad no dice cuál es cuál. */}
+                          <p className="mb-1 text-xs font-medium text-ink-soft">
+                            {esCompuestaSel
+                              ? (selectedUnit.profiles.base.name?.trim() ?? '') || selectedUnit.name
+                              : selectedUnit.name}
+                          </p>
                           <AttributeTable profile={selectedUnit.profiles.base} />
                         </div>
                       )}
+                      {/* Las demás tropas de una unidad compuesta: se eligen
+                          en la misma entrada, así que sus atributos tienen
+                          que verse aquí igual que los de la principal. */}
+                      {selectedUnit.profiles.tropas.map((tropa) => (
+                        <div key={tropa.id}>
+                          <p className="mb-1 text-xs font-medium text-ink-soft">{tropa.name ?? 'Tropa'}</p>
+                          <AttributeTable profile={tropa} />
+                        </div>
+                      ))}
                       {/* Solo la montura y el carro ELEGIDOS para esta entrada, no
                     todos los que la unidad podría llevar: mientras no se
                     escoge, ese perfil no forma parte de la unidad y verlo en
@@ -2264,6 +2389,16 @@ export function ArmyListBuilderPage() {
                               habrían estrechado el resto de la tabla para
                               nada. Cada una se puede apagar desde el menú del
                               usuario (ver ArmyListOptionsModal). */}
+                            {/* EL DESGLOSE DE UNA UNIDAD COMPUESTA. En la
+                              columna de cantidad solo cabe el total, y "25"
+                              no dice si son 10 Gor y 15 Ungor o al revés.
+                              Esta línea no se puede apagar: en una compuesta
+                              el reparto ES la unidad. */}
+                            {desgloseDeTropas(entry) && (
+                              <span className="mt-0.5 block truncate text-mini text-ink-soft">
+                                {desgloseDeTropas(entry)}
+                              </span>
+                            )}
                             {opciones.showMounts && cabalgadura && (
                               <span className="mt-0.5 block truncate text-mini text-ink-soft" title={cabalgadura}>
                                 {cabalgadura}
@@ -2315,10 +2450,7 @@ export function ArmyListBuilderPage() {
                               // COBRAR. El personaje entra sin pagar puntos
                               // (ver computeEntryCost), así que un campo que
                               // admite "50" y sigue poniendo 0 solo engaña.
-                              <Tooltip
-                                label="Su coste no cuenta"
-                                className="inline-flex text-ink-soft"
-                              >
+                              <Tooltip label="Su coste no cuenta" className="inline-flex text-ink-soft">
                                 <span className="tabular-nums">0</span>
                               </Tooltip>
                             ) : editingCostId === entry.id ? (

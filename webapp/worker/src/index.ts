@@ -1170,6 +1170,22 @@ const MIGRATIONS: string[] = [
   // aquella es (unit_id, equipment_id): el escudo lo pueden llevar los Gor Y
   // los Ungor, y así la misma opción no cabe dos veces. Aquí la tropa forma
   // parte de la clave.
+  // CUÁNTAS MINIATURAS DE CADA TROPA lleva UNA entrada de la lista.
+  //
+  // `army_list_entries.quantity` SIGUE SIENDO EL TOTAL, y es deliberado: el
+  // despliegue, el orden de batalla, los PDF y las peanas sobre la mesa solo
+  // necesitan saber cuántas miniaturas son, y así ninguno se entera de que
+  // existe el desglose. Quien lo necesita —el coste y el editor de la
+  // entrada— lo lee de aquí.
+  //
+  // Sin filas, la entrada es de una unidad normal y su cantidad es la de
+  // siempre.
+  `CREATE TABLE IF NOT EXISTS army_list_entry_profiles (
+     entry_id   INTEGER NOT NULL REFERENCES army_list_entries(id) ON DELETE CASCADE,
+     profile_id INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+     quantity   INTEGER NOT NULL DEFAULT 0,
+     PRIMARY KEY (entry_id, profile_id)
+   )`,
   `CREATE TABLE IF NOT EXISTS unit_equipment_profiles (
      unit_id      INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
      equipment_id INTEGER NOT NULL REFERENCES equipment_options(id) ON DELETE CASCADE,

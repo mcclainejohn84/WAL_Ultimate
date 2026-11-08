@@ -62,6 +62,7 @@ const CHECKS: SchemaCheck[] = [
   { label: 'Coste que no cuenta en los personajes de renombre', probe: 'SELECT hide_cost FROM units LIMIT 1' },
   { label: 'Tropas de una unidad compuesta', probe: 'SELECT counts_toward_size FROM unit_troop_profiles LIMIT 1' },
   { label: 'Equipo por tropa', probe: 'SELECT profile_id FROM unit_equipment_profiles LIMIT 1' },
+  { label: 'Miniaturas por tropa en la lista', probe: 'SELECT quantity FROM army_list_entry_profiles LIMIT 1' },
   { label: 'Peana estándar por etiqueta', probe: 'SELECT base_width_cm FROM unit_type_tags LIMIT 1' },
   { label: 'Medidas de la mesa', probe: 'SELECT table_width_cm FROM army_lists LIMIT 1' },
   { label: 'Peanas redimensionadas', probe: 'SELECT w_cm FROM army_list_deployments LIMIT 1' },
