@@ -13,6 +13,18 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.188 — 08/11/2026 19:58
+
+- **La columna del equipo va siempre**, tenga opciones o no; sin ninguna pone
+  "Sin equipo adicional". Antes desaparecía entera y el cuadro del grupo de
+  mando se corría al hueco de la izquierda, cambiando de sitio según la unidad
+  que se estuviera mirando.
+
+- **Un filete separa el equipo del grupo de mando**: a la izquierda del mando
+  cuando van en paralelo, y encima cuando el móvil los apila.
+
+---
+
 ## 0.187 — 08/11/2026 19:43
 
 - **El grupo de mando, en su propio cuadro a la derecha del equipo** y en
