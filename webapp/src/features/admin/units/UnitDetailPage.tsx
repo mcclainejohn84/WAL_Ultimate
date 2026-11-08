@@ -681,7 +681,7 @@ export function UnitDetailPage() {
                   media pantalla. El 0-1 va detrás, en la misma línea. */}
               {unit.unitType !== 'personaje' && (
                 <div className="col-span-12 flex flex-wrap items-end gap-x-3 gap-y-3">
-                  <div className="w-20">
+                  <div className="w-16">
                     <TextField
                       label="Mínimo"
                       type="number"
@@ -696,7 +696,7 @@ export function UnitDetailPage() {
                       }
                     />
                   </div>
-                  <div className="w-20">
+                  <div className="w-16">
                     <TextField
                       label="Máximo"
                       type="number"
@@ -711,7 +711,7 @@ export function UnitDetailPage() {
                       }
                     />
                   </div>
-                  <div className="w-20">
+                  <div className="w-16">
                     <TextField
                       label="Inicial"
                       type="number"
@@ -1007,7 +1007,7 @@ export function UnitDetailPage() {
                             onChange={(e) => setTropa(tropa.profileId, { cost: Number(e.target.value) || 0 })}
                           />
                         </div>
-                        <div className="w-20">
+                        <div className="w-16">
                           <TextField
                             label="Mínimo"
                             type="number"
@@ -1019,7 +1019,7 @@ export function UnitDetailPage() {
                             }
                           />
                         </div>
-                        <div className="w-20">
+                        <div className="w-16">
                           <TextField
                             label="Máximo"
                             type="number"

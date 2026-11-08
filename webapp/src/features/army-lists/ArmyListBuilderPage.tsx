@@ -1370,7 +1370,7 @@ export function ArmyListBuilderPage() {
       {!isPersonaje && esCompuestaSel && (
         <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
           {tropasDeLaUnidad(selectedUnit).map((tropa) => (
-            <label key={tropa.profileId} className="block w-28">
+            <label key={tropa.profileId} className="block w-16">
               {/* EL RÓTULO, EN UNA SOLA LÍNEA. La tropa principal se llama
                   como la unidad cuando su ficha no tiene nombre propio, y
                   "Manada de Bestias (Gors)" partido en tres renglones
@@ -1394,7 +1394,7 @@ export function ArmyListBuilderPage() {
                     troopQuantities: { ...d.troopQuantities, [tropa.profileId]: siguiente },
                   }))
                 }}
-                className="w-full rounded-sm border border-rule-dark/50 bg-parchment/70 px-3 py-1 text-center text-xs text-ink outline-none transition-colors focus:border-bronze focus:ring-2 focus:ring-bronze/25"
+                className="w-full rounded-sm border border-rule-dark/50 bg-parchment/70 px-1.5 py-1 text-center text-xs text-ink outline-none transition-colors focus:border-bronze focus:ring-2 focus:ring-bronze/25"
               />
               {/* Solo el precio. El mínimo y el máximo SIGUEN VALIENDO —no
                   dejan guardar si no se cumplen—, pero escritos bajo cada
@@ -1410,7 +1410,7 @@ export function ArmyListBuilderPage() {
       )}
 
       {!isPersonaje && !esCompuestaSel && (
-        <div className="w-24">
+        <div className="w-16">
           <TextField
             label="Cantidad"
             type="number"
@@ -1432,24 +1432,72 @@ export function ArmyListBuilderPage() {
         </div>
       )}
 
-      {equipmentItems.length > 0 && (
-        <div>
-          <p className="mb-1.5 text-xs font-medium text-ink-soft">Equipo</p>
-          <OptionCheckList
-            items={equipmentItems}
-            selected={draft.equipmentIds}
-            onToggle={(otherId, enabled) =>
-              setDraft((d) => {
-                const next = new Set(d.equipmentIds)
-                if (enabled) next.add(otherId)
-                else next.delete(otherId)
-                return { ...d, equipmentIds: next }
-              })
-            }
-            getDisabledReason={equipmentDisabledReason}
-          />
-        </div>
-      )}
+      {/* EL EQUIPO Y EL GRUPO DE MANDO, UNO AL LADO DEL OTRO. El mando era
+          una fila de casillas que se salía por la derecha —con tres roles y
+          sus precios no cabe— y había que arrastrarla para leerla. En su
+          propio cuadro y en columna se lee entera de un vistazo, y de paso
+          deja de confundirse con el equipo, que es lo de al lado. En el móvil
+          vuelven a ir uno debajo de otro. */}
+      <div className="grid items-start gap-3 sm:grid-cols-2">
+        {equipmentItems.length > 0 && (
+          <div>
+            <p className="mb-1.5 text-xs font-medium text-ink-soft">Equipo</p>
+            <OptionCheckList
+              items={equipmentItems}
+              selected={draft.equipmentIds}
+              onToggle={(otherId, enabled) =>
+                setDraft((d) => {
+                  const next = new Set(d.equipmentIds)
+                  if (enabled) next.add(otherId)
+                  else next.delete(otherId)
+                  return { ...d, equipmentIds: next }
+                })
+              }
+              getDisabledReason={equipmentDisabledReason}
+            />
+          </div>
+        )}
+        {(commandRoleAvailable.portaestandarte || commandRoleAvailable.musico || commandRoleAvailable.campeon) && (
+          <div className="rounded-sm border border-rule-dark/30 bg-parchment-dark/15 p-2.5">
+            <p className="mb-1.5 text-xs font-medium text-ink-soft">Grupo de mando</p>
+            <div className="flex flex-col gap-1.5">
+              {commandRoleAvailable.portaestandarte && (
+                <label className="flex items-start gap-2 text-xs text-ink-soft">
+                  <input
+                    type="checkbox"
+                    className="accent-maroon"
+                    checked={draft.hasStandardBearer}
+                    onChange={(e) => setDraft((d) => ({ ...d, hasStandardBearer: e.target.checked }))}
+                  />
+                  Portaestandarte (+{commandRoleAvailable.portaestandarte.cost} pts)
+                </label>
+              )}
+              {commandRoleAvailable.musico && (
+                <label className="flex items-start gap-2 text-xs text-ink-soft">
+                  <input
+                    type="checkbox"
+                    className="accent-maroon"
+                    checked={draft.hasMusician}
+                    onChange={(e) => setDraft((d) => ({ ...d, hasMusician: e.target.checked }))}
+                  />
+                  Músico (+{commandRoleAvailable.musico.cost} pts)
+                </label>
+              )}
+              {commandRoleAvailable.campeon && (
+                <label className="flex items-start gap-2 text-xs text-ink-soft">
+                  <input
+                    type="checkbox"
+                    className="accent-maroon"
+                    checked={draft.hasChampion}
+                    onChange={(e) => setDraft((d) => ({ ...d, hasChampion: e.target.checked }))}
+                  />
+                  {campeonName ?? 'Campeón'} (+{commandRoleAvailable.campeon.cost} pts)
+                </label>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {upgradeItems.length > 0 && (
         <div>
@@ -1520,47 +1568,6 @@ export function ArmyListBuilderPage() {
           open={entryMagicOpen}
           onToggle={() => setEntryMagicOpen((v) => !v)}
         />
-      )}
-
-      {(commandRoleAvailable.portaestandarte || commandRoleAvailable.musico || commandRoleAvailable.campeon) && (
-        <div>
-          <p className="mb-1.5 text-xs font-medium text-ink-soft">Grupo de mando</p>
-          <div className="flex flex-nowrap items-center gap-4 overflow-x-auto">
-            {commandRoleAvailable.portaestandarte && (
-              <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs text-ink-soft">
-                <input
-                  type="checkbox"
-                  className="accent-maroon"
-                  checked={draft.hasStandardBearer}
-                  onChange={(e) => setDraft((d) => ({ ...d, hasStandardBearer: e.target.checked }))}
-                />
-                Portaestandarte (+{commandRoleAvailable.portaestandarte.cost} pts)
-              </label>
-            )}
-            {commandRoleAvailable.musico && (
-              <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs text-ink-soft">
-                <input
-                  type="checkbox"
-                  className="accent-maroon"
-                  checked={draft.hasMusician}
-                  onChange={(e) => setDraft((d) => ({ ...d, hasMusician: e.target.checked }))}
-                />
-                Músico (+{commandRoleAvailable.musico.cost} pts)
-              </label>
-            )}
-            {commandRoleAvailable.campeon && (
-              <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs text-ink-soft">
-                <input
-                  type="checkbox"
-                  className="accent-maroon"
-                  checked={draft.hasChampion}
-                  onChange={(e) => setDraft((d) => ({ ...d, hasChampion: e.target.checked }))}
-                />
-                {campeonName ?? 'Campeón'} (+{commandRoleAvailable.campeon.cost} pts)
-              </label>
-            )}
-          </div>
-        </div>
       )}
 
       {entryIssues.length > 0 && (

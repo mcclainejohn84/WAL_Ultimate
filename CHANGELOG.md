@@ -13,6 +13,22 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.187 — 08/11/2026 19:43
+
+- **El grupo de mando, en su propio cuadro a la derecha del equipo** y en
+  columna, uno debajo de otro. Era una fila de casillas que se salía por la
+  derecha —tres roles con sus precios no caben— y había que arrastrarla para
+  leerla; además se confundía con el equipo, que estaba justo encima. En el
+  móvil los dos cuadros vuelven a ir uno debajo del otro. Vale para todas las
+  unidades, compuestas o no.
+
+- **Los campos de número de miniaturas, más estrechos.** Como mucho llevan dos
+  cifras y ocupaban el doble de lo necesario: las cantidades por tropa y la
+  cantidad de una unidad normal en el constructor, y el mínimo, el máximo y el
+  inicial del editor. Los de puntos no cambian, que llegan a tres cifras.
+
+---
+
 ## 0.186 — 08/11/2026 19:26
 
 - **El "Inicial" de la unidad ya precarga la cantidad de la tropa principal.**
