@@ -67,3 +67,24 @@ CREATE TABLE IF NOT EXISTS unit_skills (
 -- El coste de un personaje de renombre no cuenta en los ejércitos salvo que se
 -- active a mano. No borra nada: el coste sigue escrito, solo deja de sumar.
 ALTER TABLE units ADD COLUMN hide_cost INTEGER NOT NULL DEFAULT 1;
+
+-- Unidades compuestas: las tropas secundarias de una unidad y qué opción de
+-- equipo lleva cada una. Sin filas, la unidad es normal.
+CREATE TABLE IF NOT EXISTS unit_troop_profiles (
+  unit_id            INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+  profile_id         INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+  sort_order         INTEGER NOT NULL DEFAULT 0,
+  cost               INTEGER NOT NULL DEFAULT 0,
+  min_size           INTEGER,
+  max_size           INTEGER,
+  counts_toward_size INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (unit_id, profile_id)
+);
+ALTER TABLE unit_troop_profiles ADD COLUMN max_size INTEGER;
+ALTER TABLE unit_troop_profiles ADD COLUMN counts_toward_size INTEGER NOT NULL DEFAULT 1;
+CREATE TABLE IF NOT EXISTS unit_equipment_profiles (
+  unit_id      INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+  equipment_id INTEGER NOT NULL REFERENCES equipment_options(id) ON DELETE CASCADE,
+  profile_id   INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+  PRIMARY KEY (unit_id, equipment_id, profile_id)
+);

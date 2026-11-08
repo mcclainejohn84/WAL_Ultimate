@@ -17,6 +17,7 @@ import type {
   CommandRole,
   EquipmentOption,
   SpecialRule,
+  TropaSecundaria,
   Unit,
   UnitCategory,
   UnitDetail,
@@ -52,6 +53,52 @@ async function unitLabel(unitId: number): Promise<string> {
     (r) => ({ name: r.name as string, faction: r.faction as string }),
   )
   return row ? `la unidad "${row.name}" (${row.faction})` : `la unidad #${unitId}`
+}
+
+/**
+ * Las tropas SECUNDARIAS de una unidad compuesta, en su orden.
+ *
+ * Devuelve vacío si la tabla todavía no existe (Worker sin desplegar), que es
+ * además el caso de casi todas las unidades: sin tropas secundarias, la unidad
+ * es una normal y no hay nada que leer.
+ */
+async function tropasSecundariasDe(unitId: number): Promise<TropaSecundaria[]> {
+  try {
+    return await queryLocal<TropaSecundaria>(
+      `SELECT utp.sort_order AS sort_order, utp.cost AS troop_cost, utp.min_size AS troop_min,
+              utp.max_size AS troop_max, utp.counts_toward_size AS counts_toward_size, ap.*
+         FROM unit_troop_profiles utp
+         JOIN attribute_profiles ap ON ap.id = utp.profile_id
+        WHERE utp.unit_id = ?
+        ORDER BY utp.sort_order, ap.name`,
+      [unitId],
+      (row) => ({
+        ...mapAttributeProfileRow(row),
+        cost: (row.troop_cost as number) ?? 0,
+        minSize: (row.troop_min as number) ?? null,
+        maxSize: (row.troop_max as number) ?? null,
+        // Sin la columna (una base del intento anterior) cuenta, que es lo
+        // normal y lo que dice el valor de fábrica.
+        countsTowardSize: row.counts_toward_size == null || Boolean(row.counts_toward_size),
+        sortOrder: (row.sort_order as number) ?? 0,
+      }),
+    )
+  } catch {
+    return []
+  }
+}
+
+/** Qué tropa puede llevar cada opción de equipo. Vacío = cada opción es de toda la unidad. */
+async function equipoPorTropaDe(unitId: number): Promise<Array<{ equipmentId: number; profileId: number }>> {
+  try {
+    return await queryLocal(
+      'SELECT equipment_id, profile_id FROM unit_equipment_profiles WHERE unit_id = ?',
+      [unitId],
+      (row) => ({ equipmentId: row.equipment_id as number, profileId: row.profile_id as number }),
+    )
+  } catch {
+    return []
+  }
 }
 
 function mapUnit(row: Record<string, unknown>): Unit {
@@ -191,6 +238,30 @@ export interface UnitBatchSaveInput {
   commandCosts: Record<number, number>
   /** attribute_profile_id -> estadísticas nuevas. */
   profileStats: Record<number, AttributeProfileInput>
+  /**
+   * Las TROPAS SECUNDARIAS de una unidad compuesta: lo que no es su ficha de
+   * atributos (eso va por `profileStats`, como cualquier otro perfil).
+   *
+   * Darlas de alta y de baja NO pasa por aquí: eso crea y destruye fichas, y
+   * se hace al momento (ver addTropaSecundaria/removeTropaSecundaria). Aquí
+   * solo se actualiza lo que ya existe.
+   *
+   * VACÍO en una unidad normal, que es lo que son casi todas, y entonces no se
+   * toca ninguna de las tablas nuevas.
+   */
+  tropas: Array<{
+    profileId: number
+    name: string | null
+    cost: number
+    minSize: number | null
+    maxSize: number | null
+    countsTowardSize: boolean
+  }>
+  /**
+   * equipment_id -> qué tropas pueden llevar esa opción. Una opción que no
+   * aparezca, o con la lista vacía, es de TODA la unidad.
+   */
+  equipoPorTropa: Record<number, number[]>
 }
 
 /**
@@ -325,6 +396,8 @@ export const UnitRepository = {
       equipmentOptions,
       equipmentExclusivePairs,
       upgradeOptions,
+      tropas,
+      equipoPorTropa,
       commandOptions,
     ] = await Promise.all([
       queryLocalOne('SELECT * FROM units WHERE id = ?', [id], mapUnit),
@@ -392,6 +465,8 @@ export const UnitRepository = {
         [id],
         (row) => ({ ...mapUpgradeRow(row), isDefault: Boolean(row.is_default) }),
       ),
+      tropasSecundariasDe(id),
+      equipoPorTropaDe(id),
       queryLocal<UnitDetail['commandOptions'][number]>(
         `SELECT cr.id AS role_id, cr.code AS role_code, cr.name AS role_name, uco.cost AS cost,
                 uco.custom_name AS custom_name, ap.id AS profile_id, ap.*
@@ -446,6 +521,7 @@ export const UnitRepository = {
 
     const profiles = {
       base: linkedProfiles.find((p) => p.role === 'base')?.profile ?? null,
+      tropas,
       montura: linkedProfiles
         .filter((p) => p.role === 'montura')
         .map((p) => ({ ...p.profile, cost: p.cost, specialRules: rulesByProfile.get(p.profile.id) ?? [] })),
@@ -464,7 +540,13 @@ export const UnitRepository = {
       typeTag,
       profiles,
       specialRules,
-      equipmentOptions,
+      // El equipo se queda igual que siempre salvo por una cosa: a qué tropas
+      // pertenece. Sin filas en unit_equipment_profiles —el caso normal— la
+      // lista va vacía y quiere decir "toda la unidad".
+      equipmentOptions: equipmentOptions.map((e) => ({
+        ...e,
+        profileIds: equipoPorTropa.filter((x) => x.equipmentId === e.id).map((x) => x.profileId),
+      })),
       equipmentExclusivePairs,
       upgradeOptions,
       commandOptions,
@@ -510,6 +592,24 @@ export const UnitRepository = {
       [unitId],
       (row) => (row.is_special_character as number) === 1,
     )
+    // Las dos de las unidades compuestas van APARTE y en su propio intento:
+    // pueden no existir todavía (Worker sin desplegar) y un lote que falla lo
+    // hace entero — una unidad normal no puede quedarse sin borrar por culpa
+    // de una tabla que no usa. Las fichas de sus tropas son suyas, así que se
+    // van con ella; si no, quedarían perfiles huérfanos en el catálogo.
+    try {
+      await execCatalogBatch([
+        {
+          sql: `DELETE FROM attribute_profiles WHERE id IN
+                  (SELECT profile_id FROM unit_troop_profiles WHERE unit_id = ?)`,
+          params: [unitId],
+        },
+        { sql: 'DELETE FROM unit_troop_profiles WHERE unit_id = ?', params: [unitId] },
+        { sql: 'DELETE FROM unit_equipment_profiles WHERE unit_id = ?', params: [unitId] },
+      ])
+    } catch {
+      // Sin esas tablas no hay nada que limpiar.
+    }
     await execCatalogBatch([
       { sql: 'DELETE FROM unit_profiles WHERE unit_id = ?', params: [unitId] },
       { sql: 'DELETE FROM unit_special_rules WHERE unit_id = ?', params: [unitId] },
@@ -589,6 +689,9 @@ export const UnitRepository = {
     )
 
     // Perfil base: copia propia, no referencia compartida.
+    // `perfilNuevo` guarda a qué perfil de la copia corresponde cada uno del
+    // original, que hace falta para reenganchar el equipo de cada tropa.
+    const perfilNuevo = new Map<number, number>()
     if (source.profiles.base) {
       const p = source.profiles.base
       const newProfileId = await execCatalog(
@@ -600,6 +703,38 @@ export const UnitRepository = {
         newUnitId,
         newProfileId,
       ])
+      perfilNuevo.set(p.id, newProfileId)
+    }
+
+    // Las TROPAS SECUNDARIAS son tan propias de la unidad como el perfil base,
+    // así que se duplican de verdad. Una unidad normal no tiene ninguna y no
+    // ejecuta nada de esto.
+    for (const tropa of source.profiles.tropas) {
+      try {
+        const nuevoId = await execCatalog(
+          `INSERT INTO attribute_profiles (name, profile_kind, m, ha, hp, f, r, h, i, a, l)
+           VALUES (?, 'unidad', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [tropa.name, tropa.m, tropa.ha, tropa.hp, tropa.f, tropa.r, tropa.h, tropa.i, tropa.a, tropa.l],
+        )
+        await execCatalog(
+          `INSERT INTO unit_troop_profiles
+             (unit_id, profile_id, sort_order, cost, min_size, max_size, counts_toward_size)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            newUnitId,
+            nuevoId,
+            tropa.sortOrder,
+            tropa.cost,
+            tropa.minSize,
+            tropa.maxSize,
+            tropa.countsTowardSize ? 1 : 0,
+          ],
+        )
+        perfilNuevo.set(tropa.id, nuevoId)
+      } catch {
+        // Sin la tabla, la copia sale como unidad normal. Mejor eso que no
+        // poder duplicar.
+      }
     }
 
     const statements: BatchStatement[] = []
@@ -633,6 +768,19 @@ export const UnitRepository = {
         params: [newUnitId, u.id, u.isDefault ? 1 : 0],
       })
     }
+    // Y a qué tropa pertenece cada opción de equipo, con los perfiles ya
+    // traducidos a los de la copia. Vacío en una unidad normal.
+    for (const e of source.equipmentOptions) {
+      for (const profileId of e.profileIds) {
+        const destino = perfilNuevo.get(profileId)
+        if (destino == null) continue
+        statements.push({
+          sql: 'INSERT OR IGNORE INTO unit_equipment_profiles (unit_id, equipment_id, profile_id) VALUES (?, ?, ?)',
+          params: [newUnitId, e.id, destino],
+        })
+      }
+    }
+
     // En trozos, para no superar el límite de sentencias por lote del Worker.
     const CHUNK = 45
     for (let i = 0; i < statements.length; i += CHUNK) {
@@ -722,6 +870,117 @@ export const UnitRepository = {
       'base',
     ])
     return { id: profileId, name: null, equippableByCharacter: false, includeInSheets: false, ...blank }
+  },
+
+  // --------------------------------------------------------------------------
+  // Unidades compuestas: las tropas secundarias
+  //
+  // La tropa PRINCIPAL no se toca desde aquí: es el perfil base de la unidad,
+  // con su `base_cost`, su `min_size` y su `max_size`, igual que siempre.
+  // --------------------------------------------------------------------------
+
+  /**
+   * Añade una tropa secundaria en blanco al final: ficha sin características y
+   * sin nombre, a 0 puntos y contando para el tamaño. Se rellena después.
+   */
+  async addTropaSecundaria(unitId: number): Promise<TropaSecundaria> {
+    const profileId = await execCatalog(
+      "INSERT INTO attribute_profiles (name, profile_kind, m, ha, hp, f, r, h, i, a, l) VALUES (NULL, 'unidad', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL)",
+    )
+    const siguiente =
+      (await queryLocalOne<number>(
+        'SELECT COALESCE(MAX(sort_order), -1) + 1 AS n FROM unit_troop_profiles WHERE unit_id = ?',
+        [unitId],
+        (row) => row.n as number,
+      )) ?? 0
+    await execCatalog(
+      `INSERT INTO unit_troop_profiles (unit_id, profile_id, sort_order, cost, min_size, max_size, counts_toward_size)
+       VALUES (?, ?, ?, 0, NULL, NULL, 1)`,
+      [unitId, profileId, siguiente],
+    )
+    return {
+      id: profileId,
+      name: null,
+      equippableByCharacter: false,
+      includeInSheets: false,
+      m: null,
+      ha: null,
+      hp: null,
+      f: null,
+      r: null,
+      h: null,
+      i: null,
+      a: null,
+      l: null,
+      cost: 0,
+      minSize: null,
+      maxSize: null,
+      countsTowardSize: true,
+      sortOrder: siguiente,
+    }
+  },
+
+  /** Lo que es de la tropa y no de su ficha: precio, cuántas caben y si cuentan. */
+  async updateTropaSecundaria(
+    unitId: number,
+    profileId: number,
+    input: { cost: number; minSize: number | null; maxSize: number | null; countsTowardSize: boolean },
+  ): Promise<void> {
+    await execCatalog(
+      `UPDATE unit_troop_profiles
+          SET cost = ?, min_size = ?, max_size = ?, counts_toward_size = ?
+        WHERE unit_id = ? AND profile_id = ?`,
+      [input.cost, input.minSize, input.maxSize, input.countsTowardSize ? 1 : 0, unitId, profileId],
+    )
+  },
+
+  /** El nombre de una ficha de atributos ("Ungor"). Lo usan las tropas secundarias. */
+  async updateProfileName(profileId: number, name: string | null): Promise<void> {
+    const limpio = name?.trim()
+    await execCatalog('UPDATE attribute_profiles SET name = ? WHERE id = ?', [limpio ? limpio : null, profileId])
+  },
+
+  /**
+   * Quita una tropa secundaria: su fila, su ficha —que es suya y no la comparte
+   * nadie— y el equipo que se le había asignado.
+   */
+  async removeTropaSecundaria(unitId: number, profileId: number): Promise<void> {
+    await execCatalogBatch([
+      { sql: 'DELETE FROM unit_equipment_profiles WHERE unit_id = ? AND profile_id = ?', params: [unitId, profileId] },
+      { sql: 'DELETE FROM unit_troop_profiles WHERE unit_id = ? AND profile_id = ?', params: [unitId, profileId] },
+      { sql: 'DELETE FROM attribute_profiles WHERE id = ?', params: [profileId] },
+    ])
+  },
+
+  /** El orden en el que se leen las tropas, que es el de la ficha. */
+  async reorderTropas(unitId: number, orderedProfileIds: number[]): Promise<void> {
+    await execCatalogBatch(
+      orderedProfileIds.map((profileId, index) => ({
+        sql: 'UPDATE unit_troop_profiles SET sort_order = ? WHERE unit_id = ? AND profile_id = ?',
+        params: [index, unitId, profileId],
+      })),
+    )
+  },
+
+  /**
+   * Si esta tropa puede llevar esta opción de equipo.
+   *
+   * SIN NINGUNA FILA para una opción, la lleva toda la unidad: es lo que son
+   * todas las opciones de una unidad normal, y por eso marcar y desmarcar aquí
+   * no afecta a nadie más.
+   */
+  async toggleEquipoDeTropa(unitId: number, equipmentId: number, profileId: number, enabled: boolean): Promise<void> {
+    await execCatalogBatch([
+      enabled
+        ? {
+            sql: 'INSERT OR IGNORE INTO unit_equipment_profiles (unit_id, equipment_id, profile_id) VALUES (?, ?, ?)',
+            params: [unitId, equipmentId, profileId],
+          }
+        : {
+            sql: 'DELETE FROM unit_equipment_profiles WHERE unit_id = ? AND equipment_id = ? AND profile_id = ?',
+            params: [unitId, equipmentId, profileId],
+          },
+    ])
   },
 
   async updateScalarFields(id: number, input: UnitScalarInput): Promise<void> {
@@ -924,6 +1183,50 @@ export const UnitRepository = {
     }
 
     await execCatalogBatch(statements)
+
+    // LO DE LAS UNIDADES COMPUESTAS, EN SU PROPIO LOTE Y SOLO SI LAS HAY.
+    //
+    // Aparte por dos motivos: sus tablas pueden no existir todavía (Worker sin
+    // desplegar) y un lote que falla lo hace entero, así que meterlo con lo
+    // demás dejaría sin guardar una unidad normal por culpa de dos tablas que
+    // no usa. Y con `tropas` vacío —el 99 % de las unidades— aquí no se
+    // ejecuta ni una sentencia.
+    if (input.tropas.length > 0) {
+      try {
+        const deCompuesta: BatchStatement[] = input.tropas.map((tropa) => ({
+          sql: `UPDATE unit_troop_profiles
+                   SET cost = ?, min_size = ?, max_size = ?, counts_toward_size = ?
+                 WHERE unit_id = ? AND profile_id = ?`,
+          params: [tropa.cost, tropa.minSize, tropa.maxSize, tropa.countsTowardSize ? 1 : 0, unitId, tropa.profileId],
+        }))
+        for (const tropa of input.tropas) {
+          const limpio = tropa.name?.trim()
+          deCompuesta.push({
+            sql: 'UPDATE attribute_profiles SET name = ? WHERE id = ?',
+            params: [limpio ? limpio : null, tropa.profileId],
+          })
+        }
+        // El equipo por tropa se rehace entero: son pocas filas y así no hay
+        // que llevar la cuenta de lo que se quitó.
+        deCompuesta.push({ sql: 'DELETE FROM unit_equipment_profiles WHERE unit_id = ?', params: [unitId] })
+        for (const [equipmentId, profileIds] of Object.entries(input.equipoPorTropa)) {
+          for (const profileId of profileIds) {
+            deCompuesta.push({
+              sql: 'INSERT OR IGNORE INTO unit_equipment_profiles (unit_id, equipment_id, profile_id) VALUES (?, ?, ?)',
+              params: [unitId, Number(equipmentId), profileId],
+            })
+          }
+        }
+        const CHUNK_COMPUESTA = 45
+        for (let i = 0; i < deCompuesta.length; i += CHUNK_COMPUESTA) {
+          await execCatalogBatch(deCompuesta.slice(i, i + CHUNK_COMPUESTA))
+        }
+      } catch (err) {
+        console.error('[WHArmy] No se pudieron guardar las tropas de la unidad:', err)
+        throw err
+      }
+    }
+
     // Una sola entrada por "Guardar cambios", no una por campo tocado: es el
     // gesto que hace el usuario y lo que tiene sentido leer luego en el Log.
     await ChangeLogRepository.record('unidad', 'editar', `Editó ${await unitLabel(unitId)}`, unitId)

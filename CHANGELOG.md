@@ -13,6 +13,33 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.178 — 08/11/2026 11:32
+
+- **Unidades compuestas: el editor y la hoja** (primera parte de dos). Una
+  unidad compuesta es una mezcla de tipos de miniatura: una Manada de Bestias
+  son Gor y Ungor, con atributos y precios distintos, en una sola unidad.
+  - La tropa **principal es la de siempre**: el perfil base, con el coste y los
+    tamaños de "Datos generales". Lo nuevo son las **otras tropas**, cada una
+    con su ficha de atributos, su precio por miniatura, su mínimo y su máximo y
+    una casilla para decir si cuentan para el tamaño de la unidad. El coste
+    suma siempre.
+  - En **Opciones de equipo**, cuando la unidad tiene más de una tropa aparece
+    una rejilla para marcar qué tropa puede llevar cada opción. Sin marcar
+    nada, la opción es de toda la unidad.
+  - La **hoja de unidad** enseña una línea de atributos por tropa, y el coste
+    las dice todas ("7 / 3 pts/miniatura").
+  - Las reglas especiales no se reparten: son de la unidad entera.
+  - **Una unidad normal no se entera de nada.** Sin tropas secundarias no se
+    lee ni se escribe ninguna de las tablas nuevas, y el guardado hace
+    exactamente las mismas sentencias que antes.
+
+- **Falta la segunda parte**: el constructor de ejércitos todavía no deja
+  elegir cuántas miniaturas de cada tropa, así que una unidad compuesta metida
+  en una lista cuenta hoy solo su tropa principal. Eso, el despliegue y los PDF
+  van en la siguiente.
+
+---
+
 ## 0.177 — 08/11/2026 09:48
 
 - **La aplicación deja de explicarse a sí misma.** Queda apuntado como regla de

@@ -428,6 +428,39 @@ CREATE TABLE unit_profiles (
     PRIMARY KEY (unit_id, profile_id, role)
 );
 
+-- ----------------------------------------------------------------------------
+-- UNIDADES COMPUESTAS: las tropas SECUNDARIAS de una unidad.
+--
+-- Una Manada de Bestias son Gor y Ungor en la misma unidad, con atributos y
+-- precios distintos. La tropa PRINCIPAL es la de siempre (el perfil `base` de
+-- unit_profiles, con units.base_cost, min_size y max_size); aquí van solo las
+-- demás. Sin filas, la unidad es normal y nada de esto existe para ella.
+--
+-- `cost` es por MINIATURA de esa tropa y no admite NULL: una tropa sin precio
+-- no es "gratis", es un dato que falta. `counts_toward_size` dice si sus
+-- miniaturas suman al tamaño de la unidad; el coste suma siempre.
+CREATE TABLE unit_troop_profiles (
+    unit_id            INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+    profile_id         INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+    sort_order         INTEGER NOT NULL DEFAULT 0,
+    cost               INTEGER NOT NULL DEFAULT 0,
+    min_size           INTEGER,
+    max_size           INTEGER,
+    counts_toward_size INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (unit_id, profile_id)
+);
+
+-- QUIÉN PUEDE LLEVAR CADA OPCIÓN DE EQUIPO en una unidad compuesta. Sin filas,
+-- la opción es de toda la unidad; con filas, solo de esas tropas. Es una tabla
+-- y no una columna de unit_equipment_options porque la misma opción (el
+-- escudo) la pueden llevar varias tropas, y la clave de aquella no lo permite.
+CREATE TABLE unit_equipment_profiles (
+    unit_id      INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+    equipment_id INTEGER NOT NULL REFERENCES equipment_options(id) ON DELETE CASCADE,
+    profile_id   INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+    PRIMARY KEY (unit_id, equipment_id, profile_id)
+);
+
 -- APÉNDICES de una unidad: bloques de texto con formato que se escriben a mano
 -- (reglas propias, trasfondo, aclaraciones) y salen al final de su ficha.
 --

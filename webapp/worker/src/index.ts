@@ -1129,6 +1129,53 @@ const MIGRATIONS: string[] = [
   // la llevan todas las unidades porque ALTER TABLE no sabe de condiciones,
   // pero solo se mira en los de renombre (ver mapUnit).
   'ALTER TABLE units ADD COLUMN hide_cost INTEGER NOT NULL DEFAULT 1',
+  // --------------------------------------------------------------------------
+  // UNIDADES COMPUESTAS: una unidad que es una MEZCLA de tipos de miniatura.
+  //
+  // Una Manada de Bestias son Gor y Ungor en la misma unidad, con atributos y
+  // precios distintos. La tropa PRINCIPAL sigue siendo la de siempre —el
+  // perfil `base` de unit_profiles, con units.base_cost, min_size y max_size—,
+  // y aquí van solo las SECUNDARIAS. Así una unidad normal, que son el 99 %,
+  // no se entera de que esto existe: sin filas aquí, nada cambia.
+  //
+  // `cost` es por MINIATURA de esa tropa y no admite NULL (a diferencia del de
+  // las monturas): una tropa sin precio no es "gratis", es un dato que falta.
+  // `counts_toward_size` dice si sus miniaturas suman al tamaño de la unidad;
+  // el COSTE suma siempre.
+  //
+  // POR QUÉ UNA TABLA Y NO UN ROL MÁS EN `unit_profiles`: aquella tiene un
+  // CHECK sobre `role` y SQLite no sabe cambiar un CHECK sin reconstruir la
+  // tabla, y estas migraciones se lanzan ENTERAS en cada arranque, donde un
+  // renombrado solo funciona la primera vez.
+  `CREATE TABLE IF NOT EXISTS unit_troop_profiles (
+     unit_id            INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+     profile_id         INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+     sort_order         INTEGER NOT NULL DEFAULT 0,
+     cost               INTEGER NOT NULL DEFAULT 0,
+     min_size           INTEGER,
+     max_size           INTEGER,
+     counts_toward_size INTEGER NOT NULL DEFAULT 1,
+     PRIMARY KEY (unit_id, profile_id)
+   )`,
+  // Las dos últimas llegan por separado porque la tabla existía ya en algunas
+  // bases, de un intento anterior, sin ellas.
+  'ALTER TABLE unit_troop_profiles ADD COLUMN max_size INTEGER',
+  'ALTER TABLE unit_troop_profiles ADD COLUMN counts_toward_size INTEGER NOT NULL DEFAULT 1',
+  // QUIÉN PUEDE LLEVAR CADA OPCIÓN DE EQUIPO en una unidad compuesta.
+  //
+  // SIN FILAS, la opción es de TODA la unidad: es lo que son todas salvo en
+  // las compuestas. Con filas, es solo de esas tropas.
+  //
+  // Una tabla y no una columna en unit_equipment_options porque la clave de
+  // aquella es (unit_id, equipment_id): el escudo lo pueden llevar los Gor Y
+  // los Ungor, y así la misma opción no cabe dos veces. Aquí la tropa forma
+  // parte de la clave.
+  `CREATE TABLE IF NOT EXISTS unit_equipment_profiles (
+     unit_id      INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+     equipment_id INTEGER NOT NULL REFERENCES equipment_options(id) ON DELETE CASCADE,
+     profile_id   INTEGER NOT NULL REFERENCES attribute_profiles(id) ON DELETE CASCADE,
+     PRIMARY KEY (unit_id, equipment_id, profile_id)
+   )`,
   // Ahora las listas los ofrecen POR DEFECTO, al revés que antes.
   //
   // Es una columna NUEVA en vez de darle la vuelta a la anterior con un UPDATE

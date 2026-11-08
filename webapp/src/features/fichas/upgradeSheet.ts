@@ -102,7 +102,8 @@ export function upgradeAsUnitDetail(
     faction: faction ?? NO_FACTION,
     category: null,
     typeTag: null,
-    profiles: { base: upgrade.profile, montura: [], carro: [] },
+    // Ni una opción con ficha ni una montura son una unidad compuesta.
+    profiles: { base: upgrade.profile, tropas: [], montura: [], carro: [] },
     specialRules,
     equipmentOptions: [],
     equipmentExclusivePairs: [],
@@ -167,7 +168,7 @@ export function mountAsUnitDetail(
     faction: faction ?? NO_FACTION,
     category: null,
     typeTag: null,
-    profiles: { base: profile, montura: [], carro: [] },
+    profiles: { base: profile, tropas: [], montura: [], carro: [] },
     specialRules,
     equipmentOptions: [],
     equipmentExclusivePairs: [],

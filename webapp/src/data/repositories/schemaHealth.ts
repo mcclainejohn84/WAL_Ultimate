@@ -60,6 +60,8 @@ const CHECKS: SchemaCheck[] = [
   { label: 'Compartir el despliegue', probe: 'SELECT share_deployment FROM army_list_shares LIMIT 1' },
   { label: 'Habilidades de los Personajes de Renombre', probe: 'SELECT skill_key FROM unit_skills LIMIT 1' },
   { label: 'Coste que no cuenta en los personajes de renombre', probe: 'SELECT hide_cost FROM units LIMIT 1' },
+  { label: 'Tropas de una unidad compuesta', probe: 'SELECT counts_toward_size FROM unit_troop_profiles LIMIT 1' },
+  { label: 'Equipo por tropa', probe: 'SELECT profile_id FROM unit_equipment_profiles LIMIT 1' },
   { label: 'Peana estándar por etiqueta', probe: 'SELECT base_width_cm FROM unit_type_tags LIMIT 1' },
   { label: 'Medidas de la mesa', probe: 'SELECT table_width_cm FROM army_lists LIMIT 1' },
   { label: 'Peanas redimensionadas', probe: 'SELECT w_cm FROM army_list_deployments LIMIT 1' },

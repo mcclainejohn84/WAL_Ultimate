@@ -24,6 +24,11 @@ export function unifiedProfileRows(
   if (unit.profiles.base) {
     rows.push({ key: `base-${unit.profiles.base.id}`, label: unit.name, profile: unit.profiles.base })
   }
+  // Las otras tropas de una unidad compuesta, justo detrás de la principal:
+  // son la misma unidad, no un añadido. En una unidad normal no hay ninguna.
+  for (const tropa of unit.profiles.tropas) {
+    rows.push({ key: `tropa-${tropa.id}`, label: tropa.name ?? 'Tropa', profile: tropa })
+  }
   // Ficha del Campeón (si el grupo de mando la trae): va justo debajo del
   // perfil de la unidad y ENCIMA de monturas/carros, como en CodexMaker.
   const champion = unit.commandOptions.find((c) => c.role.code === 'CAMPEON')
@@ -136,13 +141,24 @@ export function specialRulesText(unit: UnitDetail): string {
   return unit.specialRules.map((r) => r.name).join(', ')
 }
 
+/**
+ * Lo que vale la unidad, por miniatura.
+ *
+ * En una COMPUESTA no hay un solo número: cada tropa tiene el suyo, así que se
+ * escriben todos ("7 / 3 pts/miniatura", en el orden de la ficha) en vez de
+ * enseñar el de la principal como si fuera el de todas.
+ */
 export function pointsLabel(unit: UnitDetail): string {
   // Solo el personaje tiene coste plano, por ser una única miniatura. Una
   // unidad 0-1 NO: sigue siendo un regimiento de varias miniaturas (el 0-1
   // limita cuántas unidades de ese tipo caben en el ejército, no su tamaño),
   // así que su coste es por miniatura como el de cualquier otra tropa.
   const single = unit.unitType === 'personaje'
-  return single ? `${unit.baseCost} pts` : `${unit.baseCost} pts/miniatura`
+  if (single) return `${unit.baseCost} pts`
+  if (unit.profiles.tropas.length > 0) {
+    return `${[unit.baseCost, ...unit.profiles.tropas.map((tr) => tr.cost)].join(' / ')} pts/miniatura`
+  }
+  return `${unit.baseCost} pts/miniatura`
 }
 
 /** Nombre de archivo seguro para exportar — mismo criterio que CodexMaker (ver `sanitizeFilename` en index.html de referencia): espacios a "_", fuera los caracteres prohibidos en Windows, sin tocar acentos/ñ. */

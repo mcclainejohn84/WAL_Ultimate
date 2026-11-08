@@ -273,6 +273,27 @@ export interface UnitAppendix {
 }
 
 /** Unidad con todas sus relaciones cargadas — para la ficha de detalle/edición. */
+/**
+ * Una tropa SECUNDARIA de una unidad compuesta: su ficha de atributos y lo
+ * suyo propio — cuánto cuesta cada miniatura, cuántas caben y si cuentan.
+ *
+ * El NOMBRE es el del perfil (`name`): "Ungor", "Desgarrador". La principal no
+ * necesita uno porque es la unidad misma.
+ */
+export interface TropaSecundaria extends AttributeProfile {
+  /** Puntos por MINIATURA de esta tropa. Suma siempre al coste de la unidad. */
+  cost: number
+  /** Cuántas como poco y cuántas como mucho. null = sin tope por ese lado. */
+  minSize: number | null
+  maxSize: number | null
+  /**
+   * Si sus miniaturas SUMAN al tamaño de la unidad. Por defecto sí. El coste
+   * no depende de esto: ese suma siempre.
+   */
+  countsTowardSize: boolean
+  sortOrder: number
+}
+
 export interface UnitDetail extends Unit {
   faction: Faction
   category: UnitCategory | null
@@ -288,6 +309,20 @@ export interface UnitDetail extends Unit {
    */
   profiles: {
     base: AttributeProfile | null
+    /**
+     * LAS TROPAS SECUNDARIAS de una unidad COMPUESTA, en su orden.
+     *
+     * Una unidad compuesta es una mezcla de tipos de miniatura: una Manada de
+     * Bestias son Gor y Ungor, con atributos y precios distintos, en una sola
+     * unidad. La tropa PRINCIPAL no está aquí: es la de siempre —`base`, con
+     * `baseCost`, `minSize` y `maxSize` de la unidad—, y por eso una unidad
+     * normal (que son el 99 %) llega con esto VACÍO y no se entera de que
+     * existe.
+     *
+     * Las reglas especiales no se reparten por tropa: son de la unidad entera
+     * (ver `specialRules`). El equipo sí (ver `equipmentOptions[].profileIds`).
+     */
+    tropas: TropaSecundaria[]
     /** `specialRules`: las propias del monstruo/montura (ver profile_special_rules), no las del jinete. */
     montura: Array<AttributeProfile & { cost: number | null; specialRules: SpecialRule[] }>
     /** `specialRules`: las propias del carro (ver profile_special_rules), no las de la unidad que lo lleva. */
@@ -306,8 +341,15 @@ export interface UnitDetail extends Unit {
    * `profiles.montura[].specialRules`.
    */
   specialRules: SpecialRule[]
-  /** `isDefault`: viene ya marcada al añadir la unidad a una lista (ver unit_equipment_options.is_default). */
-  equipmentOptions: Array<EquipmentOption & { isDefault: boolean }>
+  /**
+   * `isDefault`: viene ya marcada al añadir la unidad a una lista (ver
+   * unit_equipment_options.is_default).
+   *
+   * `profileIds`: QUÉ TROPAS pueden llevarla, en una unidad compuesta. VACÍO
+   * quiere decir "toda la unidad", que es lo que son todas salvo en las
+   * compuestas — y por eso el caso normal no necesita ni una fila.
+   */
+  equipmentOptions: Array<EquipmentOption & { isDefault: boolean; profileIds: number[] }>
   /**
    * Parejas de opciones de equipo EXCLUYENTES entre sí, limitadas a las que
    * ofrece esta unidad (ver equipment_incompatibilities). Se cargan con la

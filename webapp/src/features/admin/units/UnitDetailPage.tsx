@@ -20,17 +20,33 @@ import { PageHeader } from '@/shared/ui/PageHeader'
 import { Panel } from '@/shared/ui/Panel'
 import { Spinner } from '@/shared/ui/Spinner'
 import { Button } from '@/shared/ui/Button'
-import { ArrowLeftIcon, CheckIcon, PlusIcon, WarningIcon } from '@/shared/ui/icons'
+import {
+  ArrowDownIcon,
+  ArrowLeftIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  PlusIcon,
+  TrashIcon,
+  WarningIcon,
+} from '@/shared/ui/icons'
 import { TextField } from '@/shared/ui/TextField'
 import { EnteroInput } from '@/shared/ui/EnteroInput'
 import { Select } from '@/shared/ui/Select'
 import { RelationEditor } from '@/shared/ui/RelationEditor'
 import { AttributeTable, EditableAttributeTable, extractProfileInput } from '@/shared/ui/AttributeTable'
 import { UnsavedChangesDialog } from '@/shared/ui/UnsavedChangesDialog'
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { AppendicesModal } from '@/features/admin/units/AppendicesModal'
 import { EquipmentCreateModal } from '@/features/admin/units/EquipmentCreateModal'
 import { UpgradeCreateModal } from '@/features/admin/units/UpgradeCreateModal'
-import type { AttributeProfile, AttributeProfileInput, CommandRole, EquipmentOption, UnitDetail } from '@/domain/types'
+import type {
+  AttributeProfile,
+  AttributeProfileInput,
+  CommandRole,
+  EquipmentOption,
+  TropaSecundaria,
+  UnitDetail,
+} from '@/domain/types'
 
 /** Nombre por defecto del Campeón en toda ficha que no tenga uno propio asignado. */
 const DEFAULT_CHAMPION_NAME = 'Campeón'
@@ -65,6 +81,50 @@ interface UnitDraft {
   /** command_role_id -> coste en puntos de esa opción de mando (Músico/Portaestandarte/Campeón). */
   commandCosts: Record<number, number>
   profileStats: Record<number, AttributeProfileInput>
+  /**
+   * Las TROPAS SECUNDARIAS, si esta unidad es compuesta. La principal no está
+   * aquí: es la unidad misma, con su perfil base y su coste.
+   *
+   * Sus características viajan en `profileStats` como las de cualquier otro
+   * perfil; aquí va lo que es de la tropa y no de su ficha.
+   */
+  tropas: TropaEnEdicion[]
+  /** equipment_id -> qué tropas pueden llevarla. Sin entrada, o vacía: toda la unidad. */
+  equipoPorTropa: Record<number, number[]>
+}
+
+/** Una tropa secundaria mientras se edita. `profileId` es su ficha de atributos. */
+interface TropaEnEdicion {
+  profileId: number
+  name: string
+  cost: number
+  minSize: number | null
+  maxSize: number | null
+  countsTowardSize: boolean
+}
+
+/** Las nueve características en blanco, para una ficha que todavía no se ha tocado. */
+const FICHA_EN_BLANCO: AttributeProfileInput = {
+  m: null,
+  ha: null,
+  hp: null,
+  f: null,
+  r: null,
+  h: null,
+  i: null,
+  a: null,
+  l: null,
+}
+
+function tropaEnEdicion(tropa: TropaSecundaria): TropaEnEdicion {
+  return {
+    profileId: tropa.id,
+    name: tropa.name ?? '',
+    cost: tropa.cost,
+    minSize: tropa.minSize,
+    maxSize: tropa.maxSize,
+    countsTowardSize: tropa.countsTowardSize,
+  }
 }
 
 function scalarFromUnit(unit: UnitDetail): UnitScalarInput {
@@ -88,6 +148,7 @@ function scalarFromUnit(unit: UnitDetail): UnitScalarInput {
 function draftFromUnit(unit: UnitDetail): UnitDraft {
   const profileStats: Record<number, AttributeProfileInput> = {}
   if (unit.profiles.base) profileStats[unit.profiles.base.id] = extractProfileInput(unit.profiles.base)
+  for (const tropa of unit.profiles.tropas) profileStats[tropa.id] = extractProfileInput(tropa)
   for (const opt of unit.commandOptions) {
     if (opt.profile) profileStats[opt.profile.id] = extractProfileInput(opt.profile)
   }
@@ -109,6 +170,10 @@ function draftFromUnit(unit: UnitDetail): UnitDraft {
     ),
     commandCosts: Object.fromEntries(unit.commandOptions.map((opt) => [opt.role.id, opt.cost])),
     profileStats,
+    tropas: unit.profiles.tropas.map(tropaEnEdicion),
+    equipoPorTropa: Object.fromEntries(
+      unit.equipmentOptions.filter((e) => e.profileIds.length > 0).map((e) => [e.id, e.profileIds]),
+    ),
   }
 }
 
@@ -149,6 +214,7 @@ export function UnitDetailPage() {
     () => (unit ? UnitRepository.listAliasDeFaccion(unit.factionId) : Promise.resolve([])),
     [unit?.factionId],
   )
+  const [tropaPorQuitar, setTropaPorQuitar] = useState<TropaEnEdicion | null>(null)
   const [creatingEquipmentQuery, setCreatingEquipmentQuery] = useState<string | null>(null)
   const [creatingUpgradeQuery, setCreatingUpgradeQuery] = useState<string | null>(null)
   // La unidad puede no tener todavía ficha base (unidad recién creada desde
@@ -249,6 +315,8 @@ export function UnitDetailPage() {
         ),
         commandCosts: draft.commandCosts,
         profileStats: draft.profileStats,
+        tropas: draft.tropas.map((tropa) => ({ ...tropa, name: tropa.name.trim() || null })),
+        equipoPorTropa: draft.equipoPorTropa,
       })
       setSavedFlash(true)
       setTimeout(() => setSavedFlash(false), 1500)
@@ -256,6 +324,78 @@ export function UnitDetailPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  // --------------------------------------------------------------------------
+  // Unidades compuestas
+  //
+  // Dar de alta y de baja una tropa ESCRIBE AL MOMENTO, como "Crear ficha base"
+  // o dar de alta un Campeón: crea y destruye fichas de atributos, y eso no
+  // cabe en un borrador que se guarda al final. Lo que se escribe en ella
+  // —nombre, precio, tamaños y características— sí va al borrador y se guarda
+  // con el botón, como todo lo demás.
+  // --------------------------------------------------------------------------
+
+  async function anadirTropa() {
+    const tropa = await UnitRepository.addTropaSecundaria(unitId)
+    updateDraft((d) => ({
+      ...d,
+      tropas: [...d.tropas, tropaEnEdicion(tropa)],
+      profileStats: { ...d.profileStats, [tropa.id]: extractProfileInput(tropa) },
+    }))
+  }
+
+  async function quitarTropa(tropa: TropaEnEdicion) {
+    await UnitRepository.removeTropaSecundaria(unitId, tropa.profileId)
+    setTropaPorQuitar(null)
+    updateDraft((d) => {
+      const profileStats = { ...d.profileStats }
+      delete profileStats[tropa.profileId]
+      const equipoPorTropa: Record<number, number[]> = {}
+      for (const [equipmentId, ids] of Object.entries(d.equipoPorTropa)) {
+        const quedan = ids.filter((id) => id !== tropa.profileId)
+        if (quedan.length > 0) equipoPorTropa[Number(equipmentId)] = quedan
+      }
+      return {
+        ...d,
+        tropas: d.tropas.filter((x) => x.profileId !== tropa.profileId),
+        profileStats,
+        equipoPorTropa,
+      }
+    })
+  }
+
+  /** El orden se escribe al momento: es un número suelto y no hay nada que deshacer. */
+  function moverTropa(index: number, delta: number) {
+    if (!draft) return
+    const destino = index + delta
+    if (destino < 0 || destino >= draft.tropas.length) return
+    const tropas = [...draft.tropas]
+    ;[tropas[index], tropas[destino]] = [tropas[destino], tropas[index]]
+    updateDraft((d) => ({ ...d, tropas }))
+    void UnitRepository.reorderTropas(
+      unitId,
+      tropas.map((x) => x.profileId),
+    )
+  }
+
+  function setTropa(profileId: number, cambio: Partial<TropaEnEdicion>) {
+    updateDraft((d) => ({
+      ...d,
+      tropas: d.tropas.map((x) => (x.profileId === profileId ? { ...x, ...cambio } : x)),
+    }))
+  }
+
+  /** Sin ninguna tropa marcada, la opción vuelve a ser de toda la unidad. */
+  function toggleEquipoDeTropa(equipmentId: number, profileId: number, enabled: boolean) {
+    updateDraft((d) => {
+      const actuales = d.equipoPorTropa[equipmentId] ?? []
+      const siguientes = enabled ? [...actuales, profileId] : actuales.filter((x) => x !== profileId)
+      const equipoPorTropa = { ...d.equipoPorTropa }
+      if (siguientes.length === 0) delete equipoPorTropa[equipmentId]
+      else equipoPorTropa[equipmentId] = siguientes
+      return { ...d, equipoPorTropa }
+    })
   }
 
   function toggleDraft(kind: 'specialRuleIds' | 'equipmentIds' | 'upgradeIds', otherId: number, enabled: boolean) {
@@ -326,6 +466,15 @@ export function UnitDetailPage() {
 
   const baseProfile = unit.profiles.base ?? baseProfileOverride
   const commandOptions = commandOverride ?? unit.commandOptions
+
+  /**
+   * Todas las tropas de la unidad para la tabla de equipo: la principal la
+   * primera, con el nombre de la unidad, y las secundarias en su orden.
+   */
+  const tropasDeLaUnidad: Array<{ profileId: number; nombre: string }> = [
+    ...(baseProfile ? [{ profileId: baseProfile.id, nombre: draft.scalar.name.trim() || 'Principal' }] : []),
+    ...draft.tropas.map((tropa) => ({ profileId: tropa.profileId, nombre: tropa.name.trim() || 'Sin nombre' })),
+  ]
 
   /** Da de alta o de baja un rol de mando (Músico, Portaestandarte, Campeón). */
   async function toggleCommandRole(role: CommandRole, enabled: boolean) {
@@ -675,6 +824,47 @@ export function UnitDetailPage() {
               defaultIds={draft.defaultEquipmentIds}
               onToggleDefault={(otherId, isDefault) => toggleDraftDefault('defaultEquipmentIds', otherId, isDefault)}
             />
+
+            {/* De quién es cada opción, solo si la unidad tiene más de una
+                tropa. En una normal no habría nada que elegir: todas las
+                opciones son de todos. Sin marcar ninguna, la opción sigue
+                siendo de toda la unidad. */}
+            {draft.tropas.length > 0 && draft.equipmentIds.size > 0 && (
+              <div className="mt-3 border-t border-rule-dark/20 pt-3">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-micro font-semibold uppercase tracking-[0.12em] text-ink-soft/70">
+                      <th className="pb-1 text-left font-semibold">Opción</th>
+                      {tropasDeLaUnidad.map((tr) => (
+                        <th key={tr.profileId} className="pb-1 px-1 text-center font-semibold">
+                          {tr.nombre}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-rule-dark/12">
+                    {equipmentItems
+                      .filter((item) => draft.equipmentIds.has(item.id))
+                      .map((item) => (
+                        <tr key={item.id}>
+                          <td className="py-1 pr-2 text-ink">{item.name}</td>
+                          {tropasDeLaUnidad.map((tr) => (
+                            <td key={tr.profileId} className="px-1 py-1 text-center">
+                              <input
+                                type="checkbox"
+                                aria-label={`${item.name} para ${tr.nombre}`}
+                                checked={(draft.equipoPorTropa[item.id] ?? []).includes(tr.profileId)}
+                                onChange={(e) => toggleEquipoDeTropa(item.id, tr.profileId, e.target.checked)}
+                                className="h-3.5 w-3.5 accent-maroon"
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Panel>
 
           <Panel title="Opciones de unidad">
@@ -749,6 +939,124 @@ export function UnitDetailPage() {
               </div>
             )}
           </Panel>
+
+          {/* UNIDADES COMPUESTAS. La tropa que ya está arriba —el perfil base,
+              con el coste y los tamaños de "Datos generales"— es la PRINCIPAL;
+              aquí van las demás. Sin ninguna, la unidad es normal y lo único
+              que se ve es el botón. */}
+          {unit.unitType !== 'personaje' && (
+            <Panel
+              title="Otras tropas de la unidad"
+              headerRight={
+                <Button variant="ghost" onClick={() => void anadirTropa()}>
+                  <PlusIcon className="h-4 w-4" />
+                  Añadir tropa
+                </Button>
+              }
+            >
+              {draft.tropas.length === 0 ? (
+                <p className="text-xs italic text-ink-soft/55">Ninguna.</p>
+              ) : (
+                <div className="space-y-3">
+                  {draft.tropas.map((tropa, index) => (
+                    <div
+                      key={tropa.profileId}
+                      className="rounded-sm border border-rule-dark/30 bg-parchment-dark/15 p-3"
+                    >
+                      <div className="mb-2.5 flex flex-wrap items-end gap-x-3 gap-y-2">
+                        <div className="min-w-[7rem] flex-1">
+                          <TextField
+                            label="Nombre"
+                            value={tropa.name}
+                            placeholder="Ungor"
+                            onChange={(e) => setTropa(tropa.profileId, { name: e.target.value })}
+                          />
+                        </div>
+                        <div className="w-20">
+                          <TextField
+                            label="Puntos"
+                            type="number"
+                            max={999}
+                            className="text-center"
+                            value={tropa.cost}
+                            onChange={(e) => setTropa(tropa.profileId, { cost: Number(e.target.value) || 0 })}
+                          />
+                        </div>
+                        <div className="w-20">
+                          <TextField
+                            label="Mínimo"
+                            type="number"
+                            max={99}
+                            className="text-center"
+                            value={tropa.minSize ?? ''}
+                            onChange={(e) =>
+                              setTropa(tropa.profileId, { minSize: e.target.value ? Number(e.target.value) : null })
+                            }
+                          />
+                        </div>
+                        <div className="w-20">
+                          <TextField
+                            label="Máximo"
+                            type="number"
+                            max={99}
+                            className="text-center"
+                            value={tropa.maxSize ?? ''}
+                            onChange={(e) =>
+                              setTropa(tropa.profileId, { maxSize: e.target.value ? Number(e.target.value) : null })
+                            }
+                          />
+                        </div>
+                        <label className="flex items-center gap-1.5 pb-1.5 text-xs text-ink">
+                          <input
+                            type="checkbox"
+                            checked={tropa.countsTowardSize}
+                            onChange={(e) => setTropa(tropa.profileId, { countsTowardSize: e.target.checked })}
+                            className="h-3.5 w-3.5 accent-maroon"
+                          />
+                          Cuenta para el tamaño
+                        </label>
+                        <div className="ml-auto flex items-center gap-0.5 pb-1">
+                          <button
+                            type="button"
+                            onClick={() => moverTropa(index, -1)}
+                            disabled={index === 0}
+                            aria-label="Subir"
+                            title="Subir"
+                            className="rounded-sm p-1 text-ink-soft transition-colors hover:bg-bronze/10 hover:text-bronze disabled:opacity-30"
+                          >
+                            <ArrowUpIcon className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moverTropa(index, 1)}
+                            disabled={index === draft.tropas.length - 1}
+                            aria-label="Bajar"
+                            title="Bajar"
+                            className="rounded-sm p-1 text-ink-soft transition-colors hover:bg-bronze/10 hover:text-bronze disabled:opacity-30"
+                          >
+                            <ArrowDownIcon className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTropaPorQuitar(tropa)}
+                            aria-label={`Quitar ${tropa.name.trim() || 'la tropa'}`}
+                            title="Quitar"
+                            className="rounded-sm p-1 text-ink-soft transition-colors hover:bg-danger/10 hover:text-danger"
+                          >
+                            <TrashIcon className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <EditableAttributeTable
+                        value={draft.profileStats[tropa.profileId] ?? FICHA_EN_BLANCO}
+                        onChange={(input) => setProfileStats(tropa.profileId, input)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Panel>
+          )}
 
           {/* Solo en unidades de TROPA. Un personaje es una única miniatura:
               no puede llevar músico, portaestandarte ni campeón, así que
@@ -927,6 +1235,17 @@ export function UnitDetailPage() {
           unitName={unit.name}
           onClose={() => setShowAppendices(false)}
           onChanged={reloadApendices}
+        />
+      )}
+
+      {tropaPorQuitar && (
+        <ConfirmDialog
+          title="Quitar la tropa"
+          message={`Se quita "${tropaPorQuitar.name.trim() || 'esta tropa'}" de la unidad, con su ficha de atributos. No se puede deshacer.`}
+          confirmLabel="Sí, quitarla"
+          cancelLabel="No"
+          onConfirm={() => quitarTropa(tropaPorQuitar)}
+          onCancel={() => setTropaPorQuitar(null)}
         />
       )}
 
