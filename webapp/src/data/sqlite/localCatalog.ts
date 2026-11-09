@@ -72,6 +72,7 @@ const CATALOG_TABLES = [
   'unit_magic_paths',
   'category_composition_rules',
   'unit_appendices',
+  'appendices',
   // Las tropas de una unidad compuesta y el reparto de su equipo. Van en
   // paralelo con SNAPSHOT_TABLES del Worker: sin ellas aquí, el navegador
   // tiene las tablas (las crea schema.sql) pero vacías, y una unidad

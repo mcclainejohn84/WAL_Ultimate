@@ -504,6 +504,30 @@ CREATE TABLE unit_appendices (
 );
 CREATE INDEX idx_unit_appendices_unit ON unit_appendices(unit_id);
 
+-- APÉNDICES Y REGLAS ADICIONALES: bloques de texto con formato (título +
+-- cuerpo) que se escriben a mano y acompañan a lo que sea.
+--
+-- EL DUEÑO ES POLIMÓRFICO (owner_kind + owner_id) y por eso no hay clave
+-- ajena: un apéndice puede colgar de una unidad, de una facción, de una opción
+-- de equipo, de una mejora, de una montura o de un carro, y cada una vive en
+-- su tabla. Nacieron colgando solo de unidades (unit_appendices, que se queda
+-- ahí con lo que hubiera: de esta tabla ya no se lee).
+--
+-- El cuerpo es HTML SANEADO con la lista cerrada de etiquetas de
+-- shared/richText.ts; no se guarda nunca lo que pegue el navegador tal cual.
+--
+-- Se COPIAN entre dueños, no se comparten: copiar duplica el texto, así que
+-- editar el de uno no toca el del otro (fue una decisión explícita).
+CREATE TABLE appendices (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    owner_kind TEXT NOT NULL,
+    owner_id   INTEGER NOT NULL,
+    title      TEXT NOT NULL,
+    body_html  TEXT NOT NULL DEFAULT '',
+    sort_order INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX idx_appendices_owner ON appendices(owner_kind, owner_id, sort_order);
+
 -- Reglas especiales de una unidad (N:M)
 -- ----------------------------------------------------------------------------
 -- Experiencia de un personaje especial, APUNTE A APUNTE.

@@ -160,6 +160,7 @@ const SNAPSHOT_TABLES = [
   // Apéndices: texto largo con formato, pero se lee siempre junto a la ficha
   // de la unidad, así que viaja con el resto del catálogo.
   'unit_appendices',
+  'appendices',
   // Las tropas de una unidad COMPUESTA y a qué tropa pertenece cada opción de
   // equipo. Son catálogo puro —forman parte de la definición de la unidad,
   // como unit_profiles— y sin ellas el navegador ve la unidad pero no sus
@@ -1241,6 +1242,26 @@ const MIGRATIONS: string[] = [
      description TEXT,
      sort_order  INTEGER NOT NULL DEFAULT 0
    )`,
+  // APÉNDICES CON DUEÑO DE CUALQUIER TIPO. Nacieron colgando solo de unidades
+  // (unit_appendices); ahora pueden ser de una facción, de una opción de
+  // equipo, de una mejora, de una montura o de un carro, y el dueño va en dos
+  // columnas en vez de en una clave ajena.
+  `CREATE TABLE IF NOT EXISTS appendices (
+     id         INTEGER PRIMARY KEY AUTOINCREMENT,
+     owner_kind TEXT NOT NULL,
+     owner_id   INTEGER NOT NULL,
+     title      TEXT NOT NULL,
+     body_html  TEXT NOT NULL DEFAULT '',
+     sort_order INTEGER NOT NULL DEFAULT 0
+   )`,
+  'CREATE INDEX IF NOT EXISTS idx_appendices_owner ON appendices(owner_kind, owner_id, sort_order)',
+  // Los que ya había se traen tal cual, UNA sola vez: el `NOT EXISTS` solo se
+  // cumple con la tabla nueva completamente vacía. (Consecuencia conocida: si
+  // algún día se borran TODOS los apéndices, la siguiente carga volvería a
+  // traer los viejos de unit_appendices, que se quedan ahí congelados.)
+  `INSERT INTO appendices (owner_kind, owner_id, title, body_html, sort_order)
+     SELECT 'unidad', unit_id, title, body_html, sort_order FROM unit_appendices
+      WHERE NOT EXISTS (SELECT 1 FROM appendices)`,
   `CREATE TABLE IF NOT EXISTS magic_skills (
      id           INTEGER PRIMARY KEY AUTOINCREMENT,
      skill_key    TEXT NOT NULL UNIQUE,

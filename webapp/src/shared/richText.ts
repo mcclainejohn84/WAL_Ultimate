@@ -1,8 +1,8 @@
 // ============================================================================
 // Texto con formato: qué se admite y cómo se limpia lo que llega de fuera.
 //
-// QUÉ SE ADMITE, Y NADA MÁS: párrafos, salto de línea, negrita, cursiva y
-// listas (con puntos o numeradas). Se guarda HTML porque es lo que sabe
+// QUÉ SE ADMITE, Y NADA MÁS: párrafos, salto de línea, negrita, cursiva,
+// subrayado y listas (con puntos o numeradas), más la ALINEACIÓN del párrafo. Se guarda HTML porque es lo que sabe
 // representar eso, pero la lista de etiquetas es CERRADA y todos los atributos
 // se tiran: ni estilos, ni clases, ni colores, ni tipos de letra. Un texto
 // pegado de un PDF o de Word trae hojas de estilo enteras y, si se dejan
@@ -14,14 +14,45 @@
 // negrita salga en negrita—, así que lo que entra en la base tiene que estar
 // limpio ANTES de guardarse. Este archivo es esa aduana; no hay otra.
 //
-// La justificación NO se guarda: el texto de un apéndice va justificado
-// siempre, por hoja de estilos (ver RichTextEditor y RichText). Guardar
-// alineaciones por párrafo solo servía para que unos quedasen desalineados con
-// otros.
+// LA ALINEACIÓN SÍ SE GUARDA, desde que el usuario la pidió, pero no como
+// `style`: se traduce a UNA de cuatro clases (al-izq, al-cen, al-der,
+// al-jus), que es lo único que sobrevive al saneado. Así se puede centrar un
+// título o alinear una firma a la derecha sin abrir la puerta a que entre
+// cualquier CSS pegado de Word. Sin clase, el texto va justificado, que sigue
+// siendo lo normal en un apéndice (ver index.css y RichText).
 // ============================================================================
 
 /** Las únicas etiquetas que sobreviven al saneado. */
-const PERMITIDAS = new Set(['P', 'BR', 'STRONG', 'EM', 'UL', 'OL', 'LI'])
+const PERMITIDAS = new Set(['P', 'BR', 'STRONG', 'EM', 'U', 'UL', 'OL', 'LI'])
+
+/** Las cuatro clases de alineación, y nada más: ni estilos ni clases de otro sitio. */
+const ALINEACIONES: Record<string, string> = {
+  left: 'al-izq',
+  start: 'al-izq',
+  center: 'al-cen',
+  right: 'al-der',
+  end: 'al-der',
+  justify: 'al-jus',
+}
+const CLASES_DE_ALINEACION = new Set(Object.values(ALINEACIONES))
+
+/** Dónde tiene sentido alinear: en los bloques, no en una negrita. */
+const ALINEABLES = new Set(['P', 'LI', 'UL', 'OL'])
+
+/**
+ * La alineación de un elemento, venga como venga: `style="text-align:…"` (lo
+ * que escribe execCommand), el viejo atributo `align` o ya la clase nuestra de
+ * un texto saneado antes.
+ */
+function alineacionDe(el: Element): string | null {
+  const porClase = Array.from(el.classList).find((c) => CLASES_DE_ALINEACION.has(c))
+  if (porClase) return porClase
+  const enLinea = (el as HTMLElement).style?.textAlign?.toLowerCase()
+  if (enLinea && ALINEACIONES[enLinea]) return ALINEACIONES[enLinea]
+  const atributo = el.getAttribute('align')?.toLowerCase()
+  if (atributo && ALINEACIONES[atributo]) return ALINEACIONES[atributo]
+  return null
+}
 
 /**
  * Equivalencias: el navegador y los programas de ofimática escriben lo mismo
@@ -31,7 +62,6 @@ const PERMITIDAS = new Set(['P', 'BR', 'STRONG', 'EM', 'UL', 'OL', 'LI'])
 const EQUIVALENTES: Record<string, string> = {
   B: 'STRONG',
   I: 'EM',
-  U: 'EM',
   H1: 'P',
   H2: 'P',
   H3: 'P',
@@ -67,6 +97,12 @@ function limpiarNodo(nodo: Node, doc: Document): Node[] {
   if (!destino) return hijos
 
   const nuevo = doc.createElement(destino)
+  // Lo ÚNICO que sobrevive de los atributos: la alineación, y convertida a
+  // nuestra clase.
+  if (ALINEABLES.has(destino)) {
+    const alineacion = alineacionDe(el)
+    if (alineacion && alineacion !== 'al-jus') nuevo.className = alineacion
+  }
   for (const hijo of hijos) nuevo.appendChild(hijo)
   return [nuevo]
 }

@@ -264,9 +264,16 @@ export interface Unit {
  * `bodyHtml` es HTML, pero SANEADO: solo párrafos, negrita, cursiva y listas
  * (ver shared/richText). Nunca se guarda lo que pegue el navegador tal cual.
  */
+/**
+ * De QUÉ puede colgar un apéndice. Un personaje de renombre es una unidad, así
+ * que no tiene tipo propio.
+ */
+export type ApendiceDueno = 'faccion' | 'unidad' | 'equipo' | 'opcion' | 'montura' | 'carro'
+
 export interface UnitAppendix {
   id: number
-  unitId: number
+  ownerKind: ApendiceDueno
+  ownerId: number
   title: string
   bodyHtml: string
   sortOrder: number

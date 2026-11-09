@@ -136,3 +136,17 @@ CREATE TABLE IF NOT EXISTS magic_skills (
   building     TEXT,
   sort_order   INTEGER NOT NULL DEFAULT 0
 );
+
+-- Apéndices con dueño de cualquier tipo (ver appendices en schema.sql).
+CREATE TABLE IF NOT EXISTS appendices (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_kind TEXT NOT NULL,
+  owner_id   INTEGER NOT NULL,
+  title      TEXT NOT NULL,
+  body_html  TEXT NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_appendices_owner ON appendices(owner_kind, owner_id, sort_order);
+INSERT INTO appendices (owner_kind, owner_id, title, body_html, sort_order)
+  SELECT 'unidad', unit_id, title, body_html, sort_order FROM unit_appendices
+   WHERE NOT EXISTS (SELECT 1 FROM appendices);

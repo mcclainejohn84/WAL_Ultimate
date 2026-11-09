@@ -112,7 +112,12 @@ export const FactionRepository = {
     // deja un borrado fantasma en el Log (ver ConfirmDialog).
     const existing = await FactionRepository.getById(id)
     if (!existing) return
-    await execCatalog('DELETE FROM factions WHERE id = ?', [id])
+    // Sus apéndices se van con ella: el dueño es polimórfico y no hay CASCADE
+    // que los arrastre (ver appendixRepository).
+    await execCatalogBatch([
+      { sql: "DELETE FROM appendices WHERE owner_kind = 'faccion' AND owner_id = ?", params: [id] },
+      { sql: 'DELETE FROM factions WHERE id = ?', params: [id] },
+    ])
     await ChangeLogRepository.record(
       'faccion',
       'borrar',

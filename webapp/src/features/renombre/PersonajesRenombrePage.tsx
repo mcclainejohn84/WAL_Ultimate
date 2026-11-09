@@ -25,10 +25,10 @@ import { FactionRepository } from '@/data/repositories/factionRepository'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/EmptyState'
-import { clsx } from 'clsx'
 import { useSession } from '@/shared/session/useSession'
 import { useFiltroDeFacciones } from '@/features/renombre/filtroDeFacciones'
 import { Modal } from '@/shared/ui/Modal'
+import { SelectorMultiple } from '@/shared/ui/SelectorMultiple'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { Select } from '@/shared/ui/Select'
@@ -124,46 +124,19 @@ export function PersonajesRenombrePage() {
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {faccionesDelFiltro.length > 1 && (
-        <div className="mb-5 flex flex-wrap items-center gap-0.5 rounded-sm border border-rule-dark/30 bg-parchment/70 p-0.5">
-          <button
-            type="button"
-            onClick={() => setFaccionesElegidas(new Set())}
-            aria-pressed={faccionesElegidas.size === 0}
-            className={clsx(
-              'rounded-sm px-2.5 py-1 text-xs font-semibold tracking-wide transition-colors',
-              faccionesElegidas.size === 0 ? 'bg-bronze text-parchment' : 'text-ink-soft hover:bg-parchment-dark',
-            )}
-          >
-            Todas
-            <span className="ml-1.5 text-mini tabular-nums opacity-70">{todos.length}</span>
-          </button>
-          {faccionesDelFiltro.map((f) => {
-            const marcada = faccionesElegidas.has(f.id)
-            return (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => {
-                  const siguiente = new Set(faccionesElegidas)
-                  if (marcada) siguiente.delete(f.id)
-                  else siguiente.add(f.id)
-                  setFaccionesElegidas(siguiente)
-                }}
-                aria-pressed={marcada}
-                className={clsx(
-                  'rounded-sm px-2.5 py-1 text-xs font-semibold tracking-wide transition-colors',
-                  marcada
-                    ? 'bg-maroon text-parchment shadow-sm shadow-black/20'
-                    : 'text-ink-soft hover:bg-parchment-dark',
-                )}
-              >
-                {f.name}
-                <span className="ml-1.5 text-mini tabular-nums opacity-70">
-                  {todos.filter((p) => p.factionId === f.id).length}
-                </span>
-              </button>
-            )
-          })}
+        <div className="mb-5">
+          <SelectorMultiple
+            className="w-64"
+            label="Facciones"
+            textoDeTodas={`Todas las facciones (${todos.length})`}
+            opciones={faccionesDelFiltro.map((f) => ({
+              id: f.id,
+              nombre: f.name,
+              cuantos: todos.filter((p) => p.factionId === f.id).length,
+            }))}
+            elegidas={faccionesElegidas}
+            onChange={setFaccionesElegidas}
+          />
         </div>
       )}
 

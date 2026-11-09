@@ -14,6 +14,7 @@ import { ImportBookPage } from '@/features/admin/import/ImportBookPage'
 import { TaxonomyPage } from '@/features/admin/taxonomy/TaxonomyPage'
 import { MagicPathsPage } from '@/features/admin/magic/MagicPathsPage'
 import { CharacterSkillsPage } from '@/features/admin/skills/CharacterSkillsPage'
+import { ApendicesPage } from '@/features/admin/appendices/ApendicesPage'
 import { LogPage } from '@/features/admin/log/LogPage'
 import { FichasPage } from '@/features/fichas/FichasPage'
 import { ArmyListsPage } from '@/features/army-lists/ArmyListsPage'
@@ -115,6 +116,14 @@ const router = createHashRouter([
         element: (
           <AdminOnly>
             <TaxonomyPage />
+          </AdminOnly>
+        ),
+      },
+      {
+        path: '/admin/apendices',
+        element: (
+          <AdminOnly>
+            <ApendicesPage />
           </AdminOnly>
         ),
       },

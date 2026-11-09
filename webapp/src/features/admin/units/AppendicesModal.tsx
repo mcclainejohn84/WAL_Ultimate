@@ -13,7 +13,7 @@
 // ============================================================================
 import { useEffect, useState } from 'react'
 import { clsx } from 'clsx'
-import { AppendixRepository, type AppendixFromUnit } from '@/data/repositories/appendixRepository'
+import { AppendixRepository, type AppendixConDueno } from '@/data/repositories/appendixRepository'
 import { tieneTexto, aTextoPlano } from '@/shared/richText'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { Modal } from '@/shared/ui/Modal'
@@ -115,7 +115,7 @@ export function AppendicesModal({
 
   async function crear() {
     await run(async () => {
-      const id = await AppendixRepository.create(unitId, { title: TITULO_NUEVO, bodyHtml: '' })
+      const id = await AppendixRepository.create({ kind: 'unidad', id: unitId }, { title: TITULO_NUEVO, bodyHtml: '' })
       await reload()
       setElegidoId(id)
       setTitulo(TITULO_NUEVO)
@@ -368,7 +368,7 @@ function CopiarApendiceModal({
   onClose: () => void
   onCopiado: () => void
 }) {
-  const { data, loading } = useAsync(() => AppendixRepository.listCopiables(unitId), [unitId])
+  const { data, loading } = useAsync(() => AppendixRepository.listCopiables({ kind: 'unidad', id: unitId }), [unitId])
   const [busqueda, setBusqueda] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -378,15 +378,15 @@ function CopiarApendiceModal({
     (a) =>
       !termino ||
       a.title.toLowerCase().includes(termino) ||
-      a.unitName.toLowerCase().includes(termino) ||
-      a.factionName.toLowerCase().includes(termino),
+      a.duenoNombre.toLowerCase().includes(termino) ||
+      (a.factionName ?? '').toLowerCase().includes(termino),
   )
 
-  async function copiar(a: AppendixFromUnit) {
+  async function copiar(a: AppendixConDueno) {
     setBusy(true)
     setError(null)
     try {
-      await AppendixRepository.copyTo(a.id, unitId)
+      await AppendixRepository.copyTo(a.id, { kind: 'unidad', id: unitId })
       onCopiado()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -396,7 +396,7 @@ function CopiarApendiceModal({
 
   return (
     <Modal
-      title="Copiar un apéndice de otra unidad"
+      title="Copiar un apéndice de otro sitio"
       onClose={onClose}
       widthClassName="max-w-xl"
       footer={
@@ -422,7 +422,7 @@ function CopiarApendiceModal({
         <p className="text-xs text-ink-soft italic">
           {data && data.length > 0
             ? 'Ningún apéndice coincide con la búsqueda.'
-            : 'Todavía no hay apéndices en otras unidades.'}
+            : 'Todavía no hay apéndices en ningún otro sitio.'}
         </p>
       ) : (
         <ul className="divide-y divide-rule-dark/15 overflow-hidden rounded-sm border border-rule-dark/30">
@@ -431,7 +431,8 @@ function CopiarApendiceModal({
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-medium text-ink">{a.title}</span>
                 <span className="block truncate text-mini text-ink-soft/70">
-                  {a.unitName} · {a.factionName}
+                  {a.duenoNombre}
+                  {a.factionName ? ` · ${a.factionName}` : ''}
                 </span>
               </span>
               {/* Mismo control que las acciones de la lista: caja fina y letra

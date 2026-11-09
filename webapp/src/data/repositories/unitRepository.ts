@@ -645,6 +645,10 @@ export const UnitRepository = {
       { sql: 'DELETE FROM unit_equipment_options WHERE unit_id = ?', params: [unitId] },
       { sql: 'DELETE FROM unit_upgrade_options WHERE unit_id = ?', params: [unitId] },
       { sql: 'DELETE FROM unit_command_options WHERE unit_id = ?', params: [unitId] },
+      // Los apéndices ya no cuelgan por clave ajena (el dueño es
+      // polimórfico, ver appendixRepository), así que no hay CASCADE que los
+      // arrastre: se borran a mano o quedan huérfanos para siempre.
+      { sql: "DELETE FROM appendices WHERE owner_kind = 'unidad' AND owner_id = ?", params: [unitId] },
       { sql: 'DELETE FROM units WHERE id = ?', params: [unitId] },
     ])
     if (!deRenombre) await ChangeLogRepository.record('unidad', 'borrar', `Borró ${label}`, unitId)

@@ -1146,7 +1146,17 @@ export function FichasPage() {
                       editable
                       onIlluDragEnd={(posX, posY) => patchDraft({ illuPosX: posX, illuPosY: posY })}
                     />
-                    <SheetAppendices unitId={selectedDetail.id} grayscale={grayscale} />
+                    {/* De la ficha de VERDAD, no del id sintético de la hoja:
+                        una montura y una opción tienen sus propios apéndices
+                        (ver appendixRepository). */}
+                    {sheetTarget && (
+                      <SheetAppendices
+                        kind={sheetTarget.kind}
+                        ownerId={sheetTarget.id}
+                        grayscale={grayscale}
+                        editable
+                      />
+                    )}
                     <label
                       className={clsx(
                         'flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-xs transition-colors',

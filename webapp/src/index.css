@@ -89,6 +89,25 @@
   line-height: 0.875rem;
 }
 
+/* ALINEACIÓN DE UN PÁRRAFO DENTRO DE UN APÉNDICE.
+   CSS normal y no `@utility`: estas clases no aparecen en el código, viven
+   dentro del HTML que el usuario escribe y que se guarda en la base, así que
+   Tailwind no las vería al rastrear los fuentes y las dejaría fuera de la
+   hoja. Sin clase, el texto va justificado, que es lo normal en un apéndice
+   (ver shared/richText y RichText). */
+.al-izq {
+  text-align: left;
+}
+.al-cen {
+  text-align: center;
+}
+.al-der {
+  text-align: right;
+}
+.al-jus {
+  text-align: justify;
+}
+
 /* Un <input type="number"> SIN las flechitas de subir y bajar.
    En un campo estrecho se comen la cifra en cuanto el ratón pasa por encima, y
    un coste o un mínimo se teclean: nadie llega a 2.000 puntos a flechazos. El

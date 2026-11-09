@@ -73,6 +73,7 @@ const CHECKS: SchemaCheck[] = [
   { label: 'Color de facción', probe: 'SELECT color FROM factions LIMIT 1' },
   { label: 'Alias de unidad', probe: 'SELECT alias FROM units LIMIT 1' },
   { label: 'Apéndices de unidad', probe: 'SELECT body_html FROM unit_appendices LIMIT 1' },
+  { label: 'Apéndices y reglas adicionales', probe: 'SELECT owner_kind FROM appendices LIMIT 1' },
   { label: 'Mapas', probe: 'SELECT width_cm FROM battle_maps LIMIT 1' },
   { label: 'Mapas ocultos', probe: 'SELECT hidden FROM battle_maps LIMIT 1' },
   { label: 'Textura del mapa', probe: 'SELECT texture FROM battle_maps LIMIT 1' },

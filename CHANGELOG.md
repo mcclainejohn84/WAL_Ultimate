@@ -13,6 +13,25 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.202 — 09/11/2026 11:05
+
+- El filtro de facciones de Personajes de Renombre vuelve a ser un
+  **desplegable**, con sus casillas dentro para marcar varias: ocupa una línea
+  aunque el día de mañana haya cuarenta facciones.
+- Pantalla nueva en el Editor: **"Apéndices y reglas adicionales"**. Todos los
+  bloques de texto del programa en un sitio, filtrados por facción y por tipo
+  de dueño, con buscador.
+- Un apéndice ya no cuelga solo de una unidad: puede ser de una **facción, una
+  unidad o personaje, una opción de equipo, una mejora, una montura o un
+  carro**. Los que ya había se conservan tal cual.
+- El editor de texto gana **subrayado** y **alineación** (izquierda, centro,
+  derecha y justificado), que se guarda con el texto. Cortar, copiar y pegar
+  son los del navegador, y lo que se pega se sigue limpiando.
+- En las Hojas de Unidad, los apéndices salen debajo de la hoja —también los
+  de una montura o una opción— y se **editan ahí mismo**, sin ir al Editor.
+
+---
+
 ## 0.201 — 09/11/2026 10:27
 
 - El Log tiene pestaña propia de **Personajes**, separada de la de Datos: la

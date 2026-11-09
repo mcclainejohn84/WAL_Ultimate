@@ -1,5 +1,7 @@
 // ============================================================================
-// Editor de texto con formato: negrita, cursiva y listas. Nada más.
+// Editor de texto con formato: negrita, cursiva, subrayado, listas y la
+// alineación del párrafo. Nada más — cortar, copiar y pegar son los del
+// navegador, con el pegado saneado (ver más abajo).
 //
 // POR QUÉ `document.execCommand` Y NO UNA BIBLIOTECA. Lo que hace falta cabe en
 // cuatro botones sobre un `contentEditable`; meter un editor completo (300 kB
@@ -37,10 +39,35 @@ interface RichTextEditorProps {
 }
 
 interface Herramienta {
-  comando: 'bold' | 'italic' | 'insertUnorderedList' | 'insertOrderedList'
+  comando:
+    | 'bold'
+    | 'italic'
+    | 'underline'
+    | 'insertUnorderedList'
+    | 'insertOrderedList'
+    | 'justifyLeft'
+    | 'justifyCenter'
+    | 'justifyRight'
+    | 'justifyFull'
   etiqueta: string
   titulo: string
   contenido: React.ReactNode
+  /** Deja un hueco a su izquierda: separa los grupos de botones. */
+  separa?: boolean
+}
+
+/** Las rayitas de los botones de alineación, que dibujan lo que hacen. */
+function Rayas({ anchos, derecha = false, centro = false }: { anchos: number[]; derecha?: boolean; centro?: boolean }) {
+  return (
+    <span
+      className="flex w-4 flex-col gap-[2px]"
+      style={{ alignItems: centro ? 'center' : derecha ? 'flex-end' : 'flex-start' }}
+    >
+      {anchos.map((ancho, i) => (
+        <span key={i} className="block h-[1.5px] bg-current" style={{ width: `${ancho}%` }} />
+      ))}
+    </span>
+  )
 }
 
 const HERRAMIENTAS: Herramienta[] = [
@@ -52,7 +79,14 @@ const HERRAMIENTAS: Herramienta[] = [
     contenido: <span className="font-serif italic">C</span>,
   },
   {
+    comando: 'underline',
+    etiqueta: 'Subrayado',
+    titulo: 'Subrayado (Ctrl+U)',
+    contenido: <span className="underline">S</span>,
+  },
+  {
     comando: 'insertUnorderedList',
+    separa: true,
     etiqueta: 'Lista con puntos',
     titulo: 'Lista con puntos',
     contenido: <span className="tracking-tight">• —</span>,
@@ -62,6 +96,31 @@ const HERRAMIENTAS: Herramienta[] = [
     etiqueta: 'Lista numerada',
     titulo: 'Lista numerada',
     contenido: <span className="tracking-tight">1. —</span>,
+  },
+  {
+    comando: 'justifyLeft',
+    etiqueta: 'Alinear a la izquierda',
+    titulo: 'Alinear a la izquierda',
+    separa: true,
+    contenido: <Rayas anchos={[100, 60, 100, 60]} />,
+  },
+  {
+    comando: 'justifyCenter',
+    etiqueta: 'Centrar',
+    titulo: 'Centrar',
+    contenido: <Rayas anchos={[100, 60, 100, 60]} centro />,
+  },
+  {
+    comando: 'justifyRight',
+    etiqueta: 'Alinear a la derecha',
+    titulo: 'Alinear a la derecha',
+    contenido: <Rayas anchos={[100, 60, 100, 60]} derecha />,
+  },
+  {
+    comando: 'justifyFull',
+    etiqueta: 'Justificar',
+    titulo: 'Justificar',
+    contenido: <Rayas anchos={[100, 100, 100, 100]} />,
   },
 ]
 
@@ -110,7 +169,7 @@ export function RichTextEditor({ value, onChange, valorInicialKey, placeholder, 
 
   return (
     <div className={clsx('rounded-sm border border-rule-dark/40 bg-parchment', className)}>
-      <div className="flex items-center gap-1 border-b border-rule-dark/25 bg-parchment-dark/40 px-1.5 py-1">
+      <div className="flex flex-wrap items-center gap-1 border-b border-rule-dark/25 bg-parchment-dark/40 px-1.5 py-1">
         {HERRAMIENTAS.map((h) => (
           <button
             key={h.comando}
@@ -126,7 +185,8 @@ export function RichTextEditor({ value, onChange, valorInicialKey, placeholder, 
             aria-pressed={activos.has(h.comando)}
             title={h.titulo}
             className={clsx(
-              'min-w-7 rounded-sm px-1.5 py-0.5 text-xs text-ink-soft transition-colors hover:bg-parchment hover:text-ink',
+              'flex min-w-7 items-center justify-center rounded-sm px-1.5 py-1 text-xs text-ink-soft transition-colors hover:bg-parchment hover:text-ink',
+              h.separa && 'ml-1.5 border-l border-rule-dark/30 pl-2.5',
               activos.has(h.comando) && 'bg-parchment text-maroon shadow-[inset_0_0_0_1px_rgba(122,36,32,.35)]',
             )}
           >
