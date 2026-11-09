@@ -18,11 +18,27 @@
 // El aviso distingue los dos y trae un botón para reintentar en el sitio, sin
 // recargar: si el problema era (1) y acabas de desplegar, se arregla desde
 // aquí y se ve que se ha arreglado.
+//
+// LO VE TODO EL MUNDO, no solo el administrador. Mientras fue solo para él, el
+// resto del grupo seguía trabajando contra una base a medias sin que nada se
+// lo dijera: unas cosas se guardaban, otras no, y los descuadres aparecían
+// días después sin causa aparente. Ahora lo ve quien esté dentro, y además
+// mientras falte algo el programa SE PONE EN SOLO LECTURA (ver
+// marcarEsquemaAtrasado en data/sqlite/client): se puede mirar todo, pero no
+// guardar. Eso es lo que de verdad evita los datos a medias; el cartel solo lo
+// explica.
+//
+// NO SE PUEDE OCULTAR cuando bloquea: un aviso que se quita de en medio y deja
+// la aplicación sin guardar sería lo peor de las dos cosas.
 // ============================================================================
 import { useEffect, useState } from 'react'
 import { findPendingMigrations } from '@/data/repositories/schemaHealth'
-import { migrationsAttempted, runMigrations, ultimoResultadoDeMigraciones } from '@/data/sqlite/client'
-import { useSession } from '@/shared/session/useSession'
+import {
+  marcarEsquemaAtrasado,
+  migrationsAttempted,
+  runMigrations,
+  ultimoResultadoDeMigraciones,
+} from '@/data/sqlite/client'
 
 function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -34,9 +50,7 @@ const MIGRATIONS_WAIT_MS = 8000
 const REPLICA_LAG_MS = 3000
 
 export function PendingMigrationsBanner() {
-  const { actingAsAdmin } = useSession()
   const [pending, setPending] = useState<string[]>([])
-  const [dismissed, setDismissed] = useState(false)
   const [reintentando, setReintentando] = useState(false)
   const [resultado, setResultado] = useState(ultimoResultadoDeMigraciones())
 
@@ -54,7 +68,6 @@ export function PendingMigrationsBanner() {
   }
 
   useEffect(() => {
-    if (!actingAsAdmin) return
     let cancelled = false
 
     void (async () => {
@@ -66,27 +79,36 @@ export function PendingMigrationsBanner() {
       const list = await comprobar()
       if (cancelled) return
       setResultado(ultimoResultadoDeMigraciones())
-      setPending(list)
+      anotar(list)
     })()
 
     return () => {
       cancelled = true
     }
-  }, [actingAsAdmin])
+  }, [])
+
+  /** Lo que falta se apunta EN LOS DOS SITIOS: en la pantalla y en el candado de las escrituras. */
+  function anotar(list: string[]) {
+    setPending(list)
+    marcarEsquemaAtrasado(list)
+  }
 
   /** Reintentar aquí mismo: pedir las migraciones y volver a comprobar. */
   async function reintentar() {
     setReintentando(true)
     try {
+      // El candado se abre para que las migraciones no se queden fuera por su
+      // propia culpa; si siguen faltando, `anotar` lo vuelve a cerrar.
+      marcarEsquemaAtrasado([])
       await runMigrations().catch(() => undefined)
       setResultado(ultimoResultadoDeMigraciones())
-      setPending(await comprobar())
+      anotar(await comprobar())
     } finally {
       setReintentando(false)
     }
   }
 
-  if (!actingAsAdmin || dismissed || pending.length === 0) return null
+  if (pending.length === 0) return null
 
   const fallidas = resultado?.estado === 'aplicadas' ? resultado.fallidas : []
 
@@ -100,8 +122,7 @@ export function PendingMigrationsBanner() {
               : 'La base de datos no está al día.'}
           </p>
           <p className="mt-1 text-xs text-ink-soft">
-            Hasta entonces no funcionan estas partes, y sus datos pueden verse vacíos o dar error al guardar:{' '}
-            <b>{pending.join(', ')}</b>.
+            No se puede guardar nada hasta que esté al día. Lo que falta: <b>{pending.join(', ')}</b>.
           </p>
 
           {/* El motivo REAL, cuando se sabe. Un consejo genérico repetido sobre
@@ -134,12 +155,6 @@ export function PendingMigrationsBanner() {
             className="rounded-sm border border-bronze/50 bg-parchment px-2 py-1 text-xs font-medium text-ink hover:bg-parchment-dark disabled:opacity-50"
           >
             {reintentando ? 'Aplicando…' : 'Aplicar ahora'}
-          </button>
-          <button
-            onClick={() => setDismissed(true)}
-            className="rounded-sm px-2 py-1 text-xs font-medium text-ink-soft hover:text-maroon"
-          >
-            Ocultar
           </button>
         </div>
       </div>

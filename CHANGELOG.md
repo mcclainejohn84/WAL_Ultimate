@@ -13,6 +13,19 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.204 — 09/11/2026 16:57
+
+- **El Worker se despliega solo**, en el mismo push que la página y antes que
+  ella: si falla, la página no se publica. Hace falta guardar una vez el token
+  de Cloudflare en los secretos del repositorio; sin él todo sigue como antes
+  y el workflow avisa.
+- El aviso de "la base no está al día" **lo ve todo el mundo**, no solo el
+  administrador, y mientras falte una migración el programa se pone en **solo
+  lectura**: se puede mirar todo, pero no guardar. Es lo que evita que una
+  base a medias deje datos descuadrados.
+
+---
+
 ## 0.203 — 09/11/2026 11:11
 
 - **Restablecer una contraseña ya no pide la de administrador**: se escribe el

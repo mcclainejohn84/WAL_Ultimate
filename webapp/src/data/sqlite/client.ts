@@ -174,6 +174,48 @@ export async function queryOne<T>(
   return rows[0] ?? null
 }
 
+// ---------------------------------------------------------------------------
+// SOLO LECTURA MIENTRAS FALTEN MIGRACIONES
+//
+// Si la base todavía no tiene las tablas o columnas que esta versión de la
+// página espera (el Worker va por detrás), escribir es justo lo peor que se
+// puede hacer: unas sentencias del lote pasan y otras no, y el resultado son
+// datos a medias que nadie sabe de dónde salieron. Es exactamente lo que pasó.
+//
+// Así que mientras el aviso de migraciones esté levantado (ver
+// PendingMigrationsBanner, que es quien enciende y apaga esto), TODAS las
+// escrituras se rechazan aquí, en el único sitio por el que pasan. Leer sigue
+// funcionando: se puede mirar el catálogo y los ejércitos, pero no guardar.
+//
+// Las migraciones NO pasan por aquí (van por /admin/migrate, ver
+// runMigrations), así que arreglarlo desde el propio aviso sigue siendo
+// posible.
+// ---------------------------------------------------------------------------
+
+let faltanMigraciones: string[] = []
+
+/** Lo enciende el aviso cuando confirma que faltan; lista vacía lo apaga. */
+export function marcarEsquemaAtrasado(pendientes: string[]): void {
+  faltanMigraciones = pendientes
+}
+
+/** Qué falta, para que quien quiera pueda decirlo con nombres. Vacío = todo al día. */
+export function esquemaAtrasado(): string[] {
+  return faltanMigraciones
+}
+
+/** El error que se lanza en vez de escribir a medias. */
+export class EsquemaAtrasadoError extends Error {
+  constructor(pendientes: string[]) {
+    super(
+      'No se puede guardar: a la base de datos le faltan migraciones y el programa se ha puesto en solo lectura ' +
+        `para no dejar datos a medias (${pendientes.join(', ')}). En cuanto se despliegue el Worker y se apliquen, ` +
+        'vuelve a funcionar.',
+    )
+    this.name = 'EsquemaAtrasadoError'
+  }
+}
+
 export interface BatchStatement {
   sql: string
   params: SqlParam[]
@@ -193,6 +235,8 @@ export interface BatchResult {
  * unitRepository.toggleRelation/toggleProfile/saveUnitDetail).
  */
 export async function execBatch(statements: BatchStatement[]): Promise<BatchResult[]> {
+  // Ver "SOLO LECTURA MIENTRAS FALTEN MIGRACIONES" arriba.
+  if (faltanMigraciones.length > 0) throw new EsquemaAtrasadoError(faltanMigraciones)
   const { status, data } = await postJson<{ results?: BatchResult[]; error?: string }>('/mutate', {
     statements: statements.map((s) => ({ sql: s.sql, params: encodeParams(s.params) })),
   })

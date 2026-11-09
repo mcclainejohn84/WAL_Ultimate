@@ -1,3 +1,19 @@
+# ============================================================================
+# EL WORKER SE DESPLIEGA ANTES QUE LA PÁGINA, y a propósito.
+#
+# Durante mucho tiempo el frontend se desplegaba solo (este workflow) y el
+# Worker a mano (`wrangler deploy`), así que era cuestión de tiempo que la
+# página saliera pidiendo tablas que la base todavía no tenía: la mitad de una
+# función nueva fallaba en silencio y la gente seguía trabajando encima. Aquí
+# van los dos en el mismo push, y el orden importa — primero la base, después
+# lo que la usa. Si el Worker falla, la página NO se publica (`needs`), que es
+# mejor que publicarla contra una base vieja.
+#
+# HACE FALTA UN SECRETO: CLOUDFLARE_API_TOKEN, en Settings > Secrets and
+# variables > Actions. Sin él, el paso del Worker se salta solo y todo queda
+# como antes (la página se publica y el Worker se despliega a mano), en vez de
+# romper el workflow entero.
+# ============================================================================
 name: Deploy WHArmy a GitHub Pages
 
 on:
@@ -18,7 +34,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  worker:
+    name: Desplegar el Worker (API)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ¿Hay token de Cloudflare?
+        id: token
+        # `secrets` no se puede consultar en el `if` de un job, así que se
+        # convierte aquí en una salida normal y los pasos de abajo la miran.
+        run: echo "hay=${{ secrets.CLOUDFLARE_API_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Sin token, no se despliega
+        if: steps.token.outputs.hay != 'true'
+        run: |
+          echo "::warning::No hay CLOUDFLARE_API_TOKEN en los secretos del repositorio:" \
+               "el Worker NO se despliega y habrá que hacerlo a mano" \
+               "(cd webapp/worker && npx wrangler deploy)."
+
+      - uses: cloudflare/wrangler-action@v3
+        if: steps.token.outputs.hay == 'true'
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: webapp/worker
+
   build:
+    needs: worker
     runs-on: ubuntu-latest
     defaults:
       run:
