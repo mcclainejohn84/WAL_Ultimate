@@ -18,9 +18,11 @@
 // habilidad avanzada pide la suya, un saber pide nivel de senda y los saberes
 // de abajo, y las sendas nuevas no pasan del nivel de la primera.
 //
-// EN PESTAÑAS porque son cinco listas que no se miran a la vez: se viene a
-// subir un nivel, o a comprar una habilidad, o a repasar la tabla de acciones
-// al terminar la partida.
+// EN PESTAÑAS porque son cuatro listas que no se miran a la vez: se viene a
+// subir un nivel, o a adquirir una habilidad, o a repasar los saberes.
+//
+// TODO SE "ADQUIERE", a petición del usuario: ni se compra, ni se aprende, ni
+// se añade. Una sola palabra para la misma acción en las cuatro listas.
 // ============================================================================
 import { useState } from 'react'
 import { clsx } from 'clsx'
@@ -28,7 +30,6 @@ import { MagicRepository } from '@/data/repositories/magicRepository'
 import { SpecialCharacterRepository, type PersonajeEspecial } from '@/data/repositories/specialCharacterRepository'
 import { MAGIC_GROUP_LABELS, type MagicPath, type MagicPathDetail, type MagicSpell } from '@/domain/magic'
 import {
-  ACCIONES_MAGICAS,
   COSTE_DEL_PERGAMINO,
   ETIQUETAS_DE_MAGIA,
   GREMIO,
@@ -55,14 +56,13 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { CheckIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
 
-type Pestana = 'sendas' | 'habilidades' | 'saberes' | 'pergaminos' | 'acciones'
+type Pestana = 'sendas' | 'habilidades' | 'saberes' | 'pergaminos'
 
 const PESTANAS: Array<{ clave: Pestana; corto: string; largo: string }> = [
   { clave: 'sendas', corto: 'Sendas', largo: 'Sendas y niveles de magia' },
   { clave: 'habilidades', corto: 'Habilidades', largo: 'Habilidades mágicas y avanzadas' },
   { clave: 'saberes', corto: 'Saberes', largo: 'Saberes arcanos' },
   { clave: 'pergaminos', corto: 'Pergaminos', largo: 'Pergaminos de magia' },
-  { clave: 'acciones', corto: 'Acciones', largo: 'Tabla de acciones de magia' },
 ]
 
 /** "NIGROMANCIA" → "Nigromancia". El catálogo mezcla mayúsculas y minúsculas. */
@@ -362,8 +362,6 @@ export function MagiaModal({
                 }
               />
             )}
-
-            {pestana === 'acciones' && <TablaDeAcciones />}
           </>
         )}
 
@@ -500,7 +498,7 @@ function PestanaDeSendas({
                           }
                           className="rounded-sm border border-maroon/45 px-2 py-0.5 text-mini font-semibold text-maroon transition-colors hover:bg-maroon hover:text-parchment disabled:opacity-40"
                         >
-                          Nivel {siguiente} · {subir.total} exp
+                          Adquirir nivel {siguiente} · {subir.total} exp
                         </button>
                       ) : (
                         <span className="text-mini text-danger" title={`Hacen falta ${subir.total} y tiene ${saldo}`}>
@@ -527,7 +525,7 @@ function PestanaDeSendas({
       </section>
 
       <section className="space-y-1.5">
-        <EncabezadoDeGrupo etiqueta="Aprender una senda nueva" cuantas={disponibles.length} />
+        <EncabezadoDeGrupo etiqueta="Adquirir una senda nueva" cuantas={disponibles.length} />
         {misSendas.length > 0 && (
           <Nota
             texto={`Requiere Torre de Hechicería. Una senda nueva nunca pasa del nivel de la inicial, y cada una que se abre encarece los niveles de las siguientes: +5 y +6 en su misma disciplina, +10 y +12 en otra.`}
@@ -558,7 +556,7 @@ function PestanaDeSendas({
                 className="inline-flex items-center gap-1 rounded-sm border border-maroon/45 px-2.5 py-1 text-mini font-semibold text-maroon transition-colors hover:bg-maroon hover:text-parchment disabled:opacity-40"
               >
                 <PlusIcon className="h-3.5 w-3.5" />
-                {costeDeLaNueva === 0 ? 'Aprenderla' : `Aprenderla · ${costeDeLaNueva} exp`}
+                {costeDeLaNueva === 0 ? 'Adquirir' : `Adquirir · ${costeDeLaNueva} exp`}
               </button>
             ) : (
               <span className="text-mini text-danger">Faltan {costeDeLaNueva - saldo} exp</span>
@@ -664,7 +662,7 @@ function ListaComprable({
                           onClick={() => onComprar(h, precio)}
                           className="rounded-sm border border-maroon/45 px-2 py-0.5 text-mini font-semibold text-maroon transition-colors hover:bg-maroon hover:text-parchment disabled:opacity-40"
                         >
-                          Añadir
+                          Adquirir
                         </button>
                       ) : (
                         <span className="text-mini text-danger" title={`Hacen falta ${precio} y tiene ${saldo}`}>
@@ -762,7 +760,7 @@ function PestanaDePergaminos({
       </section>
 
       <section className="space-y-1.5">
-        <EncabezadoDeGrupo etiqueta="Comprar un pergamino" cuantas={porId.size - yaLosTiene.size} />
+        <EncabezadoDeGrupo etiqueta="Adquirir un pergamino" cuantas={porId.size - yaLosTiene.size} />
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={elegido}
@@ -796,7 +794,7 @@ function PestanaDePergaminos({
                 className="inline-flex items-center gap-1 rounded-sm border border-maroon/45 px-2.5 py-1 text-mini font-semibold text-maroon transition-colors hover:bg-maroon hover:text-parchment disabled:opacity-40"
               >
                 <PlusIcon className="h-3.5 w-3.5" />
-                Comprarlo · {costeDelCandidato} exp
+                Adquirir · {costeDelCandidato} exp
               </button>
             ) : (
               <span className="text-mini text-danger">Faltan {costeDelCandidato - saldo} exp</span>
@@ -804,32 +802,5 @@ function PestanaDePergaminos({
         </div>
       </section>
     </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// LA CHULETA DE DESPUÉS DE LA PARTIDA
-// ---------------------------------------------------------------------------
-function TablaDeAcciones() {
-  return (
-    <section>
-      <EncabezadoDeGrupo etiqueta="Acciones de magia" cuantas={ACCIONES_MAGICAS.length} />
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-rule-dark/30 text-micro font-semibold uppercase tracking-[0.12em] text-ink-soft/70">
-            <th className="pb-1 text-left">Acción</th>
-            <th className="pb-1 text-right">Puntos</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-rule-dark/12">
-          {ACCIONES_MAGICAS.map((a) => (
-            <tr key={a.accion}>
-              <td className="py-1 pr-2 text-ink">{a.accion}</td>
-              <td className="py-1 text-right font-medium tabular-nums text-ink">{a.puntos}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
   )
 }

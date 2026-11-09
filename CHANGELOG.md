@@ -13,6 +13,15 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.197 — 09/11/2026 08:50
+
+- En la magia de los Personajes de Renombre, todo se **adquiere**: una sola
+  palabra en las cuatro listas, en vez de "aprenderla", "comprarlo" y
+  "añadir".
+- Fuera la pestaña de **Acciones**.
+
+---
+
 ## 0.196 — 09/11/2026 01:50
 
 - **La experiencia mágica**, entera, en el diálogo de Magia de un Personaje de

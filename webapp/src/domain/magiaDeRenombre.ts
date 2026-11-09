@@ -598,24 +598,3 @@ export function spellIdDePergamino(clave: string): number | null {
   const id = Number(clave.slice(PREFIJO_DE_MAGIA.pergamino.length))
   return Number.isFinite(id) ? id : null
 }
-
-// ---------------------------------------------------------------------------
-// TABLA DE ACCIONES (MAGIA)
-//
-// No la usa ningún cálculo: es la chuleta que se mira al terminar la partida
-// para saber cuánta experiencia apuntar. Las acciones de personaje (bajas,
-// sobrevivir, etc.) están en la tabla general del reglamento.
-// ---------------------------------------------------------------------------
-export const ACCIONES_MAGICAS: Array<{ accion: string; puntos: number }> = [
-  { accion: 'Por cada hechizo de nivel 1 lanzado con éxito', puntos: 1 },
-  { accion: 'Por cada hechizo de nivel 2 lanzado con éxito', puntos: 1 },
-  { accion: 'Por cada hechizo de nivel 3 lanzado con éxito', puntos: 2 },
-  { accion: 'Por cada hechizo de nivel 4 lanzado con éxito', puntos: 2 },
-  { accion: 'Por cada hechizo lanzado con Energía total', puntos: 1 },
-  { accion: 'Por cada hechizo dispersado con éxito', puntos: 1 },
-  { accion: 'Por sobrevivir a una Disfunción', puntos: 1 },
-  { accion: 'Por recibir alguna cicatriz de guerra en una Disfunción', puntos: 1 },
-  { accion: 'Por causar entre 10 y 15 bajas', puntos: 2 },
-  { accion: 'Por causar entre 16 y 20 bajas', puntos: 3 },
-  { accion: 'Por causar más de 20 bajas', puntos: 4 },
-]
