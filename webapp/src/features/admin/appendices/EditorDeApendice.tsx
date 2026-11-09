@@ -67,6 +67,7 @@ export function EditorDeApendice({
   // facción que ya se ha elegido arriba.
   const esDeFaccion = kind === 'faccion'
   const candidatos = duenos
+    .filter((d) => d.editable)
     .filter((d) => d.kind === kind)
     .filter((d) => faccionId == null || d.factionIds.includes(faccionId))
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))

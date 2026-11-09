@@ -16,6 +16,8 @@ import { validateUnitScalarInput } from '@/domain/validation'
 import { ARMOR_SAVE_VALUES, formatArmorSave } from '@/domain/unitFormat'
 import { ALIAS_MAX, inicialesDe, normalizarAlias, unidadesConLasMismasIniciales } from '@/domain/unitAlias'
 import { useAsync } from '@/shared/hooks/useAsync'
+import { useSession } from '@/shared/session/useSession'
+import { esEditablePor } from '@/domain/personajeRenombre'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { Panel } from '@/shared/ui/Panel'
 import { Spinner } from '@/shared/ui/Spinner'
@@ -25,6 +27,7 @@ import {
   ArrowLeftIcon,
   ArrowUpIcon,
   CheckIcon,
+  LockIcon,
   PlusIcon,
   TrashIcon,
   WarningIcon,
@@ -184,6 +187,7 @@ export function UnitDetailPage() {
   const { id } = useParams<{ id: string }>()
   const unitId = Number(id)
   const navigate = useNavigate()
+  const { user: usuario } = useSession()
 
   const { data: unit, loading, error, reload } = useAsync(() => UnitRepository.getDetailById(unitId), [unitId])
   const { data: categories } = useAsync(() => UnitCategoryRepository.listAll())
@@ -270,6 +274,34 @@ export function UnitDetailPage() {
 
   if (loading) {
     return <Spinner />
+  }
+
+  /**
+   * LA FICHA DE UN PERSONAJE DE OTRO NO SE ABRE.
+   *
+   * Esta pantalla es una herramienta de edición de cabo a rabo: no hay nada
+   * que mirar aquí que no se vea mejor en su lámina o en su hoja de unidad,
+   * así que en vez de dejar cien controles apagados no se entra. Lo que NO es
+   * un personaje de renombre sigue siendo del catálogo y se edita como
+   * siempre (ver esEditablePor).
+   */
+  if (unit && !esEditablePor(unit, usuario?.id)) {
+    return (
+      <div>
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-3 flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
+        >
+          <ArrowLeftIcon className="h-4 w-4" />
+          Volver
+        </button>
+        <PageHeader title={unit.name} description={unit.faction.name} />
+        <p className="flex items-center gap-2 rounded-sm border border-rule-dark/40 bg-parchment/70 px-4 py-3 text-sm text-ink-soft">
+          <LockIcon className="h-4 w-4 shrink-0" />
+          De otro jugador
+        </p>
+      </div>
+    )
   }
 
   if (error || !unit || !draft) {

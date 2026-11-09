@@ -30,3 +30,34 @@ export function esVisiblePara(unidad: UnidadOcultable, userId: number | null | u
   if (unidad.userId == null) return true
   return unidad.userId === userId
 }
+
+/** Lo mínimo para decidir si se puede TOCAR. */
+export interface UnidadConAutor extends UnidadOcultable {
+  isSpecialCharacter: boolean
+}
+
+/**
+ * Si el usuario dado puede EDITAR esta unidad.
+ *
+ * VER NO ES EDITAR. Un personaje de renombre que no esté oculto lo ve todo el
+ * mundo —su lámina, su hoja, su ficha en una lista de ejército— y no lo toca
+ * nadie más que su autor: su experiencia, sus habilidades, sus cicatrices, su
+ * magia, su retrato, su trasfondo, su hoja de unidad y sus apéndices son la
+ * crónica de SUS partidas.
+ *
+ * NI SIQUIERA EN MODO ADMINISTRADOR. Fue una excepción durante un tiempo y era
+ * la puerta por la que se colaba todo: el modo administrador se enciende con un
+ * interruptor, sin contraseña, así que en la práctica no bloqueaba a nadie.
+ *
+ * Lo que NO es un personaje de renombre —el catálogo entero— es de todos, como
+ * siempre: ahí quien manda es el modo administrador y esta función dice que sí.
+ */
+export function esEditablePor(unidad: UnidadConAutor, userId: number | null | undefined): boolean {
+  if (!unidad.isSpecialCharacter) return true
+  // Los creados antes de que existiera la columna del autor no tienen ninguno.
+  // Se les asignó uno a mano en una migración (ver worker MIGRATIONS); si
+  // apareciera otro sin autor, es preferible que se pueda arreglar a que quede
+  // congelado para siempre.
+  if (unidad.userId == null) return true
+  return unidad.userId === userId
+}

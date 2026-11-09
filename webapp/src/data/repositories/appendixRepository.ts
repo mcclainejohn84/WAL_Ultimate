@@ -23,6 +23,8 @@ import { execCatalog, execCatalogBatch } from '@/data/sqlite/client'
 import { queryLocal } from '@/data/sqlite/localCatalog'
 import { ChangeLogRepository } from '@/data/repositories/changeLogRepository'
 import { sanearHtml } from '@/shared/richText'
+import { esEditablePor } from '@/domain/personajeRenombre'
+import { getCurrentUser } from '@/shared/session/useSession'
 import type { ApendiceDueno, UnitAppendix } from '@/domain/types'
 
 /** Cómo se llama cada tipo de dueño en la pantalla. */
@@ -81,6 +83,13 @@ export interface DuenoPosible {
    * las comparten unidades de facciones distintas. Vacío = no la usa nadie.
    */
   factionIds: number[]
+  /**
+   * Si quien está dentro puede colgarle o quitarle apéndices. Falso solo en un
+   * PERSONAJE DE RENOMBRE DE OTRO: se ve, pero no se toca (ver esEditablePor).
+   * Lo decide esta función y no cada pantalla porque los apéndices se crean
+   * desde tres sitios distintos.
+   */
+  editable: boolean
 }
 
 /**
@@ -92,14 +101,15 @@ export interface DuenoPosible {
  */
 export async function listarDuenos(): Promise<DuenoPosible[]> {
   const porClave = new Map<string, DuenoPosible>()
-  const mete = (kind: ApendiceDueno, id: number, nombre: string, factionId: number | null) => {
+  const yo = getCurrentUser()?.id ?? null
+  const mete = (kind: ApendiceDueno, id: number, nombre: string, factionId: number | null, editable = true) => {
     const clave = `${kind}:${id}`
     const ya = porClave.get(clave)
     if (ya) {
       if (factionId != null && !ya.factionIds.includes(factionId)) ya.factionIds.push(factionId)
       return
     }
-    porClave.set(clave, { kind, id, nombre, factionIds: factionId == null ? [] : [factionId] })
+    porClave.set(clave, { kind, id, nombre, factionIds: factionId == null ? [] : [factionId], editable })
   }
 
   const facciones = await queryLocal('SELECT id, name FROM factions ORDER BY name', [], (r) => ({
@@ -108,12 +118,19 @@ export async function listarDuenos(): Promise<DuenoPosible[]> {
   }))
   for (const f of facciones) mete('faccion', f.id, f.name, f.id)
 
-  const unidades = await queryLocal('SELECT id, name, faction_id FROM units ORDER BY name', [], (r) => ({
-    id: r.id as number,
-    name: r.name as string,
-    factionId: r.faction_id as number,
-  }))
-  for (const u of unidades) mete('unidad', u.id, u.name, u.factionId)
+  const unidades = await queryLocal(
+    'SELECT id, name, faction_id, user_id, is_special_character FROM units ORDER BY name',
+    [],
+    (r) => ({
+      id: r.id as number,
+      name: r.name as string,
+      factionId: r.faction_id as number,
+      hidden: false,
+      userId: (r.user_id as number) ?? null,
+      isSpecialCharacter: Boolean(r.is_special_character),
+    }),
+  )
+  for (const u of unidades) mete('unidad', u.id, u.name, u.factionId, esEditablePor(u, yo))
 
   const equipo = await queryLocal(
     `SELECT eo.id AS id, eo.name AS name, u.faction_id AS faction_id

@@ -1258,6 +1258,24 @@ const MIGRATIONS: string[] = [
   // interruptores crece cada poco (secciones del PDF, uno por tipo de
   // apéndice) y nada los consulta por columna. Sin valor = todo encendido.
   'ALTER TABLE users ADD COLUMN print_options TEXT',
+  // ------------------------------------------------------------------
+  // EL AUTOR DE LOS PERSONAJES DE RENOMBRE ANTIGUOS.
+  //
+  // `units.user_id` llegó después que los personajes, así que los de antes se
+  // quedaron sin autor — y "sin autor" quiere decir "de todos", de modo que
+  // cualquiera podía editar la crónica de otro. El usuario dijo de quién es
+  // cada uno: Sir Armand es de mcclaine y el resto de Hudson228.
+  //
+  // Solo toca los que NO tienen autor, así que se puede volver a ejecutar sin
+  // pisarle el suyo a nadie. Y como ya no se puede crear un personaje sin
+  // sesión (el Worker exige identificarse para escribir), tampoco se puede
+  // colar uno nuevo en este reparto.
+  `UPDATE units SET user_id = (SELECT id FROM users WHERE username LIKE 'mcclaine')
+     WHERE is_special_character = 1 AND user_id IS NULL AND name LIKE '%Armand%'
+       AND EXISTS (SELECT 1 FROM users WHERE username LIKE 'mcclaine')`,
+  `UPDATE units SET user_id = (SELECT id FROM users WHERE username LIKE 'Hudson228')
+     WHERE is_special_character = 1 AND user_id IS NULL
+       AND EXISTS (SELECT 1 FROM users WHERE username LIKE 'Hudson228')`,
   // Los que ya había se traen tal cual, UNA sola vez: el `NOT EXISTS` solo se
   // cumple con la tabla nueva completamente vacía. (Consecuencia conocida: si
   // algún día se borran TODOS los apéndices, la siguiente carga volvería a

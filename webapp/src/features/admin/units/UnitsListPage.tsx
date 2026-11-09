@@ -17,7 +17,9 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Badge } from '@/shared/ui/Badge'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
-import { ChevronRightIcon, CopyIcon, DragHandleIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
+import { ChevronRightIcon, CopyIcon, DragHandleIcon, LockIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
+import { useSession } from '@/shared/session/useSession'
+import { esEditablePor } from '@/domain/personajeRenombre'
 
 const SIN_CATEGORIA_KEY = 'Sin categoría'
 
@@ -49,6 +51,7 @@ function storeOpenCategory(value: string | null): void {
 
 export function UnitsListPage() {
   const navigate = useNavigate()
+  const { user: usuario } = useSession()
   const [searchParams, setSearchParams] = useSearchParams()
   const factionId = searchParams.get('faccion')
 
@@ -278,77 +281,88 @@ export function UnitsListPage() {
                         </span>
                         <span className="shrink-0 text-sm text-ink-soft">{unit.baseCost} pts</span>
                       </button>
-                      <button
-                        onClick={async () => {
-                          const next = !unit.active
-                          try {
-                            await UnitRepository.setActive(unit.id, next)
-                            reload()
-                          } catch {
-                            // Puede que la D1 aún no tenga la columna `active`
-                            // (la migración de arranque no llegó a correr).
-                            // Se intenta migrar y reintentar una vez.
-                            try {
-                              await runMigrations()
-                              await UnitRepository.setActive(unit.id, next)
-                              reload()
-                            } catch (err) {
-                              alert(
-                                'No se pudo cambiar el estado. Falta desplegar el Worker para añadir la columna "active" (cd webapp/worker && npx wrangler deploy).',
-                              )
-                              console.error(err)
+                      {/* UN PERSONAJE DE RENOMBRE DE OTRO SE VE Y NO SE TOCA:
+                          tampoco se desactiva, ni se copia, ni se borra desde
+                          aquí (ver esEditablePor). */}
+                      {!esEditablePor(unit, usuario?.id) ? (
+                        <span className="shrink-0 p-1.5 text-ink-soft/60" title="De otro jugador">
+                          <LockIcon className="h-4 w-4" />
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            onClick={async () => {
+                              const next = !unit.active
+                              try {
+                                await UnitRepository.setActive(unit.id, next)
+                                reload()
+                              } catch {
+                                // Puede que la D1 aún no tenga la columna `active`
+                                // (la migración de arranque no llegó a correr).
+                                // Se intenta migrar y reintentar una vez.
+                                try {
+                                  await runMigrations()
+                                  await UnitRepository.setActive(unit.id, next)
+                                  reload()
+                                } catch (err) {
+                                  alert(
+                                    'No se pudo cambiar el estado. Falta desplegar el Worker para añadir la columna "active" (cd webapp/worker && npx wrangler deploy).',
+                                  )
+                                  console.error(err)
+                                }
+                              }
+                            }}
+                            className={clsx(
+                              'flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-mini font-medium transition-colors',
+                              unit.active
+                                ? 'border-success/50 bg-success/10 text-success hover:bg-success/20'
+                                : 'border-danger/50 bg-danger/10 text-danger hover:bg-danger/20',
+                            )}
+                            title={
+                              unit.active
+                                ? 'Activa — clic para desactivar (no aparecerá al montar ejércitos)'
+                                : 'Inactiva — clic para activar'
                             }
-                          }
-                        }}
-                        className={clsx(
-                          'flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-mini font-medium transition-colors',
-                          unit.active
-                            ? 'border-success/50 bg-success/10 text-success hover:bg-success/20'
-                            : 'border-danger/50 bg-danger/10 text-danger hover:bg-danger/20',
-                        )}
-                        title={
-                          unit.active
-                            ? 'Activa — clic para desactivar (no aparecerá al montar ejércitos)'
-                            : 'Inactiva — clic para activar'
-                        }
-                      >
-                        <span
-                          className={clsx(
-                            'h-2.5 w-2.5 rounded-full border-2',
-                            unit.active ? 'border-success bg-success' : 'border-danger bg-danger',
-                          )}
-                        />
-                        {unit.active ? 'Activa' : 'Inactiva'}
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (duplicatingId != null) return
-                          setDuplicatingId(unit.id)
-                          try {
-                            await UnitRepository.duplicate(unit.id)
-                            reload()
-                          } catch (err) {
-                            alert('No se pudo copiar la unidad.')
-                            console.error(err)
-                          } finally {
-                            setDuplicatingId(null)
-                          }
-                        }}
-                        disabled={duplicatingId != null}
-                        className="shrink-0 rounded-sm p-1.5 text-ink-soft hover:bg-bronze/15 hover:text-bronze disabled:opacity-40"
-                        aria-label={`Copiar ${unit.name}`}
-                        title="Crear una copia de esta unidad"
-                      >
-                        <CopyIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleting(unit)}
-                        className="shrink-0 rounded-sm p-1.5 text-ink-soft hover:bg-maroon/10 hover:text-danger"
-                        aria-label={`Borrar ${unit.name}`}
-                        title="Borrar unidad"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
+                          >
+                            <span
+                              className={clsx(
+                                'h-2.5 w-2.5 rounded-full border-2',
+                                unit.active ? 'border-success bg-success' : 'border-danger bg-danger',
+                              )}
+                            />
+                            {unit.active ? 'Activa' : 'Inactiva'}
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (duplicatingId != null) return
+                              setDuplicatingId(unit.id)
+                              try {
+                                await UnitRepository.duplicate(unit.id)
+                                reload()
+                              } catch (err) {
+                                alert('No se pudo copiar la unidad.')
+                                console.error(err)
+                              } finally {
+                                setDuplicatingId(null)
+                              }
+                            }}
+                            disabled={duplicatingId != null}
+                            className="shrink-0 rounded-sm p-1.5 text-ink-soft hover:bg-bronze/15 hover:text-bronze disabled:opacity-40"
+                            aria-label={`Copiar ${unit.name}`}
+                            title="Crear una copia de esta unidad"
+                          >
+                            <CopyIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setDeleting(unit)}
+                            className="shrink-0 rounded-sm p-1.5 text-ink-soft hover:bg-maroon/10 hover:text-danger"
+                            aria-label={`Borrar ${unit.name}`}
+                            title="Borrar unidad"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>

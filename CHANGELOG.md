@@ -13,6 +13,26 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.209 — 09/11/2026 23:02
+
+- **El personaje de renombre de otro jugador ya no se puede tocar.** Se ve
+  entero mientras no esté oculto —su lámina, su hoja, su ficha en una lista de
+  ejército, su PDF—, pero no se edita, ni se borra, ni se le suma experiencia,
+  ni se le cambian habilidades, cicatrices, magia, retrato o trasfondo.
+- **Tampoco en modo administrador**, que era por donde se colaba: ese modo se
+  enciende con un interruptor y sin contraseña, así que en la práctica el
+  candado no cerraba.
+- Se cierran también las puertas de al lado: su **hoja de unidad** (se mira y
+  se exporta, pero no se cambian ilustración, escudo, anchos ni apéndices), su
+  **ficha del Editor**, los botones de **activar, copiar y borrar** del listado
+  de unidades, y sus **apéndices** desde la pantalla del Editor.
+- **Los personajes antiguos ya tienen autor.** Los creados antes de que
+  existiera el dueño no tenían ninguno, y "sin autor" quería decir "de todos":
+  de ahí que cualquiera pudiera editarlos. Sir Armand es de mcclaine y el
+  resto, de Hudson228.
+
+---
+
 ## 0.208 — 09/11/2026 18:45
 
 - **Opciones de impresión**, dentro de "Opciones Lista de ejército": qué sale

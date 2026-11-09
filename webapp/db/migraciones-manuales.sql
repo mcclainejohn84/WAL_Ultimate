@@ -159,3 +159,12 @@ ALTER TABLE appendices ADD COLUMN sheet_w INTEGER;
 
 -- Qué secciones se imprimen en la hoja de ejército, por usuario (JSON).
 ALTER TABLE users ADD COLUMN print_options TEXT;
+
+-- El autor de los personajes de renombre que se crearon antes de que existiera
+-- la columna (ver worker/src/index.ts). Sin autor, cualquiera podía editarlos.
+UPDATE units SET user_id = (SELECT id FROM users WHERE username LIKE 'mcclaine')
+  WHERE is_special_character = 1 AND user_id IS NULL AND name LIKE '%Armand%'
+    AND EXISTS (SELECT 1 FROM users WHERE username LIKE 'mcclaine');
+UPDATE units SET user_id = (SELECT id FROM users WHERE username LIKE 'Hudson228')
+  WHERE is_special_character = 1 AND user_id IS NULL
+    AND EXISTS (SELECT 1 FROM users WHERE username LIKE 'Hudson228');

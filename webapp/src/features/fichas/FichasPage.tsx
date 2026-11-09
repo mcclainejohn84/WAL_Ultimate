@@ -47,6 +47,9 @@ import {
 } from '@/domain/sheetSections'
 import { compressImageFile, MAX_EMBLEM_BYTES, MAX_ILLUSTRATION_BYTES } from '@/shared/image'
 import { useAsync } from '@/shared/hooks/useAsync'
+import { useSession } from '@/shared/session/useSession'
+import { esEditablePor } from '@/domain/personajeRenombre'
+import { LockIcon } from '@/shared/ui/icons'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { Panel } from '@/shared/ui/Panel'
 import { Select } from '@/shared/ui/Select'
@@ -346,6 +349,15 @@ export function FichasPage() {
     setPendingImages({})
     setDirty(false)
   }, [factionId])
+
+  /**
+   * LA HOJA DE UN PERSONAJE DE OTRO SE VE, PERO NO SE TOCA. La presentación de
+   * la hoja —ilustración, escudo, anchos, apéndices— es tan suya como su
+   * experiencia (ver esEditablePor). Se sigue pudiendo abrir, mirar y
+   * exportar: lo que desaparece son los controles y el botón de guardar.
+   */
+  const { user: usuario } = useSession()
+  const fichaAjena = selectedDetail ? !esEditablePor(selectedDetail, usuario?.id) : false
 
   const isUpgradeSelected = selectedKey?.startsWith('o:') ?? false
   const isMountSelected = selectedKey?.startsWith('m:') ?? false
@@ -930,7 +942,7 @@ export function FichasPage() {
               {/* Guardar vive en la barra superior, siempre a la vista: es la
                   única acción que escribe y no debe quedar escondida al final
                   de una columna que hay que desplazar. */}
-              {draft && (
+              {draft && !fichaAjena && (
                 <div className="ml-auto flex items-center gap-2">
                   {dirty && <span className="text-xs font-medium text-maroon">Cambios sin guardar</span>}
                   {dirty && (
@@ -960,6 +972,13 @@ export function FichasPage() {
                   <div className="space-y-2">
                     <p className="font-display text-base font-semibold text-maroon">{selectedDetail.name}</p>
 
+                    {fichaAjena && (
+                      <p className="flex items-center gap-1.5 rounded-sm border border-rule-dark/30 bg-parchment/60 px-3 py-2 text-xs text-ink-soft">
+                        <LockIcon className="h-3.5 w-3.5 shrink-0" />
+                        De otro jugador
+                      </p>
+                    )}
+
                     {isUpgradeSelected && (
                       <p className="rounded-sm border border-rule-dark/30 bg-parchment/60 px-3 py-2 text-xs text-ink-soft">
                         Es una <b>opción de unidad</b> con ficha propia. Su perfil y sus reglas se editan en{' '}
@@ -975,117 +994,119 @@ export function FichasPage() {
                       </p>
                     )}
 
-                    <CollapsibleSection
-                      title="Imagen"
-                      open={isPanelOpen('imagen')}
-                      onToggle={() => togglePanel('imagen')}
-                    >
-                      <div>
-                        <div className="flex flex-wrap gap-2">
-                          <IconButton
-                            icon={<ImageIcon />}
-                            onClick={() => illuInputRef.current?.click()}
-                            disabled={busy}
-                          >
-                            {busy ? 'Procesando…' : draft.illuUrl ? 'Cambiar imagen' : 'Elegir imagen'}
-                          </IconButton>
-                          {draft.illuUrl && (
-                            <IconButton
-                              icon={<TrashIcon className="h-3.5 w-3.5" />}
-                              onClick={handleRemoveIllu}
-                              disabled={busy}
-                              danger
-                            >
-                              Quitar
-                            </IconButton>
-                          )}
-                        </div>
-                        <input
-                          ref={illuInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleIlluFile(e.target.files?.[0])}
-                        />
-
-                        {draft.illuUrl && (
-                          <div className="mt-3 space-y-3">
-                            <div>
-                              <FieldLabel>Tamaño: {draft.illuWidthPct}% del ancho de la ficha</FieldLabel>
-                              <input
-                                type="range"
-                                min={10}
-                                max={90}
-                                step={2}
-                                value={draft.illuWidthPct}
-                                onChange={(e) => patchDraft({ illuWidthPct: Number(e.target.value) })}
-                                className="w-full accent-bronze"
-                              />
-                            </div>
-                            <div>
-                              <FieldLabel>
-                                <span className="inline-flex items-center gap-1">
-                                  <SunIcon className="h-3.5 w-3.5" /> Brillo: {draft.illuBrightness}%
-                                </span>
-                              </FieldLabel>
-                              <input
-                                type="range"
-                                min={40}
-                                max={180}
-                                step={5}
-                                value={draft.illuBrightness}
-                                onChange={(e) => patchDraft({ illuBrightness: Number(e.target.value) })}
-                                className="w-full accent-bronze"
-                              />
-                            </div>
+                    {!fichaAjena && (
+                      <>
+                        <CollapsibleSection
+                          title="Imagen"
+                          open={isPanelOpen('imagen')}
+                          onToggle={() => togglePanel('imagen')}
+                        >
+                          <div>
                             <div className="flex flex-wrap gap-2">
                               <IconButton
-                                icon={<FlipHorizontalIcon />}
-                                onClick={() => patchDraft({ illuFlipped: !draft.illuFlipped })}
+                                icon={<ImageIcon />}
+                                onClick={() => illuInputRef.current?.click()}
+                                disabled={busy}
                               >
-                                Voltear
+                                {busy ? 'Procesando…' : draft.illuUrl ? 'Cambiar imagen' : 'Elegir imagen'}
                               </IconButton>
-                              <IconButton icon={<UndoIcon />} onClick={handleIlluResetFraming}>
-                                Restablecer encuadre
+                              {draft.illuUrl && (
+                                <IconButton
+                                  icon={<TrashIcon className="h-3.5 w-3.5" />}
+                                  onClick={handleRemoveIllu}
+                                  disabled={busy}
+                                  danger
+                                >
+                                  Quitar
+                                </IconButton>
+                              )}
+                            </div>
+                            <input
+                              ref={illuInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => handleIlluFile(e.target.files?.[0])}
+                            />
+
+                            {draft.illuUrl && (
+                              <div className="mt-3 space-y-3">
+                                <div>
+                                  <FieldLabel>Tamaño: {draft.illuWidthPct}% del ancho de la ficha</FieldLabel>
+                                  <input
+                                    type="range"
+                                    min={10}
+                                    max={90}
+                                    step={2}
+                                    value={draft.illuWidthPct}
+                                    onChange={(e) => patchDraft({ illuWidthPct: Number(e.target.value) })}
+                                    className="w-full accent-bronze"
+                                  />
+                                </div>
+                                <div>
+                                  <FieldLabel>
+                                    <span className="inline-flex items-center gap-1">
+                                      <SunIcon className="h-3.5 w-3.5" /> Brillo: {draft.illuBrightness}%
+                                    </span>
+                                  </FieldLabel>
+                                  <input
+                                    type="range"
+                                    min={40}
+                                    max={180}
+                                    step={5}
+                                    value={draft.illuBrightness}
+                                    onChange={(e) => patchDraft({ illuBrightness: Number(e.target.value) })}
+                                    className="w-full accent-bronze"
+                                  />
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <IconButton
+                                    icon={<FlipHorizontalIcon />}
+                                    onClick={() => patchDraft({ illuFlipped: !draft.illuFlipped })}
+                                  >
+                                    Voltear
+                                  </IconButton>
+                                  <IconButton icon={<UndoIcon />} onClick={handleIlluResetFraming}>
+                                    Restablecer encuadre
+                                  </IconButton>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </CollapsibleSection>
+
+                        <CollapsibleSection
+                          title="Tarjeta"
+                          open={isPanelOpen('tarjeta')}
+                          onToggle={() => togglePanel('tarjeta')}
+                        >
+                          <div>
+                            <FieldLabel>Alto máximo: {draft.cardMaxHeight} px</FieldLabel>
+                            <input
+                              type="range"
+                              min={300}
+                              max={800}
+                              step={10}
+                              value={draft.cardMaxHeight}
+                              onChange={(e) => patchDraft({ cardMaxHeight: Number(e.target.value) })}
+                              className="w-full accent-bronze"
+                            />
+                            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                              <IconButton icon={<UndoIcon />} onClick={() => patchDraft({ cardMaxHeight: 800 })}>
+                                Restablecer
                               </IconButton>
+                              {draft.cardMaxHeight <= 480 && (
+                                <span
+                                  className="ficha-two-page-badge"
+                                  title="480 px o menos es una altura orientativa para que dos hojas quepan cómodamente juntas en una misma página al exportar."
+                                >
+                                  ✓ Ideal para 2 hojas por página
+                                </span>
+                              )}
                             </div>
                           </div>
-                        )}
-                      </div>
-                    </CollapsibleSection>
 
-                    <CollapsibleSection
-                      title="Tarjeta"
-                      open={isPanelOpen('tarjeta')}
-                      onToggle={() => togglePanel('tarjeta')}
-                    >
-                      <div>
-                        <FieldLabel>Alto máximo: {draft.cardMaxHeight} px</FieldLabel>
-                        <input
-                          type="range"
-                          min={300}
-                          max={800}
-                          step={10}
-                          value={draft.cardMaxHeight}
-                          onChange={(e) => patchDraft({ cardMaxHeight: Number(e.target.value) })}
-                          className="w-full accent-bronze"
-                        />
-                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                          <IconButton icon={<UndoIcon />} onClick={() => patchDraft({ cardMaxHeight: 800 })}>
-                            Restablecer
-                          </IconButton>
-                          {draft.cardMaxHeight <= 480 && (
-                            <span
-                              className="ficha-two-page-badge"
-                              title="480 px o menos es una altura orientativa para que dos hojas quepan cómodamente juntas en una misma página al exportar."
-                            >
-                              ✓ Ideal para 2 hojas por página
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Visibilidad de cada fila de la tabla de características.
+                          {/* Visibilidad de cada fila de la tabla de características.
                           Vive aquí, en "Tarjeta", porque es una decisión sobre
                           QUÉ enseña la tarjeta, igual que su alto.
 
@@ -1094,123 +1115,127 @@ export function FichasPage() {
                           que se ve, y el icono lo dice sin leer nada. Solo si hay
                           más de una ficha — con una sola, ocultarla dejaría la
                           tabla vacía. */}
-                      {allProfileRows.length > 1 && (
-                        <div className="border-t border-rule-dark/20 pt-3">
-                          <FieldLabel>Fichas de atributos</FieldLabel>
-                          <p className="mb-2 text-[10.5px] text-ink-soft">
-                            Qué filas de la tabla de características se ven en esta hoja.
-                          </p>
-                          <div className="space-y-1">
-                            {allProfileRows.map((row) => {
-                              const visible = !draft.hiddenProfiles.includes(row.key)
-                              return (
-                                <button
-                                  key={row.key}
-                                  type="button"
-                                  onClick={() => handleProfileVisibility(row.key, !visible)}
-                                  aria-pressed={visible}
-                                  title={visible ? `Ocultar ${row.label}` : `Mostrar ${row.label}`}
-                                  className={clsx(
-                                    'flex w-full items-center gap-2 rounded-sm border px-2 py-1 text-left text-xs transition-colors',
-                                    visible
-                                      ? 'border-rule-dark/30 text-ink hover:border-bronze hover:text-bronze'
-                                      : 'border-rule-dark/20 text-ink-soft/70 hover:text-ink-soft',
-                                  )}
-                                >
-                                  {visible ? (
-                                    <EyeIcon className="h-3.5 w-3.5 shrink-0" />
-                                  ) : (
-                                    <EyeOffIcon className="h-3.5 w-3.5 shrink-0" />
-                                  )}
-                                  <span className={clsx('truncate', !visible && 'line-through')}>{row.label}</span>
-                                </button>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </CollapsibleSection>
+                          {allProfileRows.length > 1 && (
+                            <div className="border-t border-rule-dark/20 pt-3">
+                              <FieldLabel>Fichas de atributos</FieldLabel>
+                              <p className="mb-2 text-[10.5px] text-ink-soft">
+                                Qué filas de la tabla de características se ven en esta hoja.
+                              </p>
+                              <div className="space-y-1">
+                                {allProfileRows.map((row) => {
+                                  const visible = !draft.hiddenProfiles.includes(row.key)
+                                  return (
+                                    <button
+                                      key={row.key}
+                                      type="button"
+                                      onClick={() => handleProfileVisibility(row.key, !visible)}
+                                      aria-pressed={visible}
+                                      title={visible ? `Ocultar ${row.label}` : `Mostrar ${row.label}`}
+                                      className={clsx(
+                                        'flex w-full items-center gap-2 rounded-sm border px-2 py-1 text-left text-xs transition-colors',
+                                        visible
+                                          ? 'border-rule-dark/30 text-ink hover:border-bronze hover:text-bronze'
+                                          : 'border-rule-dark/20 text-ink-soft/70 hover:text-ink-soft',
+                                      )}
+                                    >
+                                      {visible ? (
+                                        <EyeIcon className="h-3.5 w-3.5 shrink-0" />
+                                      ) : (
+                                        <EyeOffIcon className="h-3.5 w-3.5 shrink-0" />
+                                      )}
+                                      <span className={clsx('truncate', !visible && 'line-through')}>{row.label}</span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </CollapsibleSection>
 
-                    {/* Un ancho por apartado. Solo se ofrecen los que esta
+                        {/* Un ancho por apartado. Solo se ofrecen los que esta
                         ficha tiene de verdad: enseñar "Montura" en una unidad
                         sin montura sería un control que no hace nada. */}
-                    <CollapsibleSection
-                      title="Ancho de los apartados"
-                      open={isPanelOpen('anchos')}
-                      onToggle={() => togglePanel('anchos')}
-                    >
-                      <div>
-                        <p className="mb-2 text-[10.5px] text-ink-soft">
-                          Estrecha un apartado para dejarle sitio a la ilustración. El texto salta de línea y se
-                          justifica con el ancho que le des.
-                        </p>
-                        <div className="space-y-2">
-                          {visibleSections.map((section) => {
-                            const pct = sectionWidth(draft.sectionWidths, section)
-                            return (
-                              <div key={section}>
-                                <div className="flex items-baseline justify-between gap-2">
-                                  <span className="text-[10.5px] text-ink-soft">{SECTION_LABELS[section]}</span>
-                                  <span className="text-[10.5px] text-ink-soft tabular-nums">{pct}%</span>
-                                </div>
-                                <input
-                                  type="range"
-                                  min={MIN_SECTION_WIDTH}
-                                  max={MAX_SECTION_WIDTH}
-                                  step={1}
-                                  value={pct}
-                                  onChange={(e) =>
-                                    patchDraft({
-                                      sectionWidths: { ...draft.sectionWidths, [section]: Number(e.target.value) },
-                                    })
-                                  }
-                                  className="w-full accent-bronze"
-                                />
-                              </div>
-                            )
-                          })}
-                        </div>
-                        <div className="mt-1.5">
-                          <IconButton icon={<UndoIcon />} onClick={handleSectionWidthsReset}>
-                            Restablecer anchos
-                          </IconButton>
-                        </div>
-                      </div>
-                    </CollapsibleSection>
+                        <CollapsibleSection
+                          title="Ancho de los apartados"
+                          open={isPanelOpen('anchos')}
+                          onToggle={() => togglePanel('anchos')}
+                        >
+                          <div>
+                            <p className="mb-2 text-[10.5px] text-ink-soft">
+                              Estrecha un apartado para dejarle sitio a la ilustración. El texto salta de línea y se
+                              justifica con el ancho que le des.
+                            </p>
+                            <div className="space-y-2">
+                              {visibleSections.map((section) => {
+                                const pct = sectionWidth(draft.sectionWidths, section)
+                                return (
+                                  <div key={section}>
+                                    <div className="flex items-baseline justify-between gap-2">
+                                      <span className="text-[10.5px] text-ink-soft">{SECTION_LABELS[section]}</span>
+                                      <span className="text-[10.5px] text-ink-soft tabular-nums">{pct}%</span>
+                                    </div>
+                                    <input
+                                      type="range"
+                                      min={MIN_SECTION_WIDTH}
+                                      max={MAX_SECTION_WIDTH}
+                                      step={1}
+                                      value={pct}
+                                      onChange={(e) =>
+                                        patchDraft({
+                                          sectionWidths: { ...draft.sectionWidths, [section]: Number(e.target.value) },
+                                        })
+                                      }
+                                      className="w-full accent-bronze"
+                                    />
+                                  </div>
+                                )
+                              })}
+                            </div>
+                            <div className="mt-1.5">
+                              <IconButton icon={<UndoIcon />} onClick={handleSectionWidthsReset}>
+                                Restablecer anchos
+                              </IconButton>
+                            </div>
+                          </div>
+                        </CollapsibleSection>
 
-                    {/* El id del panel sigue siendo 'escudo' aunque el título
+                        {/* El id del panel sigue siendo 'escudo' aunque el título
                         diga "Emblema": es la clave con la que localStorage
                         recuerda si está abierto, y cambiarla haría que a quien
                         ya lo tenía abierto se le cerrase sin motivo. */}
-                    <CollapsibleSection
-                      title="Emblema"
-                      open={isPanelOpen('escudo')}
-                      onToggle={() => togglePanel('escudo')}
-                    >
-                      <div>
-                        <div className="flex flex-wrap gap-2">
-                          <IconButton
-                            icon={<ShieldIcon />}
-                            onClick={() => emblemInputRef.current?.click()}
-                            disabled={busy}
-                          >
-                            {draft.hasCustomEmblem ? 'Cambiar emblema de esta hoja' : 'Usar otro emblema en esta hoja'}
-                          </IconButton>
-                          {draft.hasCustomEmblem && (
-                            <IconButton icon={<UndoIcon />} onClick={handleEmblemRevert} disabled={busy}>
-                              Volver al de la facción
-                            </IconButton>
-                          )}
-                        </div>
-                        <input
-                          ref={emblemInputRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleEmblemFile(e.target.files?.[0])}
-                        />
-                      </div>
-                    </CollapsibleSection>
+                        <CollapsibleSection
+                          title="Emblema"
+                          open={isPanelOpen('escudo')}
+                          onToggle={() => togglePanel('escudo')}
+                        >
+                          <div>
+                            <div className="flex flex-wrap gap-2">
+                              <IconButton
+                                icon={<ShieldIcon />}
+                                onClick={() => emblemInputRef.current?.click()}
+                                disabled={busy}
+                              >
+                                {draft.hasCustomEmblem
+                                  ? 'Cambiar emblema de esta hoja'
+                                  : 'Usar otro emblema en esta hoja'}
+                              </IconButton>
+                              {draft.hasCustomEmblem && (
+                                <IconButton icon={<UndoIcon />} onClick={handleEmblemRevert} disabled={busy}>
+                                  Volver al de la facción
+                                </IconButton>
+                              )}
+                            </div>
+                            <input
+                              ref={emblemInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => handleEmblemFile(e.target.files?.[0])}
+                            />
+                          </div>
+                        </CollapsibleSection>
+                      </>
+                    )}
                   </div>
                 )}
               </Panel>
@@ -1228,7 +1253,7 @@ export function FichasPage() {
                       sheet={draft}
                       grayscale={grayscale}
                       showFrame={showFrame}
-                      editable
+                      editable={!fichaAjena}
                       onIlluDragEnd={(posX, posY) => patchDraft({ illuPosX: posX, illuPosY: posY })}
                       apendices={apendicesEnLaFicha}
                       onApendiceCaja={(id, caja) => void guardarCajaDeApendice(id, caja)}
@@ -1247,7 +1272,7 @@ export function FichasPage() {
                         ownerId={sheetTarget.id}
                         apendices={apendicesDeLaFicha}
                         grayscale={grayscale}
-                        editable
+                        editable={!fichaAjena}
                         onMeter={(apendice) => void meterApendiceEnLaFicha(apendice)}
                         onCambio={recargarApendices}
                       />
@@ -1267,17 +1292,25 @@ export function FichasPage() {
                         }}
                       />
                     )}
+                    {/* "Completada" es una marca sobre el trabajo de la hoja,
+                        así que es de quien la hace: en la de otro se ve cómo
+                        está, pero no se cambia. */}
                     <label
                       className={clsx(
-                        'flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-xs transition-colors',
+                        'flex items-center gap-2 rounded-sm border px-3 py-2 text-xs transition-colors',
+                        fichaAjena ? 'cursor-default opacity-70' : 'cursor-pointer',
                         draft.completed
                           ? 'border-success/60 bg-success/10 text-ink'
-                          : 'border-rule-dark/40 bg-parchment/70 text-ink-soft hover:border-bronze',
+                          : clsx(
+                              'border-rule-dark/40 bg-parchment/70 text-ink-soft',
+                              !fichaAjena && 'hover:border-bronze',
+                            ),
                       )}
                     >
                       <input
                         type="checkbox"
                         checked={draft.completed}
+                        disabled={fichaAjena}
                         onChange={(e) => patchDraft({ completed: e.target.checked })}
                         className="accent-emerald-700"
                       />

@@ -46,6 +46,7 @@ import { runMigrations } from '@/data/sqlite/client'
 import { mensajeDeMigracionPendiente } from '@/data/repositories/schemaHealth'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
+import { esEditablePor } from '@/domain/personajeRenombre'
 import { Modal } from '@/shared/ui/Modal'
 import { HabilidadesModal } from '@/features/renombre/HabilidadesModal'
 import { CicatricesModal } from '@/features/renombre/CicatricesModal'
@@ -202,17 +203,16 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
   const trasfondo = personaje.background ?? ''
   const tieneTrasfondo = tieneTexto(trasfondo)
   const largo = aTextoPlano(trasfondo).length > TRASFONDO_LARGO
-  const propio = personaje.userId == null || personaje.userId === user?.id
   /**
    * UN PERSONAJE ES DE QUIEN LO HIZO. Su experiencia, sus habilidades, sus
    * cicatrices, su retrato y su trasfondo solo los toca su autor: son la
    * crónica de SUS partidas, y cualquiera podía reescribirla.
    *
-   * Los de antes de que existiera el autor no tienen ninguno y siguen siendo
-   * de todos; si no, se quedarían congelados y sin dueño que los descongele.
-   * En modo administrador se puede tocar todo, como en el resto del programa.
+   * NI SIQUIERA EN MODO ADMINISTRADOR, que antes sí: ese modo se enciende con
+   * un interruptor y sin contraseña, así que la excepción dejaba el candado en
+   * nada (ver esEditablePor).
    */
-  const puedeEditar = propio || actingAsAdmin
+  const puedeEditar = esEditablePor(personaje, user?.id)
 
   /**
    * Ocultar / volver a enseñar.
@@ -494,7 +494,7 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
               personaje oculto solo lo ve su autor, así que solo su autor puede
               ponerlo o quitarlo (los de antes de esta función no tienen autor y
               los puede ocultar quien quiera; ver setHidden). */}
-          {propio && (
+          {puedeEditar && (
             <button
               type="button"
               onClick={alternarOculto}
@@ -533,7 +533,7 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
           {/* Los atributos, el equipo y el coste se editan en la ficha de
               unidad, que sigue estando en "Editor" y por tanto solo se ofrece en
               modo administrador. */}
-          {actingAsAdmin && (
+          {actingAsAdmin && puedeEditar && (
             <Link
               to={`/admin/unidades/${personaje.id}`}
               className="inline-flex items-center rounded-sm px-2 py-1 text-xs font-medium text-ink-soft underline decoration-rule-dark/40 underline-offset-2 transition-colors hover:text-ink"

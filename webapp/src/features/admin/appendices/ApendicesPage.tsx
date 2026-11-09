@@ -30,7 +30,7 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Select } from '@/shared/ui/Select'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
-import { PencilIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
+import { LockIcon, PencilIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
 import { EditorDeApendice } from '@/features/admin/appendices/EditorDeApendice'
 import type { ApendiceDueno, UnitAppendix } from '@/domain/types'
 
@@ -199,25 +199,35 @@ export function ApendicesPage() {
                         {tieneTexto(a.bodyHtml) ? aTextoPlano(a.bodyHtml) : 'Sin texto'}
                       </p>
                     </div>
+                    {/* El personaje de renombre de OTRO se ve pero no se
+                        toca, tampoco por aquí (ver listarDuenos). */}
                     <div className="flex shrink-0 items-center gap-1 pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => setEditando(a)}
-                        aria-label={`Editar ${a.title}`}
-                        title="Editar"
-                        className="rounded-sm p-1.5 text-ink-soft transition-colors hover:bg-bronze/10 hover:text-bronze"
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPorBorrar(a)}
-                        aria-label={`Borrar ${a.title}`}
-                        title="Borrar"
-                        className="rounded-sm p-1.5 text-ink-soft transition-colors hover:bg-maroon/10 hover:text-danger"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
+                      {grupo.dueno?.editable === false ? (
+                        <span className="p-1.5 text-ink-soft/60" title="De otro jugador">
+                          <LockIcon className="h-4 w-4" />
+                        </span>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setEditando(a)}
+                            aria-label={`Editar ${a.title}`}
+                            title="Editar"
+                            className="rounded-sm p-1.5 text-ink-soft transition-colors hover:bg-bronze/10 hover:text-bronze"
+                          >
+                            <PencilIcon className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPorBorrar(a)}
+                            aria-label={`Borrar ${a.title}`}
+                            title="Borrar"
+                            className="rounded-sm p-1.5 text-ink-soft transition-colors hover:bg-maroon/10 hover:text-danger"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
