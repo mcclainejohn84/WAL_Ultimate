@@ -110,3 +110,4 @@ CREATE TABLE IF NOT EXISTS unit_scars (
 -- El nivel de cada senda conocida por una unidad: la magia de los Personajes
 -- de Renombre, que es suya y no de la lista en la que entren.
 ALTER TABLE unit_magic_paths ADD COLUMN level INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE unit_magic_paths ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;

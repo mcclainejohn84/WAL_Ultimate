@@ -99,7 +99,7 @@ async function tropasSecundariasDe(unitId: number): Promise<TropaSecundaria[]> {
 async function sendasDe(unitId: number): Promise<EntryMagicPath[]> {
   try {
     return await queryLocal<EntryMagicPath>(
-      'SELECT path_id, level FROM unit_magic_paths WHERE unit_id = ?',
+      'SELECT path_id, level FROM unit_magic_paths WHERE unit_id = ? ORDER BY sort_order, path_id',
       [unitId],
       (row) => ({ pathId: row.path_id as number, level: (row.level as number) ?? 1 }),
     )
@@ -840,11 +840,11 @@ export const UnitRepository = {
     const sendas = await sendasDe(unitId)
     if (sendas.length > 0) {
       await execCatalogBatch(
-        sendas.map((senda) => ({
+        sendas.map((senda, indice) => ({
           // Con su NIVEL: un Personaje de Renombre sacado de otro que ya tenía
           // magia la hereda tal cual, no toda a nivel 1.
-          sql: 'INSERT OR IGNORE INTO unit_magic_paths (unit_id, path_id, level) VALUES (?, ?, ?)',
-          params: [newUnitId, senda.pathId, senda.level],
+          sql: 'INSERT OR IGNORE INTO unit_magic_paths (unit_id, path_id, level, sort_order) VALUES (?, ?, ?, ?)',
+          params: [newUnitId, senda.pathId, senda.level, indice],
         })),
       )
     }

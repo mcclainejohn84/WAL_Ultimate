@@ -40,6 +40,7 @@
 import { exec, execCatalog, query } from '@/data/sqlite/client'
 import { UnitRepository } from '@/data/repositories/unitRepository'
 import { ChangeLogRepository } from '@/data/repositories/changeLogRepository'
+import { MagicRepository } from '@/data/repositories/magicRepository'
 import { hashDeContenido, imageUrl, uploadImageAtKey } from '@/data/network/images'
 import { getCurrentUser } from '@/shared/session/useSession'
 import { esVisiblePara } from '@/domain/personajeRenombre'
@@ -388,6 +389,65 @@ export const SpecialCharacterRepository = {
     await exec('DELETE FROM unit_skills WHERE unit_id = ? AND skill_key = ?', [unitId, clave])
     if (coste !== 0) {
       await SpecialCharacterRepository.añadirExperiencia(unitId, Math.abs(coste), `Quitada la habilidad "${nombre}"`)
+    }
+  },
+
+  // --------------------------------------------------------------------------
+  // SENDAS DE MAGIA
+  //
+  // Van en la tabla de la unidad (unit_magic_paths, ver MagicRepository) y no
+  // en la de la lista: la magia de un personaje con nombre propio es suya y la
+  // misma en todos los ejércitos. Lo que se añade aquí es el DINERO: subir de
+  // nivel o abrir una senda se paga con experiencia y deja su apunte, igual
+  // que una habilidad.
+  //
+  // EN ESTE ORDEN, como en `anadirHabilidad`: primero el apunte y después la
+  // senda. Si la red falla a medias, mejor el cobro sin la senda —que se ve en
+  // el libro y se corrige— que una senda gratis que nadie sabría que no se
+  // pagó. Lo que cuesta cada cosa lo calcula domain/magiaDeRenombre; aquí solo
+  // se cobra lo que digan.
+  // --------------------------------------------------------------------------
+
+  /** Abre una senda nueva al nivel indicado (normalmente 1). */
+  async abrirSenda(
+    unitId: number,
+    pathId: number,
+    nombre: string,
+    nivel: number,
+    coste: number,
+    sortOrder: number,
+  ): Promise<void> {
+    if (coste !== 0) {
+      await SpecialCharacterRepository.añadirExperiencia(unitId, -Math.abs(coste), `Aprendió la senda de ${nombre}`)
+    }
+    await MagicRepository.addUnitPath(unitId, pathId, nivel, sortOrder)
+  },
+
+  /** Sube una senda a `nivel`, cobrando lo que cueste ese nivel. */
+  async subirSenda(unitId: number, pathId: number, nombre: string, nivel: number, coste: number): Promise<void> {
+    if (coste !== 0) {
+      await SpecialCharacterRepository.añadirExperiencia(unitId, -Math.abs(coste), `${nombre} a nivel ${nivel}`)
+    }
+    await MagicRepository.setUnitPathLevel(unitId, pathId, nivel)
+  },
+
+  /** La baja un nivel y devuelve lo que costó ese nivel. */
+  async bajarSenda(unitId: number, pathId: number, nombre: string, nivel: number, devolucion: number): Promise<void> {
+    await MagicRepository.setUnitPathLevel(unitId, pathId, nivel)
+    if (devolucion !== 0) {
+      await SpecialCharacterRepository.añadirExperiencia(
+        unitId,
+        Math.abs(devolucion),
+        `${nombre} vuelve a nivel ${nivel}`,
+      )
+    }
+  },
+
+  /** Olvida la senda entera y devuelve todo lo que se pagó por ella. */
+  async olvidarSenda(unitId: number, pathId: number, nombre: string, devolucion: number): Promise<void> {
+    await MagicRepository.removeUnitPath(unitId, pathId)
+    if (devolucion !== 0) {
+      await SpecialCharacterRepository.añadirExperiencia(unitId, Math.abs(devolucion), `Olvidó la senda de ${nombre}`)
     }
   },
 

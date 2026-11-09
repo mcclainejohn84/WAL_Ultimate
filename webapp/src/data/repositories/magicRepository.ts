@@ -21,6 +21,15 @@ import {
 } from '@/domain/magic'
 import type { EntryMagicPath } from '@/domain/types'
 
+/**
+ * Una senda de un personaje: la senda, su nivel y EN QUÉ PUESTO la aprendió.
+ * Es un `EntryMagicPath` con el orden encima, así que vale allí donde se
+ * espere una lista de sendas con nivel (el constructor, el PDF).
+ */
+export interface SendaDeUnidad extends EntryMagicPath {
+  sortOrder: number
+}
+
 function mapPath(row: Record<string, unknown>): MagicPath {
   const group = row.group_code
   return {
@@ -129,40 +138,51 @@ export const MagicRepository = {
   // --------------------------------------------------------------------------
 
   /**
-   * Las sendas de una unidad con su nivel.
+   * Las sendas de una unidad con su nivel, EN EL ORDEN EN QUE SE APRENDIERON.
+   * El orden no es decoración: la primera es la senda con la que el personaje
+   * empezó la campaña, y de ahí salen el tope de nivel de las demás y el
+   * recargo de cada una (ver domain/magiaDeRenombre).
    *
-   * `try/catch` porque la columna `level` es de una migración reciente: con un
+   * `try/catch` porque las columnas son de una migración reciente: con un
    * Worker sin desplegar, el personaje se enseña sin magia en vez de no
    * enseñarse.
    */
-  async listUnitPaths(unitId: number): Promise<EntryMagicPath[]> {
+  async listUnitPaths(unitId: number): Promise<SendaDeUnidad[]> {
     try {
-      return await queryLocal<EntryMagicPath>(
-        'SELECT path_id, level FROM unit_magic_paths WHERE unit_id = ?',
+      return await queryLocal<SendaDeUnidad>(
+        'SELECT path_id, level, sort_order FROM unit_magic_paths WHERE unit_id = ? ORDER BY sort_order, path_id',
         [unitId],
-        (row) => ({ pathId: row.path_id as number, level: (row.level as number) ?? 1 }),
+        (row) => ({
+          pathId: row.path_id as number,
+          level: (row.level as number) ?? 1,
+          sortOrder: (row.sort_order as number) ?? 0,
+        }),
       )
     } catch {
       return []
     }
   },
 
-  /**
-   * Deja las sendas de una unidad EXACTAMENTE en lo que se le pasa: se borran
-   * todas y se vuelven a escribir.
-   *
-   * Reemplazar en vez de ir añadiendo y quitando una a una es lo mismo que
-   * hace el constructor con las de una entrada (ver replaceEntryRelations), y
-   * evita tener que distinguir qué cambió: son tres filas como mucho.
-   */
-  async setUnitPaths(unitId: number, paths: EntryMagicPath[]): Promise<void> {
-    await execCatalogBatch([
-      { sql: 'DELETE FROM unit_magic_paths WHERE unit_id = ?', params: [unitId] },
-      ...paths.map((p) => ({
-        sql: 'INSERT OR IGNORE INTO unit_magic_paths (unit_id, path_id, level) VALUES (?, ?, ?)',
-        params: [unitId, p.pathId, p.level] as (string | number | null)[],
-      })),
+  /** Abre una senda nueva, en el puesto que le toque. El coste lo cobra quien llama (ver SpecialCharacterRepository). */
+  async addUnitPath(unitId: number, pathId: number, level: number, sortOrder: number): Promise<void> {
+    await execCatalog(
+      'INSERT OR IGNORE INTO unit_magic_paths (unit_id, path_id, level, sort_order) VALUES (?, ?, ?, ?)',
+      [unitId, pathId, level, sortOrder],
+    )
+  },
+
+  /** Cambia el nivel de una senda que ya tiene. */
+  async setUnitPathLevel(unitId: number, pathId: number, level: number): Promise<void> {
+    await execCatalog('UPDATE unit_magic_paths SET level = ? WHERE unit_id = ? AND path_id = ?', [
+      level,
+      unitId,
+      pathId,
     ])
+  },
+
+  /** La olvida del todo. */
+  async removeUnitPath(unitId: number, pathId: number): Promise<void> {
+    await execCatalog('DELETE FROM unit_magic_paths WHERE unit_id = ? AND path_id = ?', [unitId, pathId])
   },
 
   /** Reordena las sendas: se guarda el orden completo, que es lo que se ve en pantalla. */

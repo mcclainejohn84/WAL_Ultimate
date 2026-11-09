@@ -1221,6 +1221,11 @@ const MIGRATIONS: string[] = [
   // listas, igual que sus habilidades o sus cicatrices, así que el nivel
   // tiene que vivir con la senda. Por defecto 1, que es el de salida.
   'ALTER TABLE unit_magic_paths ADD COLUMN level INTEGER NOT NULL DEFAULT 1',
+  // EN QUÉ ORDEN las aprendió. Hace falta para saber cuál es la senda con la
+  // que empezó la campaña —la primera— y qué puesto ocupa cada una de las
+  // nuevas, porque el precio de subir de nivel sube con cada senda abierta
+  // (ver domain/magiaDeRenombre).
+  'ALTER TABLE unit_magic_paths ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0',
   // Ahora las listas los ofrecen POR DEFECTO, al revés que antes.
   //
   // Es una columna NUEVA en vez de darle la vuelta a la anterior con un UPDATE

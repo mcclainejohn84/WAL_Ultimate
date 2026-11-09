@@ -15,10 +15,11 @@ import { clsx } from 'clsx'
 import { SpecialCharacterRepository, type PersonajeEspecial } from '@/data/repositories/specialCharacterRepository'
 import { CATALOGO_DE_CICATRICES, CICATRIZ_POR_CLAVE, type CicatrizDeRenombre } from '@/domain/cicatricesDeRenombre'
 import { useAsync } from '@/shared/hooks/useAsync'
+import { BotonDeInfo, Descripcion } from '@/features/renombre/piezas'
 import { Modal } from '@/shared/ui/Modal'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
-import { CheckIcon, ChevronDownIcon, InfoIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
+import { CheckIcon, ChevronDownIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
 
 export function CicatricesModal({
   personaje,
@@ -206,32 +207,5 @@ export function CicatricesModal({
         />
       )}
     </Modal>
-  )
-}
-
-/** La "i" que despliega qué hace la cicatriz. Misma que en el diálogo de habilidades. */
-function BotonDeInfo({ nombre, abierto, onClick }: { nombre: string; abierto: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-expanded={abierto}
-      aria-label={`Qué hace: ${nombre}`}
-      title={`Qué hace: ${nombre}`}
-      className={clsx(
-        'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors',
-        abierto ? 'text-maroon' : 'text-ink-soft/45 hover:text-bronze',
-      )}
-    >
-      <InfoIcon className="h-3.5 w-3.5" />
-    </button>
-  )
-}
-
-function Descripcion({ texto }: { texto: string }) {
-  return (
-    <p className="mt-1 mb-0.5 border-l-2 border-bronze/40 bg-parchment-dark/20 px-2 py-1 text-mini leading-relaxed text-ink-soft">
-      {texto}
-    </p>
   )
 }

@@ -683,6 +683,10 @@ CREATE TABLE unit_magic_paths (
     unit_id INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
     path_id INTEGER NOT NULL REFERENCES magic_paths(id) ON DELETE CASCADE,
     level   INTEGER NOT NULL DEFAULT 1,
+    -- En qué orden las aprendió: la primera es la senda con la que empezó la
+    -- campaña, y el puesto de las demás decide su recargo (ver
+    -- domain/magiaDeRenombre).
+    sort_order INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (unit_id, path_id)
 );
 

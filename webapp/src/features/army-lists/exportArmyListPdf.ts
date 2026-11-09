@@ -38,6 +38,7 @@ import {
   type TipoDeHabilidad,
 } from '@/domain/habilidadesDeRenombre'
 import { MAGIC_GROUP_LABELS, sendasDeLaEntrada, type MagicPathDetail, type MagicSpell } from '@/domain/magic'
+import { ETIQUETAS_DE_MAGIA, MAGIA_POR_CLAVE, spellIdDePergamino, type HabilidadMagica } from '@/domain/magiaDeRenombre'
 import { mergeSpecialRules } from '@/domain/unitFormat'
 import { mostrarPdf } from '@/features/army-lists/pdfWindow'
 import type { ArmyListDetail, ArmyListEntry, AttributeProfile, SpecialRule } from '@/domain/types'
@@ -377,12 +378,25 @@ export interface FichaDeRenombre {
   habilidades: HabilidadDeRenombre[]
   sociales: HabilidadDeRenombre[]
   cicatrices: CicatrizDeRenombre[]
+  /** Habilidades mágicas y sus avanzadas, para los personajes hechiceros. */
+  magicas: HabilidadMagica[]
+  avanzadas: HabilidadMagica[]
+  saberes: HabilidadMagica[]
+  /** Pergaminos: ids de hechizos del catálogo, que resuelve quien dibuja. */
+  pergaminos: number[]
 }
 
 export function fichaDeRenombre(clavesDeHabilidad: string[], clavesDeCicatriz: string[]): FichaDeRenombre {
   const suyas = clavesDeHabilidad
     .map((clave) => HABILIDAD_POR_CLAVE.get(clave))
     .filter((h): h is HabilidadDeRenombre => h != null)
+  // Las de magia viven en la misma tabla que las de personaje y se distinguen
+  // por el prefijo de su clave (ver domain/magiaDeRenombre).
+  const magia = clavesDeHabilidad
+    .map((clave) => MAGIA_POR_CLAVE.get(clave))
+    .filter((h): h is HabilidadMagica => h != null)
+  const deMagia = (tipo: HabilidadMagica['tipo']) =>
+    magia.filter((h) => h.tipo === tipo).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
   // Rangos y atributos se quedan en el ORDEN DEL CATÁLOGO, que es el del
   // reglamento (de más barato a más caro): son tres y ocho, se leen de un
   // vistazo y así "Héroe" va siempre antes que "Comandante". Las otras tres
@@ -398,6 +412,11 @@ export function fichaDeRenombre(clavesDeHabilidad: string[], clavesDeCicatriz: s
       .map((clave) => CICATRIZ_POR_CLAVE.get(clave))
       .filter((c): c is CicatrizDeRenombre => c != null)
       .sort(porNombre),
+    magicas: deMagia('habilidad'),
+    avanzadas: deMagia('avanzada'),
+    // Los saberes, por nivel: así se leen como la tabla del reglamento.
+    saberes: magia.filter((h) => h.tipo === 'saber').sort((a, b) => (a.nivel ?? 0) - (b.nivel ?? 0) || porNombre(a, b)),
+    pergaminos: clavesDeHabilidad.map(spellIdDePergamino).filter((id): id is number => id != null),
   }
 }
 
@@ -435,7 +454,11 @@ export function fichaDeRenombreVacia(ficha: FichaDeRenombre): boolean {
     ficha.atributos.length === 0 &&
     ficha.habilidades.length === 0 &&
     ficha.sociales.length === 0 &&
-    ficha.cicatrices.length === 0
+    ficha.cicatrices.length === 0 &&
+    ficha.magicas.length === 0 &&
+    ficha.avanzadas.length === 0 &&
+    ficha.saberes.length === 0 &&
+    ficha.pergaminos.length === 0
   )
 }
 
@@ -748,16 +771,23 @@ export async function exportArmyListToPdf(
   // viene con él a cualquier lista (ver sendasDeLaEntrada): en la hoja sale
   // exactamente igual que la de cualquier otro mago.
   const entradasConMagia = sortedEntries.filter((e) => sendasDeLaEntrada(e).length > 0)
-  if (entradasConMagia.length > 0) {
-    // El catálogo de sendas se pide una sola vez, ya con sus hechizos dentro.
-    let sendas: MagicPathDetail[] = []
+  const hayRenombre = sortedEntries.some((e) => e.unit.isSpecialCharacter)
+
+  // El catálogo de sendas se pide UNA vez, ya con sus hechizos dentro: lo usan
+  // el listado de hechizos y, al final, los pergaminos de los personajes de
+  // renombre, que se guardan por el id de su hechizo.
+  let sendas: MagicPathDetail[] = []
+  if (entradasConMagia.length > 0 || hayRenombre) {
     try {
       sendas = await MagicRepository.listPathsWithSpells()
     } catch {
       sendas = []
     }
-    const sendaPorId = new Map(sendas.map((p) => [p.id, p]))
+  }
+  const sendaPorId = new Map(sendas.map((p) => [p.id, p]))
+  const hechizoPorId = new Map(sendas.flatMap((p) => p.spells.map((h) => [h.id, { hechizo: h, senda: p }] as const)))
 
+  if (entradasConMagia.length > 0) {
     let finalYGlosario = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y3
     if (finalYGlosario + ALTURA_MINIMA > doc.internal.pageSize.getHeight() - ALTURA_PIE) {
       doc.addPage()
@@ -921,7 +951,21 @@ export async function exportArmyListToPdf(
         // —son algo que el personaje ha comprado, como una habilidad— y
         // dejarlos además aquí sería decir dos veces lo mismo en cuatro
         // centímetros de papel.
-        const resumen = ficha.rangos.length ? `Rango: ${ficha.rangos.map((h) => h.nombre).join(', ')}` : ''
+        const susSendas = sendasDeLaEntrada(entry)
+          .map((mp) => {
+            const senda = sendaPorId.get(mp.pathId)
+            return senda ? `${senda.name} ${mp.level}` : null
+          })
+          .filter(Boolean)
+        const resumen = [
+          ficha.rangos.length ? `Rango: ${ficha.rangos.map((h) => h.nombre).join(', ')}` : '',
+          // Las sendas se repiten aquí a propósito, en una línea: el listado de
+          // hechizos está páginas más arriba y lo que se busca en la ficha del
+          // personaje es de qué va y hasta dónde llega.
+          susSendas.length ? `Sendas: ${susSendas.join(', ')}` : '',
+        ]
+          .filter(Boolean)
+          .join('  ·  ')
         if (resumen) {
           doc.setFont('times', 'italic')
           doc.setFontSize(7)
@@ -944,6 +988,33 @@ export async function exportArmyListToPdf(
         apartado(ETIQUETAS_DE_TIPO.atributo, ficha.atributos.map(lineaDeAtributo))
         apartado(ETIQUETAS_DE_TIPO.habilidad, ficha.habilidades)
         apartado(ETIQUETAS_DE_TIPO.social, ficha.sociales)
+        apartado(ETIQUETAS_DE_MAGIA.habilidad, ficha.magicas)
+        apartado(ETIQUETAS_DE_MAGIA.avanzada, ficha.avanzadas)
+        // Los saberes arcanos son hechizos: su nivel y su dificultad van
+        // delante de lo que hacen, como en la tabla del reglamento.
+        apartado(
+          ETIQUETAS_DE_MAGIA.saber,
+          ficha.saberes.map((h) => ({
+            nombre: h.nombre,
+            descripcion: `Nivel ${h.nivel} · dificultad ${h.dificultad} · ${h.descripcion}`,
+          })),
+        )
+        apartado(
+          ETIQUETAS_DE_MAGIA.pergamino,
+          ficha.pergaminos
+            .map((id) => hechizoPorId.get(id))
+            .filter((x) => x != null)
+            .map(({ hechizo, senda }) => ({
+              nombre: hechizo.name,
+              descripcion: [
+                `${senda.name}, nivel ${hechizo.level}`,
+                hechizo.difficulty ? `dificultad ${hechizo.difficulty}` : '',
+                hechizo.rules ?? '',
+              ]
+                .filter(Boolean)
+                .join(' · '),
+            })),
+        )
         apartado('Cicatrices', ficha.cicatrices)
 
         if (filas.length > 0) {

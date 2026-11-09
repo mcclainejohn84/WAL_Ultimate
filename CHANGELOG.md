@@ -13,6 +13,29 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.196 — 09/11/2026 01:50
+
+- **La experiencia mágica**, entera, en el diálogo de Magia de un Personaje de
+  Renombre, repartida en pestañas:
+  - **Sendas**: subir de nivel cuesta experiencia (30/30/40/50) y se cobra
+    sola. La primera senda es la de la campaña y es gratis; cada senda nueva
+    encarece los niveles de las siguientes (+5 y +6 en su misma disciplina,
+    +10 y +12 en otra) y no puede pasar del nivel de la inicial.
+  - **Habilidades mágicas** (17) y **avanzadas** (12), con lo que hace cada
+    una. Las tres primeras van a precio de tabla y a partir de ahí cada una
+    cuesta 5 más; cada senda que llega a Archimago regala una a precio de
+    tabla. Una avanzada no se ofrece sin la habilidad que pide.
+  - **Saberes arcanos** (12), con su nivel y su dificultad. Hace falta tener
+    ese nivel en alguna senda y los saberes de los niveles de abajo.
+  - **Pergaminos**: hechizos sueltos de nivel 1 o 2 de cualquier senda, a 1 y
+    2 puntos.
+  - **Acciones**: la tabla de puntos de experiencia por acción mágica, para
+    repasarla al terminar la partida.
+- La hoja de ejército recoge todo eso en la ficha del personaje, con su
+  descripción, y su línea dice las sendas y el nivel de cada una.
+
+---
+
 ## 0.195 — 09/11/2026 01:28
 
 - La pantalla de Personajes de Renombre **ya no se vacía en cada cambio**.
