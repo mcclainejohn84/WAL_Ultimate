@@ -13,6 +13,16 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.205 — 09/11/2026 17:00
+
+- Un apéndice nuevo se dice en tres pasos: **facción, tipo y elemento**. La
+  facción solo FILTRA la lista —lo que se guarda es el elemento—, así que una
+  regla de un escudo o de una montura que usan varias facciones sigue saliendo
+  en todas. Con un tipo "Facción" no hace falta el tercer paso: es la facción
+  elegida arriba.
+
+---
+
 ## 0.204 — 09/11/2026 16:57
 
 - **El Worker se despliega solo**, en el mismo push que la página y antes que

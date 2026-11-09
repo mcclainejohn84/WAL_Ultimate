@@ -5,6 +5,13 @@
 // pantalla y las Hojas de Unidad, donde el apéndice se puede retocar sin
 // salir de la hoja (que fue justo lo que se pidió). Un diálogo copiado en dos
 // sitios acaba divergiendo.
+//
+// DE QUÉ CUELGA SE ELIGE EN TRES PASOS —facción, tipo y elemento— y el primero
+// es solo un FILTRO: lo que se guarda es el elemento. Si ese elemento (un
+// escudo, una montura) lo usan unidades de varias facciones, el apéndice sale
+// en todas, como tiene que ser. Sin el filtro, el desplegable de elementos
+// traía el catálogo entero y elegir en una lista de trescientas líneas es
+// justo lo que se vino a evitar.
 // ============================================================================
 import { useState } from 'react'
 import {
@@ -44,14 +51,24 @@ export function EditorDeApendice({
   const [ownerId, setOwnerId] = useState<string>(
     apendice ? String(apendice.ownerId) : duenoFijo ? String(duenoFijo.id) : '',
   )
+  // La facción de la que se está eligiendo. Arranca en la que se esté mirando
+  // en la pantalla; vacío = todas (hace falta para lo que no es de ninguna,
+  // como una opción de equipo que todavía no usa nadie).
+  const [faccion, setFaccion] = useState<string>(
+    apendice?.ownerKind === 'faccion' ? String(apendice.ownerId) : faccionElegida != null ? String(faccionElegida) : '',
+  )
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Al crear, solo se ofrecen los dueños de la facción que se esté mirando: con
-  // el catálogo entero son centenares de líneas en un desplegable.
+  const faccionId = faccion ? Number(faccion) : null
+  const facciones = duenos.filter((d) => d.kind === 'faccion').sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+
+  // Un apéndice de FACCIÓN no necesita un tercer paso: el elemento es la
+  // facción que ya se ha elegido arriba.
+  const esDeFaccion = kind === 'faccion'
   const candidatos = duenos
     .filter((d) => d.kind === kind)
-    .filter((d) => faccionElegida == null || d.factionIds.includes(faccionElegida))
+    .filter((d) => faccionId == null || d.factionIds.includes(faccionId))
     .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
 
   async function guardar() {
@@ -59,9 +76,9 @@ export function EditorDeApendice({
       setError('El título es obligatorio.')
       return
     }
-    const destino = Number(ownerId)
+    const destino = esDeFaccion ? Number(faccion) : Number(ownerId)
     if (!apendice && !destino) {
-      setError('Elige de qué cuelga el apéndice.')
+      setError(esDeFaccion ? 'Elige la facción.' : 'Elige de qué cuelga el apéndice.')
       return
     }
     setGuardando(true)
@@ -98,9 +115,24 @@ export function EditorDeApendice({
     >
       <div className="space-y-4">
         {!apendice && !duenoFijo && (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <Select
-              label="Cuelga de"
+              label="Facción"
+              value={faccion}
+              onChange={(e) => {
+                setFaccion(e.target.value)
+                setOwnerId('')
+              }}
+            >
+              <option value="">Todas</option>
+              {facciones.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.nombre}
+                </option>
+              ))}
+            </Select>
+            <Select
+              label="Tipo"
               value={kind}
               onChange={(e) => {
                 setKind(e.target.value as ApendiceDueno)
@@ -113,14 +145,16 @@ export function EditorDeApendice({
                 </option>
               ))}
             </Select>
-            <Select label={ETIQUETAS_DE_DUENO[kind]} value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
-              <option value="">Elegir…</option>
-              {candidatos.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.nombre}
-                </option>
-              ))}
-            </Select>
+            {!esDeFaccion && (
+              <Select label="Elemento" value={ownerId} onChange={(e) => setOwnerId(e.target.value)}>
+                <option value="">Elegir…</option>
+                {candidatos.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.nombre}
+                  </option>
+                ))}
+              </Select>
+            )}
           </div>
         )}
         <TextField label="Título" value={titulo} onChange={(e) => setTitulo(e.target.value)} autoFocus />
