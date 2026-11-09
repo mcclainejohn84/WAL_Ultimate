@@ -108,6 +108,21 @@
   text-align: justify;
 }
 
+/* SANGRÍA de un párrafo, en cuatro escalones. Mismo motivo que arriba para
+   que sea CSS normal: las clases viven en el HTML que escribe el usuario. */
+.sa-1 {
+  padding-left: 1.6em;
+}
+.sa-2 {
+  padding-left: 3.2em;
+}
+.sa-3 {
+  padding-left: 4.8em;
+}
+.sa-4 {
+  padding-left: 6.4em;
+}
+
 /* Un <input type="number"> SIN las flechitas de subir y bajar.
    En un campo estrecho se comen la cifra en cuanto el ratón pasa por encima, y
    un coste o un mínimo se teclean: nadie llega a 2.000 puntos a flechazos. El
@@ -350,6 +365,98 @@ h1, h2, h3, h4, .font-display {
    margen derecho irregular. */
 .ficha-sheet .ficha-section--justify {
   text-align: justify;
+}
+
+/* UN APÉNDICE PEGADO DENTRO DE LA FICHA (ver features/fichas/ApendiceEnFicha).
+   Va por encima del texto y de la ilustración (z-4) porque es lo último que se
+   coloca y lo que se arrastra; el fondo se queda transparente a propósito: el
+   apéndice tiene que leerse como un apartado más de la hoja, no como un
+   recuadro pegado encima. Las medidas son las de la hoja (12,5px / 1,5). */
+.ficha-sheet .ficha-apendice {
+  position: absolute;
+  z-index: 4;
+  font-size: 12.5px;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+.ficha-sheet .ficha-apendice-titulo {
+  font-weight: bold;
+  font-size: 12.5px;
+  margin-bottom: 3px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #d6cfba;
+}
+.ficha-sheet .ficha-apendice-texto {
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+/* Solo en el editor: un contorno tenue para saber dónde empieza y acaba la
+   caja antes de agarrarla. En las exportaciones esta clase no se pone. */
+.ficha-sheet .ficha-apendice--editable {
+  outline: 1px dashed rgba(125, 121, 95, 0.45);
+  outline-offset: 3px;
+}
+.ficha-sheet .ficha-apendice--editable:hover {
+  outline-color: rgba(125, 121, 95, 0.9);
+}
+/* Los dos botones (editar y sacar de la ficha): discretos, y solo visibles al
+   pasar por encima o al llegar con el teclado, para no afear la hoja. */
+.ficha-sheet .ficha-apendice-botones {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  z-index: 2;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s ease-in-out;
+}
+.ficha-sheet .ficha-apendice--editable:hover .ficha-apendice-botones,
+.ficha-sheet .ficha-apendice-botones:focus-within {
+  opacity: 1;
+}
+.ficha-sheet .ficha-apendice-botones button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(125, 121, 95, 0.6);
+  border-radius: 2px;
+  background: #efeadd;
+  color: #4a4636;
+  cursor: pointer;
+}
+.ficha-sheet .ficha-apendice-botones button:hover {
+  background: #fff;
+  color: #1c1a16;
+}
+/* Tirador de ancho: el borde derecho de la caja. */
+.ficha-sheet .ficha-apendice-ancho {
+  position: absolute;
+  top: 0;
+  right: -5px;
+  z-index: 2;
+  width: 10px;
+  height: 100%;
+  cursor: ew-resize;
+  touch-action: none;
+}
+.ficha-sheet .ficha-apendice-ancho::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  width: 2px;
+  height: 26px;
+  margin-top: -13px;
+  border-radius: 1px;
+  background: rgba(125, 121, 95, 0);
+  transition: background 0.12s ease-in-out;
+}
+.ficha-sheet .ficha-apendice--editable:hover .ficha-apendice-ancho::after,
+.ficha-sheet .ficha-apendice-ancho--activo::after {
+  background: rgba(125, 121, 95, 0.85);
 }
 
 /* Aviso "ideal para 2 fichas por página" (ver FichasPage.tsx) — mismo verde

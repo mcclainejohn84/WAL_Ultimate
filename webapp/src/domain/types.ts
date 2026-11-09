@@ -277,6 +277,15 @@ export interface UnitAppendix {
   title: string
   bodyHtml: string
   sortOrder: number
+  /**
+   * PEGADO DENTRO DE LA FICHA, en vez de leerse debajo de ella. Con la
+   * posición (x, y en px sobre el área de contenido de la tarjeta) y el ancho
+   * en px; null = todavía no se ha colocado y se pone en un sitio por defecto.
+   */
+  inSheet: boolean
+  sheetX: number | null
+  sheetY: number | null
+  sheetW: number | null
 }
 
 /** Unidad con todas sus relaciones cargadas — para la ficha de detalle/edición. */

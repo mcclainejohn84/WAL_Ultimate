@@ -13,6 +13,28 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.207 — 09/11/2026 17:51
+
+- **Los apéndices ya se pueden pegar DENTRO de la ficha**, en el cuadro
+  blanco, y no solo debajo de la hoja. Cada apéndice elige dónde sale: la
+  flecha de la lista de abajo lo mete en la ficha, y la de la caja lo saca.
+  Solo aparece esa opción si la unidad, la montura o la opción tiene
+  apéndices, como se pidió.
+- Dentro de la ficha, la caja **se coloca donde sea y se ajusta**: se arrastra
+  por cualquier punto, se estrecha o ensancha por el borde derecho, y con el
+  teclado se afina (flechas; Mayús = 10 px; Alt + flechas, el ancho). Se
+  guarda al soltar, sin pasar por "Guardar". Y se edita ahí mismo, con el
+  lápiz, sin ir al Editor.
+- La ficha **crece lo justo** para no cortar un apéndice puesto por debajo del
+  texto.
+- **Sale también al exportar** (PNG y Word con imágenes), en el mismo sitio y
+  con el mismo ancho, y respetando negrita, cursiva, subrayado, viñetas,
+  alineación y sangría.
+- En el editor de apéndices, dos botones nuevos de **aumentar y disminuir la
+  sangría**, como en Word; hasta cuatro escalones.
+
+---
+
 ## 0.206 — 09/11/2026 17:17
 
 - El aviso de "la base no está al día" **se cura solo**: antes de acusar pide

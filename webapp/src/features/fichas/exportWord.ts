@@ -28,6 +28,7 @@ import {
 import { bakeIllustration, grayscaleDataUrl } from '@/features/fichas/imageProcessing'
 import { createOffscreenHost, destroyOffscreenHost, renderSheetOffscreen } from '@/features/fichas/offscreenRender'
 import { captureUnitCanvas } from '@/features/fichas/exportSheet'
+import type { SheetToExport } from '@/features/fichas/exportPng'
 import { CARD_W } from '@/features/fichas/UnitSheetCard'
 import { UnitSheetRepository } from '@/data/repositories/unitSheetRepository'
 
@@ -309,10 +310,7 @@ export async function exportSheetsToWordText(unitIds: number[], view: ExportView
  * negro ya se aplicó sobre el canvas si tocaba) y solo construye el documento
  * Word, con el mismo reparto por páginas que CodexMaker.
  */
-export async function exportSheetsToWordImages(
-  items: Array<{ unit: UnitDetail; sheet: UnitSheet }>,
-  view: ExportViewOptions,
-): Promise<void> {
+export async function exportSheetsToWordImages(items: SheetToExport[], view: ExportViewOptions): Promise<void> {
   const blocks: string[] = []
   const heights: number[] = []
   // Una línea en blanco encima de cada imagen (un <p> suelto, sin envolver
@@ -321,8 +319,8 @@ export async function exportSheetsToWordImages(
   const blankLine = `<p style="margin:0 0 4px;font-family:'PT Serif',Georgia,serif;font-size:11pt;color:#1c1a16;">&nbsp;</p>`
   const blankLineHeightPx = 20
 
-  for (const { unit, sheet } of items) {
-    const canvas = await captureUnitCanvas(unit, sheet, view)
+  for (const { unit, sheet, apendices } of items) {
+    const canvas = await captureUnitCanvas(unit, sheet, view, apendices ?? [])
     const imgData = canvas.toDataURL('image/jpeg', 0.92)
     const naturalW = canvas.width / 2
     const naturalH = canvas.height / 2

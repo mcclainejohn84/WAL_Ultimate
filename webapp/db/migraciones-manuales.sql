@@ -150,3 +150,9 @@ CREATE INDEX IF NOT EXISTS idx_appendices_owner ON appendices(owner_kind, owner_
 INSERT INTO appendices (owner_kind, owner_id, title, body_html, sort_order)
   SELECT 'unidad', unit_id, title, body_html, sort_order FROM unit_appendices
    WHERE NOT EXISTS (SELECT 1 FROM appendices);
+
+-- Un apéndice pegado dentro de la ficha: si está puesto, dónde y de qué ancho.
+ALTER TABLE appendices ADD COLUMN in_sheet INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE appendices ADD COLUMN sheet_x INTEGER;
+ALTER TABLE appendices ADD COLUMN sheet_y INTEGER;
+ALTER TABLE appendices ADD COLUMN sheet_w INTEGER;

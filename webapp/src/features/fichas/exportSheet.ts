@@ -17,9 +17,11 @@
 // la cabecera y 1px bajo cada fila, cuerpo a 12.5px con interlineado 1.5.
 // ============================================================================
 import { sectionWidth, type SheetSection } from '@/domain/sheetSections'
-import type { AttributeProfile, UnitDetail, UnitSheet } from '@/domain/types'
+import type { AttributeProfile, UnitAppendix, UnitDetail, UnitSheet } from '@/domain/types'
+import { bloquesDeHtml, tieneTexto, type BloqueDeTexto } from '@/shared/richText'
 import { ATTRIBUTE_LABELS } from '@/shared/ui/AttributeTable'
 import {
+  APENDICE_MIN_W,
   commandGroupText,
   monturaItems,
   optionsList,
@@ -208,6 +210,232 @@ function drawLabelledField(
     else ctx.fillText(ln, x, y + i * LINE_H)
   })
   return lines.length * LINE_H
+}
+
+// ---------------------------------------------------------------------------
+// Apéndices pegados DENTRO de la ficha
+// ---------------------------------------------------------------------------
+// En pantalla los pinta el navegador (ver ApendiceEnFicha.tsx); aquí hay que
+// dibujarlos a mano, como el resto de la hoja, y respetando lo que trae el
+// texto: negrita, cursiva, subrayado, alineación, viñetas y sangría. Es la
+// única parte de la ficha con formato DENTRO del párrafo, así que necesita su
+// propio medidor de líneas: `wrapText` mide con una sola fuente fija y aquí
+// cada palabra puede llevar la suya.
+//
+// Las coordenadas y el ancho son los mismos que se guardaron arrastrando la
+// caja en pantalla (sheet_x / sheet_y / sheet_w), así que lo exportado sale
+// donde se dejó.
+
+/** Lo que mete cada escalón de sangría: 1,6em a 12,5px (ver .sa-* en index.css). */
+const SANGRIA_PX = 20
+/** Separación bajo el título del apéndice, y de su línea (ver .ficha-apendice-titulo). */
+const APENDICE_TITULO_MB = 3
+const APENDICE_TITULO_PB = 2
+/** Hueco entre dos párrafos del apéndice (el `my-1` de RichText, 4px). */
+const APENDICE_PARRAFO_MB = 4
+
+interface PalabraMedida {
+  texto: string
+  negrita: boolean
+  cursiva: boolean
+  subrayado: boolean
+  ancho: number
+}
+
+interface LineaDeApendice {
+  palabras: PalabraMedida[]
+  /** Ancho del texto tal cual, sin justificar. */
+  ancho: number
+  /** Última línea del párrafo: no se justifica (igual que hace el navegador). */
+  ultima: boolean
+  alineacion: BloqueDeTexto['alineacion']
+  sangria: number
+  /** Viene de un punto de lista: el texto entero va desplazado a la derecha. */
+  esDeLista: boolean
+  /** La viñeta, solo en la primera línea del punto. */
+  vineta: string | null
+  /** Dónde empieza, contando desde el principio del apéndice. */
+  arriba: number
+}
+
+interface TrazadoDeApendice {
+  lineas: LineaDeApendice[]
+  alto: number
+}
+
+function fuenteDe(negrita: boolean, cursiva: boolean): string {
+  return `${cursiva ? 'italic ' : ''}${negrita ? 'bold ' : ''}${BODY_SIZE}px "PT Serif", Georgia, serif`
+}
+
+/**
+ * Las palabras de un bloque, ya medidas con la fuente que le toca a cada una y
+ * agrupadas por tiradas: un `<br>` corta el párrafo y cada tirada se maqueta
+ * por separado.
+ */
+function tiradasDe(ctx: CanvasRenderingContext2D, bloque: BloqueDeTexto): PalabraMedida[][] {
+  const tiradas: PalabraMedida[][] = [[]]
+  for (const trozo of bloque.trozos) {
+    ctx.font = fuenteDe(trozo.negrita, trozo.cursiva)
+    const partes = trozo.texto.split('\n')
+    partes.forEach((parte, indice) => {
+      if (indice > 0) tiradas.push([])
+      for (const palabra of parte.split(' ')) {
+        if (!palabra) continue
+        tiradas[tiradas.length - 1].push({
+          texto: palabra,
+          negrita: trozo.negrita,
+          cursiva: trozo.cursiva,
+          subrayado: trozo.subrayado,
+          ancho: ctx.measureText(palabra).width,
+        })
+      }
+    })
+  }
+  return tiradas.filter((t) => t.length > 0)
+}
+
+/**
+ * Reparte el texto del apéndice en líneas que quepan en `ancho` y dice cuánto
+ * alto ocupa todo. Se traza UNA vez y se reutiliza para dibujar: así el alto
+ * que reserva la tarjeta y el que de verdad se pinta son el mismo número.
+ */
+function trazarApendice(ctx: CanvasRenderingContext2D, titulo: string, html: string, ancho: number): TrazadoDeApendice {
+  const lineas: LineaDeApendice[] = []
+  let alto = titulo.trim() ? LINE_H + APENDICE_TITULO_PB + APENDICE_TITULO_MB : 0
+
+  ctx.font = BODY_FONT
+  const anchoDelEspacio = ctx.measureText(' ').width
+
+  for (const bloque of bloquesDeHtml(html)) {
+    const esDeLista = bloque.vineta !== null
+    const disponible = Math.max(40, ancho - bloque.sangria * SANGRIA_PX - (esDeLista ? UL_PAD_L : 0))
+    tiradasDe(ctx, bloque).forEach((tirada, indiceDeTirada) => {
+      // Reparto codicioso, el mismo criterio que `wrapText`, pero sumando el
+      // ancho ya medido de cada palabra con su propia fuente.
+      const envueltas: PalabraMedida[][] = [[]]
+      let anchoActual = 0
+      for (const palabra of tirada) {
+        const actual = envueltas[envueltas.length - 1]
+        const suma = actual.length === 0 ? palabra.ancho : anchoActual + anchoDelEspacio + palabra.ancho
+        if (actual.length > 0 && suma > disponible) {
+          envueltas.push([palabra])
+          anchoActual = palabra.ancho
+        } else {
+          actual.push(palabra)
+          anchoActual = suma
+        }
+      }
+      envueltas.forEach((palabras, indice) => {
+        if (palabras.length === 0) return
+        const anchoDeLinea = palabras.reduce((suma, p, i) => suma + p.ancho + (i > 0 ? anchoDelEspacio : 0), 0)
+        lineas.push({
+          palabras,
+          ancho: anchoDeLinea,
+          ultima: indice === envueltas.length - 1,
+          alineacion: bloque.alineacion,
+          sangria: bloque.sangria,
+          esDeLista,
+          vineta: indiceDeTirada === 0 && indice === 0 ? bloque.vineta : null,
+          arriba: alto,
+        })
+        alto += LINE_H
+      })
+    })
+    alto += APENDICE_PARRAFO_MB
+  }
+  if (lineas.length > 0) alto -= APENDICE_PARRAFO_MB
+  return { lineas, alto }
+}
+
+/** Dibuja en (x, y) un apéndice ya trazado, con el ancho con el que se trazó. */
+function dibujarApendice(
+  ctx: CanvasRenderingContext2D,
+  trazado: TrazadoDeApendice,
+  titulo: string,
+  x: number,
+  y: number,
+  ancho: number,
+): void {
+  ctx.textBaseline = 'top'
+  ctx.textAlign = 'left'
+  ctx.fillStyle = INK
+
+  if (titulo.trim()) {
+    ctx.font = BODY_BOLD_FONT
+    ctx.fillText(titulo, x, y)
+    ctx.fillStyle = ROW_LINE
+    ctx.fillRect(x, y + LINE_H + APENDICE_TITULO_PB, ancho, 1)
+    ctx.fillStyle = INK
+  }
+
+  ctx.font = BODY_FONT
+  const anchoDelEspacio = ctx.measureText(' ').width
+
+  for (const linea of trazado.lineas) {
+    const ly = y + linea.arriba
+    const sangrado = x + linea.sangria * SANGRIA_PX
+    const izquierda = sangrado + (linea.esDeLista ? UL_PAD_L : 0)
+    const anchoUtil = ancho - (izquierda - x)
+
+    if (linea.vineta) {
+      ctx.font = BODY_FONT
+      ctx.fillText(linea.vineta, sangrado, ly)
+    }
+
+    const justificar = linea.alineacion === 'jus' && !linea.ultima && linea.palabras.length > 1
+    const reparto = justificar
+      ? (anchoUtil - linea.palabras.reduce((suma, p) => suma + p.ancho, 0)) / (linea.palabras.length - 1)
+      : anchoDelEspacio
+    // Un hueco desmesurado se ve peor que no justificar (mismo criterio que
+    // drawJustifiedLine).
+    const separacion = reparto > anchoDelEspacio * 6 ? anchoDelEspacio : reparto
+
+    let cx = izquierda
+    if (!justificar) {
+      if (linea.alineacion === 'cen') cx = izquierda + Math.max(0, anchoUtil - linea.ancho) / 2
+      else if (linea.alineacion === 'der') cx = izquierda + Math.max(0, anchoUtil - linea.ancho)
+    }
+    for (const palabra of linea.palabras) {
+      ctx.font = fuenteDe(palabra.negrita, palabra.cursiva)
+      ctx.fillText(palabra.texto, cx, ly)
+      // El subrayado se dibuja a mano: el canvas no tiene text-decoration.
+      if (palabra.subrayado) ctx.fillRect(cx, ly + LINE_H - 4, palabra.ancho, 1)
+      cx += palabra.ancho + separacion
+    }
+  }
+}
+
+/** Un apéndice colocado en la ficha, ya medido y listo para dibujar. */
+interface ApendiceColocado {
+  trazado: TrazadoDeApendice
+  titulo: string
+  x: number
+  y: number
+  ancho: number
+}
+
+/**
+ * Mide los apéndices pegados en la ficha con las coordenadas que traen. Los
+ * que no tienen nada escrito se quedan fuera: un título huérfano en medio de
+ * la hoja es peor que no poner nada.
+ */
+function colocarApendices(
+  ctx: CanvasRenderingContext2D,
+  apendices: UnitAppendix[],
+  anchoUtil: number,
+): ApendiceColocado[] {
+  return apendices
+    .filter((a) => a.inSheet && tieneTexto(a.bodyHtml))
+    .map((a) => {
+      const ancho = Math.max(APENDICE_MIN_W, Math.min(anchoUtil, a.sheetW ?? anchoUtil))
+      return {
+        trazado: trazarApendice(ctx, a.title, a.bodyHtml, ancho),
+        titulo: a.title,
+        x: a.sheetX ?? 0,
+        y: a.sheetY ?? 0,
+        ancho,
+      }
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -434,6 +662,8 @@ export async function captureUnitCanvas(
   unit: UnitDetail,
   sheet: UnitSheet,
   view: ExportView,
+  /** Los apéndices de la ficha; se dibujan los pegados dentro (ver colocarApendices). */
+  apendices: UnitAppendix[] = [],
 ): Promise<HTMLCanvasElement> {
   await ensureFonts()
 
@@ -451,10 +681,14 @@ export async function captureUnitCanvas(
   const tableGeom = measureTable(mctx, unit, sheet)
   const blocks = buildBlocks(unit, sheet)
   const bodyH = (tableGeom ? tableGeom.totalH + TABLE_MB : 0) + measureBlocks(mctx, blocks)
+  // Los apéndices van en posición absoluta, así que no empujan nada: hay que
+  // reservarles sitio a mano o el alto de la tarjeta los cortaría.
+  const colocados = colocarApendices(mctx, apendices, CONTENT_W)
+  const fondoDeApendices = colocados.reduce((max, a) => Math.max(max, a.y + a.trazado.alto + 10), 0)
 
   const subbarH = 1 + SUBBAR_PAD_Y + SUBBAR_CONTENT_H + SUBBAR_PAD_Y + 1
   const headerH = PAD_TOP + TITLE_SIZE + TITLE_MB + subbarH + SUBBAR_MB
-  const contentH = Math.max(CONTENT_MIN_H, bodyH)
+  const contentH = Math.max(CONTENT_MIN_H, bodyH, fondoDeApendices)
   const naturalH = headerH + contentH + PAD_BOTTOM
   const cardH = Math.min(naturalH, sheet.cardMaxHeight)
 
@@ -542,9 +776,15 @@ export async function captureUnitCanvas(
   }
   drawBlocks(ctx, blocks, PAD_X, cy)
 
+  // 5) Apéndices pegados en la ficha, lo último: van por encima del texto y de
+  // la ilustración, igual que en pantalla (z-4).
+  for (const a of colocados) {
+    dibujarApendice(ctx, a.trazado, a.titulo, PAD_X + a.x, contentTop + a.y, a.ancho)
+  }
+
   ctx.restore()
 
-  // 5) Marco
+  // 6) Marco
   if (view.showFrame) {
     ctx.strokeStyle = INK
     ctx.lineWidth = 2

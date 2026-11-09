@@ -22,7 +22,8 @@ import {
 } from 'react'
 import { clsx } from 'clsx'
 import { sectionWidth, type SheetSection } from '@/domain/sheetSections'
-import type { UnitDetail, UnitSheet } from '@/domain/types'
+import type { UnitAppendix, UnitDetail, UnitSheet } from '@/domain/types'
+import { ApendiceEnFicha, type CajaDeApendice } from '@/features/fichas/ApendiceEnFicha'
 import { ATTRIBUTE_LABELS } from '@/shared/ui/AttributeTable'
 import {
   commandGroupText,
@@ -46,7 +47,7 @@ import {
  */
 export const CARD_W = 760
 const CARD_PAD_X = 26
-const CONTENT_W = CARD_W - CARD_PAD_X * 2
+export const CONTENT_W = CARD_W - CARD_PAD_X * 2
 /** Tamaño del hueco vacío cuando la ficha no tiene ilustración (`.illu-ph` en el original). */
 const ILLU_PLACEHOLDER_W = 249
 const ILLU_PLACEHOLDER_H = 340
@@ -79,6 +80,16 @@ export interface UnitSheetCardProps {
   editable?: boolean
   /** Se llama al soltar el arrastre, con la posición final en px, para persistirla. */
   onIlluDragEnd?: (posX: number, posY: number) => void
+  /**
+   * Los apéndices PEGADOS DENTRO de la ficha (los que tienen `inSheet`). Los
+   * demás van debajo de la hoja, que no es cosa de esta tarjeta (ver
+   * SheetAppendices). Se pasan hechos para que la tarjeta no consulte nada:
+   * también se monta fuera de pantalla para exportar.
+   */
+  apendices?: UnitAppendix[]
+  onApendiceCaja?: (id: number, caja: CajaDeApendice) => void
+  onEditarApendice?: (apendice: UnitAppendix) => void
+  onSacarApendice?: (apendice: UnitAppendix) => void
   cardRef?: (el: HTMLDivElement | null) => void
 }
 
@@ -89,6 +100,10 @@ export function UnitSheetCard({
   showFrame,
   editable = false,
   onIlluDragEnd,
+  apendices = [],
+  onApendiceCaja,
+  onEditarApendice,
+  onSacarApendice,
   cardRef,
 }: UnitSheetCardProps) {
   const emblemUrl = sheet.emblemUrl ?? unit.faction.emblemUrl
@@ -210,6 +225,19 @@ export function UnitSheetCard({
     onIlluDragEnd?.(next.x, next.y)
   }
 
+  /**
+   * Lo que mide cada apéndice pegado en la ficha. Hace falta porque las cajas
+   * van en posición absoluta: no empujan nada, así que sin esto un apéndice
+   * colocado por debajo del contenido quedaba cortado por el alto de la
+   * tarjeta (`min-height: 380px` y `overflow: hidden`). Con sus altos se
+   * reserva sitio justo para el más bajo.
+   */
+  const [altos, setAltos] = useState<Record<number, number>>({})
+  function anotarAlto(id: number, alto: number) {
+    setAltos((previos) => (previos[id] === alto ? previos : { ...previos, [id]: alto }))
+  }
+  const fondoDeApendices = apendices.reduce((max, a) => Math.max(max, (a.sheetY ?? 0) + (altos[a.id] ?? 0) + 10), 0)
+
   const options = optionsList(unit)
   const mandoText = commandGroupText(unit)
   const monturas = monturaItems(unit)
@@ -241,7 +269,7 @@ export function UnitSheetCard({
         <div className="ficha-pts">{pointsLabel(unit)}</div>
       </div>
 
-      <div className="ficha-content">
+      <div className="ficha-content" style={fondoDeApendices > 0 ? { minHeight: fondoDeApendices } : undefined}>
         <div className="ficha-left-col">
           {statRows.length > 0 && (
             <table className="ficha-stats">
@@ -387,6 +415,22 @@ export function UnitSheetCard({
             onKeyDown={handleKeyDown}
           />
         )}
+
+        {/* Los apéndices pegados en la ficha, lo último y por encima de todo
+            (z-4): son lo que se arrastra, así que el gesto tiene que llegarles
+            antes que a la zona de agarre de la ilustración. */}
+        {apendices.map((apendice) => (
+          <ApendiceEnFicha
+            key={apendice.id}
+            apendice={apendice}
+            anchoUtil={CONTENT_W}
+            editable={editable}
+            onCaja={(caja) => onApendiceCaja?.(apendice.id, caja)}
+            onEditar={() => onEditarApendice?.(apendice)}
+            onSacar={() => onSacarApendice?.(apendice)}
+            onAlto={(alto) => anotarAlto(apendice.id, alto)}
+          />
+        ))}
       </div>
     </div>
   )

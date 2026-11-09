@@ -50,6 +50,10 @@ function mapAppendix(row: Record<string, unknown>): UnitAppendix {
     title: row.title as string,
     bodyHtml: (row.body_html as string) ?? '',
     sortOrder: row.sort_order as number,
+    inSheet: Boolean(row.in_sheet),
+    sheetX: (row.sheet_x as number) ?? null,
+    sheetY: (row.sheet_y as number) ?? null,
+    sheetW: (row.sheet_w as number) ?? null,
   }
 }
 
@@ -262,6 +266,24 @@ export const AppendixRepository = {
           (a.factionName ?? '').localeCompare(b.factionName ?? '', 'es') ||
           a.duenoNombre.localeCompare(b.duenoNombre, 'es'),
       )
+  },
+
+  /**
+   * Lo pega (o lo despega) de la ficha, con su sitio y su ancho. No deja
+   * apunte en el Log: mover una caja por la hoja es presentación, no un
+   * cambio del reglamento, y llenaría el registro de ruido.
+   */
+  async setSheetBox(
+    id: number,
+    caja: { inSheet: boolean; x: number | null; y: number | null; w: number | null },
+  ): Promise<void> {
+    await execCatalog('UPDATE appendices SET in_sheet = ?, sheet_x = ?, sheet_y = ?, sheet_w = ? WHERE id = ?', [
+      caja.inSheet ? 1 : 0,
+      caja.x,
+      caja.y,
+      caja.w,
+      id,
+    ])
   },
 
   /** Se los lleva por delante al borrar su dueño: nadie los volvería a ver. */

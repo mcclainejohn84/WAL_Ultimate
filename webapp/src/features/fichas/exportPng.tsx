@@ -5,7 +5,7 @@
 // estilos exactos de CodexMaker, en un host limpio pegado a <body>).
 // ============================================================================
 import JSZip from 'jszip'
-import type { UnitDetail, UnitSheet } from '@/domain/types'
+import type { UnitAppendix, UnitDetail, UnitSheet } from '@/domain/types'
 import { captureUnitCanvas, type ExportView } from '@/features/fichas/exportSheet'
 import { sanitizeFilename } from '@/features/fichas/sheetContent'
 
@@ -13,6 +13,8 @@ import { sanitizeFilename } from '@/features/fichas/sheetContent'
 export interface SheetToExport {
   unit: UnitDetail
   sheet: UnitSheet
+  /** Los apéndices de la ficha: se dibujan los que estén pegados dentro. */
+  apendices?: UnitAppendix[]
 }
 
 function downloadBlob(blob: Blob, fileName: string): void {
@@ -30,8 +32,8 @@ export async function exportSheetsToPng(items: SheetToExport[], view: ExportView
   const files: { name: string; blob: Blob }[] = []
   const usedNames = new Map<string, number>()
 
-  for (const { unit, sheet } of items) {
-    const canvas = await captureUnitCanvas(unit, sheet, view)
+  for (const { unit, sheet, apendices } of items) {
+    const canvas = await captureUnitCanvas(unit, sheet, view, apendices ?? [])
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
     if (!blob) continue
 

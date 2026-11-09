@@ -8,6 +8,14 @@
 import type { AttributeProfile, UnitDetail } from '@/domain/types'
 
 /**
+ * Ancho mínimo de un apéndice pegado dentro de la ficha: por debajo de esto el
+ * texto sale a trompicones, dos palabras por línea. Vive aquí, con el resto de
+ * lo que comparten la pantalla (ApendiceEnFicha) y la exportación
+ * (exportSheet), para no tener dos números que se puedan separar.
+ */
+export const APENDICE_MIN_W = 140
+
+/**
  * Todos los perfiles de atributos de la unidad (base + montura + carro) en
  * el orden en que deben aparecer en la ÚNICA tabla de características de la
  * ficha — CodexMaker (ver capturas de referencia adjuntadas por el usuario)

@@ -524,7 +524,16 @@ CREATE TABLE appendices (
     owner_id   INTEGER NOT NULL,
     title      TEXT NOT NULL,
     body_html  TEXT NOT NULL DEFAULT '',
-    sort_order INTEGER NOT NULL DEFAULT 0
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    -- DENTRO DE LA FICHA. Un apéndice puede ir pegado en la propia hoja de la
+    -- unidad (o de la montura, o de la opción), colocado donde se quiera y con
+    -- el ancho que se le dé: `in_sheet` dice si está puesto y las otras tres,
+    -- dónde y cómo de ancho. Lo que no está puesto se lee debajo de la hoja,
+    -- como siempre.
+    in_sheet   INTEGER NOT NULL DEFAULT 0,
+    sheet_x    INTEGER,
+    sheet_y    INTEGER,
+    sheet_w    INTEGER
 );
 CREATE INDEX idx_appendices_owner ON appendices(owner_kind, owner_id, sort_order);
 

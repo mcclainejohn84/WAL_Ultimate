@@ -1,7 +1,8 @@
 // ============================================================================
-// Editor de texto con formato: negrita, cursiva, subrayado, listas y la
-// alineación del párrafo. Nada más — cortar, copiar y pegar son los del
-// navegador, con el pegado saneado (ver más abajo).
+// Editor de texto con formato: negrita, cursiva, subrayado, listas, la
+// alineación del párrafo y su sangría (meter y sacar, como en un procesador
+// de textos). Nada más — cortar, copiar y pegar son los del navegador, con el
+// pegado saneado (ver más abajo).
 //
 // POR QUÉ `document.execCommand` Y NO UNA BIBLIOTECA. Lo que hace falta cabe en
 // cuatro botones sobre un `contentEditable`; meter un editor completo (300 kB
@@ -49,6 +50,8 @@ interface Herramienta {
     | 'justifyCenter'
     | 'justifyRight'
     | 'justifyFull'
+    | 'indent'
+    | 'outdent'
   etiqueta: string
   titulo: string
   contenido: React.ReactNode
@@ -122,7 +125,40 @@ const HERRAMIENTAS: Herramienta[] = [
     titulo: 'Justificar',
     contenido: <Rayas anchos={[100, 100, 100, 100]} />,
   },
+  {
+    comando: 'outdent',
+    etiqueta: 'Sacar el párrafo',
+    titulo: 'Sacar el párrafo hacia fuera',
+    separa: true,
+    contenido: <Sangria hacia="fuera" />,
+  },
+  {
+    comando: 'indent',
+    etiqueta: 'Meter el párrafo',
+    titulo: 'Meter el párrafo hacia dentro',
+    contenido: <Sangria hacia="dentro" />,
+  },
 ]
+
+/** Rayas con una flecha: meter o sacar el párrafo, como en cualquier procesador de textos. */
+function Sangria({ hacia }: { hacia: 'dentro' | 'fuera' }) {
+  return (
+    <span className="flex w-4 items-center gap-[3px]">
+      <svg viewBox="0 0 6 10" className="h-2.5 w-1.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <path
+          d={hacia === 'dentro' ? 'M1.5 1.5 4.5 5l-3 3.5' : 'M4.5 1.5 1.5 5l3 3.5'}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span className="flex flex-1 flex-col gap-[2px]">
+        {[100, 100, 100].map((ancho, i) => (
+          <span key={i} className="block h-[1.5px] bg-current" style={{ width: `${ancho}%` }} />
+        ))}
+      </span>
+    </span>
+  )
+}
 
 export function RichTextEditor({ value, onChange, valorInicialKey, placeholder, className }: RichTextEditorProps) {
   const caja = useRef<HTMLDivElement>(null)

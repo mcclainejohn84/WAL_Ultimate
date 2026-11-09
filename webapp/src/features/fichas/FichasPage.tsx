@@ -70,10 +70,12 @@ import {
   TrashIcon,
   UndoIcon,
 } from '@/shared/ui/icons'
-import type { UnitDetail, UnitSheet } from '@/domain/types'
+import type { UnitAppendix, UnitDetail, UnitSheet } from '@/domain/types'
+import { AppendixRepository } from '@/data/repositories/appendixRepository'
+import { EditorDeApendice } from '@/features/admin/appendices/EditorDeApendice'
 import { UpgradeRepository } from '@/data/repositories/lookupRepositories'
 import { MountRepository } from '@/data/repositories/profileCatalogRepository'
-import { UnitSheetCard } from '@/features/fichas/UnitSheetCard'
+import { CONTENT_W, UnitSheetCard } from '@/features/fichas/UnitSheetCard'
 import { SheetAppendices } from '@/features/fichas/SheetAppendices'
 import { commandGroupText, monturaItems, optionsList, unifiedProfileRows } from '@/features/fichas/sheetContent'
 import { mountAsUnitDetail, upgradeAsUnitDetail } from '@/features/fichas/upgradeSheet'
@@ -351,6 +353,72 @@ export function FichasPage() {
 
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  /**
+   * Los apéndices de la ficha abierta, los de dentro y los de debajo juntos.
+   * Se cargan AQUÍ y no en cada sitio que los pinta: la tarjeta necesita los
+   * pegados dentro y la lista de debajo los demás, y con dos consultas por
+   * separado se quedaban desfasadas entre sí en cuanto uno pasaba de un sitio
+   * al otro.
+   */
+  const { data: apendices, reload: recargarApendices } = useAsync<UnitAppendix[]>(
+    () =>
+      sheetTarget && sheetTarget.id > 0
+        ? AppendixRepository.listByOwner(sheetTarget.kind, sheetTarget.id)
+        : Promise.resolve([]),
+    [selectedKey],
+  )
+  const apendicesDeLaFicha = apendices ?? []
+  const apendicesEnLaFicha = apendicesDeLaFicha.filter((a) => a.inSheet)
+  const [editandoApendice, setEditandoApendice] = useState<UnitAppendix | null>(null)
+  const cardElRef = useRef<HTMLDivElement | null>(null)
+
+  /**
+   * Guarda el sitio y el ancho de un apéndice pegado en la ficha. No pasa por
+   * el borrador (`patchDraft`) a propósito: el apéndice no es parte de la
+   * presentación de la hoja, es una fila suya, así que se escribe al soltar y
+   * no hay nada que "guardar" después — mover una caja y dejarse el botón sin
+   * pulsar perdía el trabajo.
+   */
+  async function guardarCajaDeApendice(id: number, caja: { x: number; y: number; w: number }) {
+    try {
+      await AppendixRepository.setSheetBox(id, { inSheet: true, x: caja.x, y: caja.y, w: caja.w })
+      recargarApendices()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  /**
+   * Lo mete en la ficha, buscándole un sitio donde no tape nada: debajo de lo
+   * que ya haya escrito en la columna de texto, y debajo de los apéndices que
+   * ya estuvieran puestos. Se mide la tarjeta de verdad —está en pantalla,
+   * porque esto solo se puede pulsar desde aquí— en vez de estimarlo: así el
+   * apéndice aparece ya colocado y lo normal es no tener ni que moverlo.
+   */
+  async function meterApendiceEnLaFicha(apendice: UnitAppendix) {
+    const columna = cardElRef.current?.querySelector<HTMLElement>('.ficha-left-col')
+    const cajas = Array.from(cardElRef.current?.querySelectorAll<HTMLElement>('.ficha-apendice') ?? [])
+    const fondoDeCajas = cajas.reduce((max, c) => Math.max(max, c.offsetTop + c.offsetHeight), 0)
+    const y = Math.round(Math.max(columna?.offsetHeight ?? 0, fondoDeCajas) + 12)
+    await guardarCajaDeApendice(apendice.id, { x: 0, y, w: CONTENT_W })
+  }
+
+  async function sacarApendiceDeLaFicha(apendice: UnitAppendix) {
+    try {
+      // El sitio y el ancho se conservan: si se vuelve a meter, vuelve a donde
+      // estaba en vez de reaparecer al principio.
+      await AppendixRepository.setSheetBox(apendice.id, {
+        inSheet: false,
+        x: apendice.sheetX,
+        y: apendice.sheetY,
+        w: apendice.sheetW,
+      })
+      recargarApendices()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
 
   /** Aplica un cambio al borrador y lo marca como pendiente de guardar. */
   function patchDraft(patch: Partial<UnitSheet>) {
@@ -731,18 +799,34 @@ export function FichasPage() {
     return sheet
   }
 
+  /**
+   * Los apéndices de una ficha para exportar. Se prefieren los que ya están
+   * cargados (la ficha abierta) por lo mismo que las presentaciones: exportas
+   * lo que ves, incluido lo que se acabe de mover de sitio.
+   */
+  async function apendicesForExport(key: string): Promise<UnitAppendix[]> {
+    if (key === selectedKey) return apendicesDeLaFicha
+    const { kind, id } = targetFromKey(key)
+    return AppendixRepository.listByOwner(kind, id)
+  }
+
   /** Carga las fichas marcadas (unidades + opciones + monturas) listas para exportar como imagen. */
   async function buildExportItems(): Promise<SheetToExport[]> {
     const items: SheetToExport[] = []
     for (const id of selectedIds) {
-      const [unit, sheet] = await Promise.all([UnitRepository.getDetailById(id), sheetForExport(`u:${id}`)])
-      if (unit) items.push({ unit, sheet })
+      const [unit, sheet, apendices] = await Promise.all([
+        UnitRepository.getDetailById(id),
+        sheetForExport(`u:${id}`),
+        apendicesForExport(`u:${id}`),
+      ])
+      if (unit) items.push({ unit, sheet, apendices })
     }
     for (const upgrade of selectedUpgrades) {
       const rules = await UpgradeRepository.listSpecialRules(upgrade.id)
       items.push({
         unit: upgradeAsUnitDetail(upgrade, rules, selectedFaction),
         sheet: await sheetForExport(`o:${upgrade.id}`),
+        apendices: await apendicesForExport(`o:${upgrade.id}`),
       })
     }
     for (const mount of selectedMounts) {
@@ -750,6 +834,7 @@ export function FichasPage() {
       items.push({
         unit: mountAsUnitDetail(mount, rules, selectedFaction),
         sheet: await sheetForExport(`m:${mount.id}`),
+        apendices: await apendicesForExport(`m:${mount.id}`),
       })
     }
     return items
@@ -1145,6 +1230,13 @@ export function FichasPage() {
                       showFrame={showFrame}
                       editable
                       onIlluDragEnd={(posX, posY) => patchDraft({ illuPosX: posX, illuPosY: posY })}
+                      apendices={apendicesEnLaFicha}
+                      onApendiceCaja={(id, caja) => void guardarCajaDeApendice(id, caja)}
+                      onEditarApendice={setEditandoApendice}
+                      onSacarApendice={(apendice) => void sacarApendiceDeLaFicha(apendice)}
+                      cardRef={(el) => {
+                        cardElRef.current = el
+                      }}
                     />
                     {/* De la ficha de VERDAD, no del id sintético de la hoja:
                         una montura y una opción tienen sus propios apéndices
@@ -1153,8 +1245,26 @@ export function FichasPage() {
                       <SheetAppendices
                         kind={sheetTarget.kind}
                         ownerId={sheetTarget.id}
+                        apendices={apendicesDeLaFicha}
                         grayscale={grayscale}
                         editable
+                        onMeter={(apendice) => void meterApendiceEnLaFicha(apendice)}
+                        onCambio={recargarApendices}
+                      />
+                    )}
+                    {/* El lápiz de un apéndice pegado DENTRO de la ficha: el
+                        mismo diálogo que abajo, pero lo abre esta pantalla
+                        porque la tarjeta no monta diálogos (también se usa
+                        fuera de pantalla para exportar). */}
+                    {editandoApendice && (
+                      <EditorDeApendice
+                        apendice={editandoApendice}
+                        duenoFijo={{ kind: editandoApendice.ownerKind, id: editandoApendice.ownerId }}
+                        onClose={() => setEditandoApendice(null)}
+                        onGuardado={() => {
+                          setEditandoApendice(null)
+                          recargarApendices()
+                        }}
                       />
                     )}
                     <label

@@ -1248,6 +1248,12 @@ const MIGRATIONS: string[] = [
      sort_order INTEGER NOT NULL DEFAULT 0
    )`,
   'CREATE INDEX IF NOT EXISTS idx_appendices_owner ON appendices(owner_kind, owner_id, sort_order)',
+  // Un apéndice PEGADO DENTRO DE LA FICHA: si está puesto, en qué sitio y con
+  // qué ancho. Lo que no está puesto se sigue leyendo debajo de la hoja.
+  'ALTER TABLE appendices ADD COLUMN in_sheet INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE appendices ADD COLUMN sheet_x INTEGER',
+  'ALTER TABLE appendices ADD COLUMN sheet_y INTEGER',
+  'ALTER TABLE appendices ADD COLUMN sheet_w INTEGER',
   // Los que ya había se traen tal cual, UNA sola vez: el `NOT EXISTS` solo se
   // cumple con la tabla nueva completamente vacía. (Consecuencia conocida: si
   // algún día se borran TODOS los apéndices, la siguiente carga volvería a
