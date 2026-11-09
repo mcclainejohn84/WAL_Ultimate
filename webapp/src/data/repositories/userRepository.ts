@@ -22,7 +22,7 @@
 import { exec, execBatch, getApiBaseUrl, query, queryOne } from '@/data/sqlite/client'
 import { guardarCredencial } from '@/data/network/auth'
 import { sha256Hex } from '@/shared/hash'
-import type { User } from '@/domain/types'
+import type { ApendiceDueno, User } from '@/domain/types'
 
 /** POST a un endpoint /auth/*. Devuelve el cuerpo ya interpretado y el estado. */
 async function postAuth<T>(
@@ -75,6 +75,63 @@ export interface ArmyListOptions {
 
 /** Ambas encendidas: quien no sepa que existen ve los datos igualmente. */
 export const DEFAULT_ARMY_LIST_OPTIONS: ArmyListOptions = { showMounts: true, showMagic: true }
+
+/**
+ * QUÉ SE IMPRIME en la hoja de ejército (el PDF). Una sección apagada
+ * sencillamente no sale; la "Lista de unidades" y la tabla de perfiles no
+ * tienen interruptor porque son la hoja en sí.
+ *
+ * Es preferencia de CADA usuario, como las dos de arriba: dos personas pueden
+ * imprimir el mismo ejército con distinto detalle. Por eso vive en `users` y
+ * no en `army_lists`.
+ */
+export interface PrintOptions {
+  /** La sección "Personajes de renombre" del final. */
+  renombre: boolean
+  /** "Resumen de reglas especiales": el glosario con la descripción de cada regla. */
+  reglas: boolean
+  /** "Listado de hechizos" y la línea de sendas en la ficha de cada personaje. */
+  magia: boolean
+  /** Un interruptor por TIPO de dueño: se imprimen los apéndices de los tipos encendidos. */
+  apendices: Record<ApendiceDueno, boolean>
+}
+
+/** Todo encendido: estrenar una sección apagada es no enterarse nunca de que existe. */
+export const DEFAULT_PRINT_OPTIONS: PrintOptions = {
+  renombre: true,
+  reglas: true,
+  magia: true,
+  apendices: { faccion: true, unidad: true, equipo: true, opcion: true, montura: true, carro: true },
+}
+
+/**
+ * Lee el JSON guardado SIN fiarse de él: puede venir de una versión anterior
+ * (sin alguna clave) o de una posterior (con claves que aquí no existen). Lo
+ * que no se reconoce se ignora y lo que falta se da por ENCENDIDO, que es el
+ * valor de fábrica — así, añadir un interruptor nuevo no apaga nada de lo que
+ * ya había guardado.
+ */
+export function leerPrintOptions(json: string | null | undefined): PrintOptions {
+  if (!json) return DEFAULT_PRINT_OPTIONS
+  let crudo: Record<string, unknown>
+  try {
+    crudo = JSON.parse(json) as Record<string, unknown>
+  } catch {
+    return DEFAULT_PRINT_OPTIONS
+  }
+  if (!crudo || typeof crudo !== 'object') return DEFAULT_PRINT_OPTIONS
+  const apendicesCrudos = (crudo.apendices ?? {}) as Record<string, unknown>
+  const apendices = { ...DEFAULT_PRINT_OPTIONS.apendices }
+  for (const kind of Object.keys(apendices) as ApendiceDueno[]) {
+    if (typeof apendicesCrudos[kind] === 'boolean') apendices[kind] = apendicesCrudos[kind] as boolean
+  }
+  return {
+    renombre: typeof crudo.renombre === 'boolean' ? crudo.renombre : true,
+    reglas: typeof crudo.reglas === 'boolean' ? crudo.reglas : true,
+    magia: typeof crudo.magia === 'boolean' ? crudo.magia : true,
+    apendices,
+  }
+}
 
 export const UserRepository = {
   /** Todos los usuarios, para poder elegir en la pantalla de acceso sin tener que recordar el nombre exacto. */
@@ -236,5 +293,28 @@ export const UserRepository = {
       options.showMagic ? 1 : 0,
       userId,
     ])
+  },
+
+  // ---- Opciones de impresión ----------------------------------------------
+
+  /**
+   * Qué secciones se imprimen. Si la consulta falla —columna sin migrar,
+   * Worker sin desplegar, red caída— se imprime TODO: una hoja de más es un
+   * incordio, pero una hoja a la que le falta en silencio la sección de
+   * personajes es un problema en mitad de una partida.
+   */
+  async getPrintOptions(userId: number): Promise<PrintOptions> {
+    try {
+      const row = await queryOne<PrintOptions>('SELECT print_options FROM users WHERE id = ?', [userId], (r) =>
+        leerPrintOptions(r.print_options as string | null),
+      )
+      return row ?? DEFAULT_PRINT_OPTIONS
+    } catch {
+      return DEFAULT_PRINT_OPTIONS
+    }
+  },
+
+  async setPrintOptions(userId: number, options: PrintOptions): Promise<void> {
+    await exec('UPDATE users SET print_options = ? WHERE id = ?', [JSON.stringify(options), userId])
   },
 }

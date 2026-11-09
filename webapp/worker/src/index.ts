@@ -1254,6 +1254,10 @@ const MIGRATIONS: string[] = [
   'ALTER TABLE appendices ADD COLUMN sheet_x INTEGER',
   'ALTER TABLE appendices ADD COLUMN sheet_y INTEGER',
   'ALTER TABLE appendices ADD COLUMN sheet_w INTEGER',
+  // QUÉ SE IMPRIME en la hoja de ejército, por usuario y en JSON: la lista de
+  // interruptores crece cada poco (secciones del PDF, uno por tipo de
+  // apéndice) y nada los consulta por columna. Sin valor = todo encendido.
+  'ALTER TABLE users ADD COLUMN print_options TEXT',
   // Los que ya había se traen tal cual, UNA sola vez: el `NOT EXISTS` solo se
   // cumple con la tabla nueva completamente vacía. (Consecuencia conocida: si
   // algún día se borran TODOS los apéndices, la siguiente carga volvería a

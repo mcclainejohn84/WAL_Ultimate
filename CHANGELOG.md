@@ -13,6 +13,28 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.208 — 09/11/2026 18:45
+
+- **Opciones de impresión**, dentro de "Opciones Lista de ejército": qué sale
+  en la hoja de ejército. Lo encendido se imprime, lo apagado no sale. Son
+  tuyas, no del ejército: dos personas pueden imprimir la misma lista con
+  distinto detalle.
+- Se pueden apagar el **Resumen de reglas especiales** (el glosario del final,
+  que es lo que más páginas ocupa; los nombres de las reglas siguen en la
+  tabla de perfiles), las **Sendas de magia** (el listado de hechizos y la
+  línea de sendas de cada personaje) y los **Personajes de renombre**.
+- **Los apéndices ya se imprimen en la hoja de ejército**, en una sección
+  nueva al final, agrupados por de quién son. Solo salen los de lo que hay en
+  la lista: su facción, sus unidades y el equipo, las opciones, la montura y
+  el carro ELEGIDOS. Un apéndice de un escudo que nadie lleva no sale.
+- Cada **tipo de apéndice** tiene su interruptor (facción, unidades, equipo,
+  opciones, monturas, carros): lo normal es querer las reglas de la facción y
+  de las unidades, y no las de cada escudo.
+- La "Lista de unidades" y la tabla de "Perfiles y reglas especiales" no
+  tienen interruptor a propósito: son la hoja en sí.
+
+---
+
 ## 0.207 — 09/11/2026 17:51
 
 - **Los apéndices ya se pueden pegar DENTRO de la ficha**, en el cuadro

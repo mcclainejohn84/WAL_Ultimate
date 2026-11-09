@@ -156,3 +156,6 @@ ALTER TABLE appendices ADD COLUMN in_sheet INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE appendices ADD COLUMN sheet_x INTEGER;
 ALTER TABLE appendices ADD COLUMN sheet_y INTEGER;
 ALTER TABLE appendices ADD COLUMN sheet_w INTEGER;
+
+-- Qué secciones se imprimen en la hoja de ejército, por usuario (JSON).
+ALTER TABLE users ADD COLUMN print_options TEXT;

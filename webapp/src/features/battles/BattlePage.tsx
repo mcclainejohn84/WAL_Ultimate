@@ -75,6 +75,7 @@ import {
 } from '@/features/battles/BattleHeraldry'
 import { BattleOrderPanel } from '@/features/battles/BattleOrderPanel'
 import { mensajeDeMigracionPendiente } from '@/data/repositories/schemaHealth'
+import { UserRepository, DEFAULT_PRINT_OPTIONS } from '@/data/repositories/userRepository'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
 import { useVisibleFactions } from '@/shared/session/useVisibleFactions'
@@ -425,7 +426,8 @@ export function BattlePage() {
       // su coste, así que el total tiene que ser el de lo impreso. Con el total
       // completo, la hoja se delataría sola — la resta cantaría cuántos puntos
       // faltan. Para el ejército entero, su dueño lo exporta desde Ejércitos.
-      await exportArmyListToPdf(bando.lista, bando.puntosVisibles, ventana)
+      const impresion = user ? await UserRepository.getPrintOptions(user.id) : DEFAULT_PRINT_OPTIONS
+      await exportArmyListToPdf(bando.lista, bando.puntosVisibles, ventana, false, impresion)
     } catch (err) {
       cerrarPestanaPdf(ventana)
       console.error(err)

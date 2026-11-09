@@ -36,8 +36,24 @@ import { CharacterSkillRepository } from '@/data/repositories/characterSkillRepo
 import { MAGIC_GROUP_LABELS, sendasDeLaEntrada, type MagicPathDetail, type MagicSpell } from '@/domain/magic'
 import { ETIQUETAS_DE_MAGIA, spellIdDePergamino, type HabilidadMagica } from '@/domain/magiaDeRenombre'
 import { mergeSpecialRules } from '@/domain/unitFormat'
+import {
+  AppendixRepository,
+  DUENOS,
+  ETIQUETAS_DE_DUENO,
+  listarDuenos,
+  type Dueno,
+} from '@/data/repositories/appendixRepository'
+import { DEFAULT_PRINT_OPTIONS, type PrintOptions } from '@/data/repositories/userRepository'
+import { bloquesDeHtml, tieneTexto } from '@/shared/richText'
 import { mostrarPdf } from '@/features/army-lists/pdfWindow'
-import type { ArmyListDetail, ArmyListEntry, AttributeProfile, SpecialRule } from '@/domain/types'
+import type {
+  ApendiceDueno,
+  ArmyListDetail,
+  ArmyListEntry,
+  AttributeProfile,
+  SpecialRule,
+  UnitAppendix,
+} from '@/domain/types'
 
 const TEXTURE_URL = `${import.meta.env.BASE_URL}assets/army-sheet/fondo-pergamino.jpg`
 const FONT_REGULAR_URL = `${import.meta.env.BASE_URL}assets/army-sheet/fonts/CaslonAntique-Regular.ttf`
@@ -474,11 +490,69 @@ function reglasDeLaEntrada(entry: ArmyListEntry): SpecialRule[] {
   return mergeSpecialRules(entry.unit.specialRules, montura?.specialRules ?? [], carro?.specialRules ?? [])
 }
 
+/**
+ * El texto de un apéndice, listo para una celda de la tabla.
+ *
+ * El apéndice se escribe con formato (negrita, cursiva, viñetas, sangría) y
+ * aquí se pierde lo que va DENTRO del párrafo: jspdf-autotable pinta cada
+ * celda con una sola fuente y mezclar negritas a media frase obligaría a
+ * dibujar la sección a mano, carácter a carácter. Lo que sí se conserva es la
+ * ESTRUCTURA, que es lo que hace legible un texto largo: los párrafos no se
+ * pegan unos con otros, las viñetas siguen siendo viñetas y la sangría se
+ * marca con espacios.
+ */
+function textoDeApendice(html: string): string {
+  return bloquesDeHtml(html)
+    .map((bloque) => {
+      const texto = bloque.trozos
+        .map((t) => t.texto)
+        .join('')
+        .replace(/\n/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+      return '   '.repeat(bloque.sangria) + (bloque.vineta ? `${bloque.vineta} ` : '') + texto
+    })
+    .filter(Boolean)
+    .join('\n')
+}
+
+/**
+ * DE QUÉ cuelgan los apéndices que le tocan a esta lista: su facción, sus
+ * unidades, el equipo y las opciones ELEGIDOS, y la montura o el carro que
+ * lleva cada uno. No todo el catálogo: un apéndice de un escudo que nadie de
+ * esta lista lleva no pinta nada en esta hoja.
+ *
+ * Los tipos apagados ni se miran (ver PrintOptions.apendices).
+ */
+function duenosDeLaLista(list: ArmyListDetail, entries: ArmyListEntry[], encendidos: Record<ApendiceDueno, boolean>) {
+  const duenos: Dueno[] = []
+  const mete = (kind: ApendiceDueno, id: number | null | undefined) => {
+    if (!encendidos[kind] || id == null) return
+    if (!duenos.some((d) => d.kind === kind && d.id === id)) duenos.push({ kind, id })
+  }
+  mete('faccion', list.faction?.id)
+  for (const entry of entries) {
+    mete('faccion', entry.unit.faction?.id)
+    mete('unidad', entry.unit.id)
+    for (const id of entry.equipmentIds) mete('equipo', id)
+    for (const id of entry.upgradeIds) mete('opcion', id)
+    mete('montura', entry.mountProfileId)
+    mete('carro', entry.chariotProfileId)
+  }
+  return duenos
+}
+
 export async function exportArmyListToPdf(
   list: ArmyListDetail,
   total: number,
   ventana: Window | null = null,
   blancoYNegro = false,
+  /**
+   * Qué secciones se imprimen (ver UserRepository.getPrintOptions y
+   * ArmyListOptionsModal). Por defecto, todas: quien llame sin opciones —una
+   * prueba, un sitio nuevo— saca la hoja completa, que es lo de siempre.
+   */
+  impresion: PrintOptions = DEFAULT_PRINT_OPTIONS,
 ): Promise<void> {
   // La paleta se elige UNA vez y se pasa a todo lo que dibuja. En blanco y
   // negro no se trata de desaturar el color: se quita el fondo de pergamino y
@@ -520,6 +594,25 @@ export async function exportArmyListToPdf(
     paleta,
   })
   y = dibujarEtiquetaSeccion(doc, 'Lista de unidades', y + 3, familiaTitulares, paleta)
+
+  /**
+   * Abre una sección: mira dónde acabó lo último que se dibujó, salta de
+   * página si ahí no cabe ni el rótulo, y pinta la etiqueta.
+   *
+   * Antes cada sección encadenaba a mano con la `y` de la anterior. Con los
+   * interruptores de impresión eso dejó de valer: la sección anterior puede no
+   * haberse dibujado, y entonces esa `y` no existe o apunta a un sitio que no
+   * es. Preguntando por el final de la ÚLTIMA tabla da igual cuáles se hayan
+   * quedado por el camino.
+   */
+  function abrirSeccion(titulo: string): number {
+    let desde = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y
+    if (desde + ALTURA_MINIMA > doc.internal.pageSize.getHeight() - ALTURA_PIE) {
+      doc.addPage()
+      desde = 26
+    }
+    return dibujarEtiquetaSeccion(doc, titulo, desde + 8, familiaTitulares, paleta)
+  }
 
   // --- Tabla 1: Lista de unidades. ---
   const cuerpoLista = sortedEntries.length
@@ -592,12 +685,7 @@ export async function exportArmyListToPdf(
   })
 
   // --- Tabla 2: Perfiles y reglas especiales (monturas/carros como sub-filas "• "). ---
-  let finalYLista = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y
-  if (finalYLista + ALTURA_MINIMA > doc.internal.pageSize.getHeight() - ALTURA_PIE) {
-    doc.addPage()
-    finalYLista = 26
-  }
-  const y2 = dibujarEtiquetaSeccion(doc, 'Perfiles y reglas especiales', finalYLista + 8, familiaTitulares, paleta)
+  const y2 = abrirSeccion('Perfiles y reglas especiales')
 
   interface FilaPerfil {
     datos: string[]
@@ -702,60 +790,63 @@ export async function exportArmyListToPdf(
   })
 
   // --- Tabla 3: Resumen de reglas especiales (glosario alfabético). ---
-  let finalYPerfiles = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y2
-  if (finalYPerfiles + ALTURA_MINIMA > doc.internal.pageSize.getHeight() - ALTURA_PIE) {
-    doc.addPage()
-    finalYPerfiles = 26
-  }
-  const y3 = dibujarEtiquetaSeccion(doc, 'Resumen de reglas especiales', finalYPerfiles + 8, familiaTitulares, paleta)
+  //
+  // Es la sección que más páginas ocupa —una línea por regla con su texto
+  // entero— y la primera que se apaga cuando lo que se quiere es la hoja para
+  // la mesa y no el reglamento. Apagada, los NOMBRES de las reglas siguen
+  // saliendo en la tabla de perfiles de arriba: lo que se pierde es la
+  // descripción, no el dato.
+  if (impresion.reglas) {
+    const y3 = abrirSeccion('Resumen de reglas especiales')
 
-  const rulesMap = new Map<number, { name: string; description: string }>()
-  for (const entry of list.entries) {
-    for (const rule of reglasDeLaEntrada(entry)) {
-      if (!rulesMap.has(rule.id)) rulesMap.set(rule.id, rule)
+    const rulesMap = new Map<number, { name: string; description: string }>()
+    for (const entry of list.entries) {
+      for (const rule of reglasDeLaEntrada(entry)) {
+        if (!rulesMap.has(rule.id)) rulesMap.set(rule.id, rule)
+      }
     }
+    const listaReglas = [...rulesMap.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'))
+
+    const cuerpoGlosario = listaReglas.length
+      ? listaReglas.map((r) => [r.name, r.description || '-'])
+      : [
+          [
+            {
+              content: 'Esta lista no utiliza ninguna regla especial.',
+              colSpan: 2,
+              styles: { halign: 'center' as const, fontStyle: 'italic' as const, textColor: rgb(paleta.inkSuave) },
+            },
+          ],
+        ]
+
+    autoTable(doc, {
+      startY: y3,
+      margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
+      head: [['REGLA', 'DESCRIPCIÓN']],
+      body: cuerpoGlosario,
+      theme: 'plain',
+      styles: {
+        font: 'times',
+        fontSize: 7.6,
+        textColor: rgb(paleta.ink),
+        cellPadding: { top: 1.4, bottom: 1.4, left: 2.2, right: 2.2 },
+        overflow: 'linebreak',
+      },
+      headStyles: {
+        textColor: rgb(paleta.inkSuave),
+        fontStyle: 'bold',
+        fontSize: 7.4,
+        cellPadding: { top: 0.8, bottom: 0.8, left: 2.2, right: 2.2 },
+      },
+      columnStyles: {
+        0: { cellWidth: 45, halign: 'left', fontStyle: 'bold' },
+        1: { cellWidth: 'auto', halign: 'left' },
+      },
+      alternateRowStyles: { fillColor: rgb(paleta.fondoAlt) },
+      didParseCell: centrarCabecera,
+      didDrawCell: (data) => dibujarBordeInferiorCabecera(data, paleta),
+    })
   }
-  const listaReglas = [...rulesMap.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'))
-
-  const cuerpoGlosario = listaReglas.length
-    ? listaReglas.map((r) => [r.name, r.description || '-'])
-    : [
-        [
-          {
-            content: 'Esta lista no utiliza ninguna regla especial.',
-            colSpan: 2,
-            styles: { halign: 'center' as const, fontStyle: 'italic' as const, textColor: rgb(paleta.inkSuave) },
-          },
-        ],
-      ]
-
-  autoTable(doc, {
-    startY: y3,
-    margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
-    head: [['REGLA', 'DESCRIPCIÓN']],
-    body: cuerpoGlosario,
-    theme: 'plain',
-    styles: {
-      font: 'times',
-      fontSize: 7.6,
-      textColor: rgb(paleta.ink),
-      cellPadding: { top: 1.4, bottom: 1.4, left: 2.2, right: 2.2 },
-      overflow: 'linebreak',
-    },
-    headStyles: {
-      textColor: rgb(paleta.inkSuave),
-      fontStyle: 'bold',
-      fontSize: 7.4,
-      cellPadding: { top: 0.8, bottom: 0.8, left: 2.2, right: 2.2 },
-    },
-    columnStyles: {
-      0: { cellWidth: 45, halign: 'left', fontStyle: 'bold' },
-      1: { cellWidth: 'auto', halign: 'left' },
-    },
-    alternateRowStyles: { fillColor: rgb(paleta.fondoAlt) },
-    didParseCell: centrarCabecera,
-    didDrawCell: (data) => dibujarBordeInferiorCabecera(data, paleta),
-  })
 
   // --- Sección 4: Listado de hechizos, por personaje y por senda. ---
   //
@@ -787,13 +878,8 @@ export async function exportArmyListToPdf(
   const sendaPorId = new Map(sendas.map((p) => [p.id, p]))
   const hechizoPorId = new Map(sendas.flatMap((p) => p.spells.map((h) => [h.id, { hechizo: h, senda: p }] as const)))
 
-  if (entradasConMagia.length > 0) {
-    let finalYGlosario = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y3
-    if (finalYGlosario + ALTURA_MINIMA > doc.internal.pageSize.getHeight() - ALTURA_PIE) {
-      doc.addPage()
-      finalYGlosario = 26
-    }
-    let yMagia = dibujarEtiquetaSeccion(doc, 'Listado de hechizos', finalYGlosario + 8, familiaTitulares, paleta)
+  if (impresion.magia && entradasConMagia.length > 0) {
+    let yMagia = abrirSeccion('Listado de hechizos')
 
     for (const entry of entradasConMagia) {
       // Un subtítulo solo al pie de la página quedaría huérfano, con su tabla
@@ -911,7 +997,7 @@ export async function exportArmyListToPdf(
   // celda de la derecha vacía gastaría sitio para no decir nada. Todo lo
   // demás —atributos, habilidades, características sociales y cicatrices— va
   // a la tabla, cada cosa con lo que hace.
-  const entradasDeRenombre = sortedEntries.filter((e) => e.unit.isSpecialCharacter)
+  const entradasDeRenombre = impresion.renombre ? sortedEntries.filter((e) => e.unit.isSpecialCharacter) : []
   if (entradasDeRenombre.length > 0) {
     // Los dos catálogos se piden UNA vez para todos los personajes: salen de
     // la base, que es donde se editan, y traen el respaldo del código si la
@@ -933,18 +1019,7 @@ export async function exportArmyListToPdf(
     const conAlgo = fichas.filter((f) => !fichaDeRenombreVacia(f.ficha))
 
     if (conAlgo.length > 0) {
-      let finalYAnterior = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y3
-      if (finalYAnterior + ALTURA_MINIMA > doc.internal.pageSize.getHeight() - ALTURA_PIE) {
-        doc.addPage()
-        finalYAnterior = 26
-      }
-      let yRenombre = dibujarEtiquetaSeccion(
-        doc,
-        'Personajes de renombre',
-        finalYAnterior + 8,
-        familiaTitulares,
-        paleta,
-      )
+      let yRenombre = abrirSeccion('Personajes de renombre')
 
       for (const { entry, ficha } of conAlgo) {
         // Un nombre solo al pie de la página, con su tabla empezando en la
@@ -959,7 +1034,12 @@ export async function exportArmyListToPdf(
         // —son algo que el personaje ha comprado, como una habilidad— y
         // dejarlos además aquí sería decir dos veces lo mismo en cuatro
         // centímetros de papel.
-        const susSendas = sendasDeLaEntrada(entry)
+        // Las sendas de esta línea siguen al mismo interruptor que el listado
+        // de hechizos: si no se imprime la magia, tampoco se imprime de qué va
+        // el mago. Lo que SÍ se queda son sus habilidades mágicas, saberes y
+        // pergaminos: eso no es una senda, es lo que el personaje ha comprado
+        // con su experiencia, igual que una habilidad cualquiera.
+        const susSendas = (impresion.magia ? sendasDeLaEntrada(entry) : [])
           .map((mp) => {
             const senda = sendaPorId.get(mp.pathId)
             return senda ? `${senda.name} ${mp.level}` : null
@@ -1078,6 +1158,110 @@ export async function exportArmyListToPdf(
         }
       }
     }
+  }
+
+  // --- Sección 6: Apéndices y reglas adicionales. ---
+  //
+  // Los apéndices se escriben en el Editor y hasta ahora solo salían en las
+  // hojas de unidad. Aquí se recogen los de TODO lo que hay en la lista —la
+  // facción, cada unidad, el equipo y las opciones elegidos, la montura o el
+  // carro de cada uno— y se imprimen agrupados por quién los tiene.
+  //
+  // Van al final por lo mismo que los personajes de renombre: es texto largo
+  // que se consulta de vez en cuando, no cada turno, y meterlo entre las
+  // tablas partiría en dos lo que de verdad se mira en la mesa.
+  //
+  // Cada TIPO tiene su interruptor: lo normal es querer las reglas de la
+  // facción y de las unidades y no las de cada escudo (ver PrintOptions).
+  const duenosConApendice = duenosDeLaLista(list, sortedEntries, impresion.apendices)
+  // Entre try y catch TODO el apartado, y a propósito: es lo último que se
+  // dibuja y lo único de la hoja que depende de la copia local del catálogo.
+  // Si esa copia no está montada o la tabla de apéndices no existe todavía
+  // (Worker sin desplegar), lo que no puede pasar es que se quede sin PDF
+  // quien solo quería la lista.
+  try {
+    if (duenosConApendice.length > 0) {
+      const [apendices, nombres] = await Promise.all([
+        AppendixRepository.listParaDuenos(duenosConApendice),
+        listarDuenos(),
+      ])
+      const nombrePorClave = new Map(nombres.map((d) => [`${d.kind}:${d.id}`, d.nombre]))
+      const conTexto = apendices.filter((a) => tieneTexto(a.bodyHtml))
+
+      // Agrupados por tipo —en el orden de siempre— y, dentro, por dueño: así
+      // salen juntas todas las de la facción, luego las de las unidades, etc.
+      const porDueno = new Map<string, UnitAppendix[]>()
+      for (const apendice of conTexto) {
+        const clave = `${apendice.ownerKind}:${apendice.ownerId}`
+        const ya = porDueno.get(clave)
+        if (ya) ya.push(apendice)
+        else porDueno.set(clave, [apendice])
+      }
+      const grupos = [...porDueno.entries()]
+        .map(([clave, suyos]) => ({
+          kind: suyos[0].ownerKind,
+          nombre: nombrePorClave.get(clave) ?? `#${suyos[0].ownerId}`,
+          suyos,
+        }))
+        .sort((a, b) => DUENOS.indexOf(a.kind) - DUENOS.indexOf(b.kind) || a.nombre.localeCompare(b.nombre, 'es'))
+
+      if (grupos.length > 0) {
+        const yApendices = abrirSeccion('Apéndices y reglas adicionales')
+        const filas: (string | { content: string; colSpan: number })[][] = []
+        for (const grupo of grupos) {
+          filas.push([{ content: `${ETIQUETAS_DE_DUENO[grupo.kind]} · ${grupo.nombre}`.toUpperCase(), colSpan: 2 }])
+          for (const apendice of grupo.suyos) filas.push([apendice.title, textoDeApendice(apendice.bodyHtml)])
+        }
+
+        autoTable(doc, {
+          startY: yApendices,
+          margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
+          head: [['APÉNDICE', 'TEXTO']],
+          body: filas,
+          theme: 'plain',
+          styles: {
+            font: 'times',
+            fontSize: 7,
+            textColor: rgb(paleta.ink),
+            cellPadding: { top: 0.9, bottom: 0.9, left: 2.2, right: 2.2 },
+            overflow: 'linebreak',
+          },
+          headStyles: {
+            textColor: rgb(paleta.inkSuave),
+            fontStyle: 'bold',
+            fontSize: 6.8,
+            cellPadding: { top: 0.8, bottom: 0.8, left: 2.2, right: 2.2 },
+          },
+          columnStyles: {
+            0: { cellWidth: 40, halign: 'left', fontStyle: 'bold' },
+            // A LA IZQUIERDA, y no justificado como en los personajes de
+            // renombre. Aquí el texto trae sus propios saltos de línea
+            // (párrafos, viñetas) y autotable justifica todas las líneas de la
+            // celda menos la última: el final de cada párrafo salía estirado de
+            // margen a margen, con una palabra en cada esquina. Un borde derecho
+            // irregular se lee mucho mejor que eso.
+            1: { cellWidth: 'auto', halign: 'left' },
+          },
+          // Sin zebra y con la fila de grupo sombreada, igual que la tabla de
+          // los personajes: aquí el fondo ya significa "de quién es esto".
+          didParseCell: (data) => {
+            centrarCabecera(data)
+            if (data.section !== 'body') return
+            const cruda = data.row.raw
+            if (Array.isArray(cruda) && cruda.length === 1) {
+              data.cell.styles.fillColor = rgb(paleta.fondoAlt)
+              data.cell.styles.fontStyle = 'bold'
+              data.cell.styles.textColor = rgb(paleta.inkSuave)
+              data.cell.styles.halign = 'left'
+              data.cell.styles.fontSize = 6.6
+            }
+          },
+          didDrawCell: (data) => dibujarBordeInferiorCabecera(data, paleta),
+        })
+      }
+    }
+  } catch {
+    // Sin apéndices, pero con hoja.
   }
 
   // --- Pie de página en todas las páginas del documento. ---

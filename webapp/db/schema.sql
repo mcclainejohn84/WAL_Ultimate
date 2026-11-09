@@ -1195,7 +1195,15 @@ CREATE TABLE users (
     -- ve la línea de montura/carro y la de magia bajo cada unidad. Encendidas
     -- de salida (1) — ver la migración del Worker.
     show_mounts   INTEGER NOT NULL DEFAULT 1,
-    show_magic    INTEGER NOT NULL DEFAULT 1
+    show_magic    INTEGER NOT NULL DEFAULT 1,
+    -- QUÉ SE IMPRIME en la hoja de ejército, en JSON y no en una columna por
+    -- interruptor. Es la única excepción de este esquema y es deliberada: la
+    -- lista no para de crecer (secciones del PDF, un interruptor por tipo de
+    -- apéndice...), nada consulta estas opciones por columna —se leen enteras
+    -- para un usuario y se escriben enteras— y cada interruptor nuevo con
+    -- columna propia obliga a un ALTER en D1, otro en las manuales y otra
+    -- sonda. NULL o clave ausente = encendido (ver DEFAULT_PRINT_OPTIONS).
+    print_options TEXT
 );
 
 -- ---------------------------------------------------------------------------

@@ -177,6 +177,21 @@ export const AppendixRepository = {
     return AppendixRepository.listByOwner('unidad', unitId)
   },
 
+  /**
+   * Los apéndices de VARIOS dueños de golpe, en el orden de siempre.
+   *
+   * Lo pide la hoja de ejército: un ejército toca su facción, sus unidades, su
+   * equipo, sus opciones y sus monturas, y preguntar uno a uno serían decenas
+   * de consultas para acabar leyendo la misma tabla. Se lee entera —es local,
+   * sql.js, sin red— y se filtra en memoria.
+   */
+  async listParaDuenos(duenos: Dueno[]): Promise<UnitAppendix[]> {
+    if (duenos.length === 0) return []
+    const claves = new Set(duenos.map((d) => `${d.kind}:${d.id}`))
+    const todos = await AppendixRepository.listAll()
+    return todos.filter((a) => claves.has(`${a.ownerKind}:${a.ownerId}`))
+  },
+
   /** TODOS, para la pantalla del Editor. Quien los agrupa y los filtra es ella. */
   async listAll(): Promise<UnitAppendix[]> {
     try {

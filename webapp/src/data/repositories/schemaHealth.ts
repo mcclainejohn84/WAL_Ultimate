@@ -75,6 +75,7 @@ const CHECKS: SchemaCheck[] = [
   { label: 'Apéndices de unidad', probe: 'SELECT body_html FROM unit_appendices LIMIT 1' },
   { label: 'Apéndices y reglas adicionales', probe: 'SELECT owner_kind FROM appendices LIMIT 1' },
   { label: 'Apéndices dentro de la ficha', probe: 'SELECT in_sheet FROM appendices LIMIT 1' },
+  { label: 'Opciones de impresión', probe: 'SELECT print_options FROM users LIMIT 1' },
   { label: 'Mapas', probe: 'SELECT width_cm FROM battle_maps LIMIT 1' },
   { label: 'Mapas ocultos', probe: 'SELECT hidden FROM battle_maps LIMIT 1' },
   { label: 'Textura del mapa', probe: 'SELECT texture FROM battle_maps LIMIT 1' },

@@ -9,7 +9,7 @@ import { RuleRepository } from '@/data/repositories/ruleRepository'
 import { MagicRepository } from '@/data/repositories/magicRepository'
 import { abrirPestanaPdf, cerrarPestanaPdf } from '@/features/army-lists/pdfWindow'
 import { useGlobalGrayscale } from '@/shared/theme/useGrayscaleMode'
-import { UserRepository, DEFAULT_ARMY_LIST_OPTIONS } from '@/data/repositories/userRepository'
+import { UserRepository, DEFAULT_ARMY_LIST_OPTIONS, DEFAULT_PRINT_OPTIONS } from '@/data/repositories/userRepository'
 import { EntryMagicSection } from '@/features/army-lists/EntryMagicSection'
 import { checkComposition, compositionWarnings, formatRuleValue } from '@/domain/armyComposition'
 import { esHechicero, sendasDeLaEntrada } from '@/domain/magic'
@@ -1210,7 +1210,18 @@ export function ArmyListBuilderPage() {
       // verdad se exporta un PDF, así que van en su propio chunk en vez de
       // engordar el bundle inicial de toda la app.
       const { exportArmyListToPdf } = await import('@/features/army-lists/exportArmyListPdf')
-      await exportArmyListToPdf({ ...list, name, pointsLimit, entries: currentEntries }, total, ventana, grayscale)
+      // Qué secciones salen lo decide el usuario (ver ArmyListOptionsModal).
+      // Se piden AQUÍ y no al abrir la pantalla: se cambian en un menú que
+      // está al lado de este botón, y una copia cargada hace media hora
+      // imprimiría lo de antes.
+      const impresion = user ? await UserRepository.getPrintOptions(user.id) : DEFAULT_PRINT_OPTIONS
+      await exportArmyListToPdf(
+        { ...list, name, pointsLimit, entries: currentEntries },
+        total,
+        ventana,
+        grayscale,
+        impresion,
+      )
     } catch (err) {
       cerrarPestanaPdf(ventana)
       throw err
