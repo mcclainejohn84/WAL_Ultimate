@@ -28,7 +28,15 @@ import { useState } from 'react'
 import { clsx } from 'clsx'
 import { MagicRepository } from '@/data/repositories/magicRepository'
 import { SpecialCharacterRepository, type PersonajeEspecial } from '@/data/repositories/specialCharacterRepository'
-import { MAGIC_GROUP_LABELS, type MagicPath, type MagicPathDetail, type MagicSpell } from '@/domain/magic'
+import {
+  MAGIC_GROUPS,
+  MAGIC_GROUP_LABELS,
+  MAGIC_LEVELS,
+  type MagicGroup,
+  type MagicPath,
+  type MagicPathDetail,
+  type MagicSpell,
+} from '@/domain/magic'
 import {
   COSTE_DEL_PERGAMINO,
   ETIQUETAS_DE_MAGIA,
@@ -69,6 +77,20 @@ const PESTANAS: Array<{ clave: Pestana; corto: string; largo: string }> = [
 function enMinusculas(texto: string): string {
   const bajo = texto.toLocaleLowerCase('es')
   return bajo.charAt(0).toLocaleUpperCase('es') + bajo.slice(1)
+}
+
+/**
+ * LO QUE CUESTA IR DE UN NIVEL A OTRO en una senda, en positivo: la suma de
+ * todos los niveles que hay entre medias. Sirve para las dos direcciones —se
+ * cobra al subir y se devuelve al bajar—, y así saltar del 1 al 3 de un clic
+ * cuesta exactamente lo mismo que subir dos veces de uno en uno.
+ */
+function costeEntreNiveles(indice: number, misma: boolean, actual: number, destino: number): number {
+  let total = 0
+  for (let nivel = Math.min(actual, destino) + 1; nivel <= Math.max(actual, destino); nivel++) {
+    total += costeDeNivel(nivel, indice, misma).total
+  }
+  return total
 }
 
 export function MagiaModal({
@@ -420,9 +442,14 @@ function PestanaDeSendas({
   onOlvidar: (path: MagicPath, devolucion: number, nombre: string) => void
 }) {
   const [nuevaSenda, setNuevaSenda] = useState('')
+  // POR RAMA, porque el catálogo tiene treinta sendas y la lista entera son
+  // tres pantallas de desplegable. Además la rama no es decoración: subir una
+  // senda de la disciplina con la que empezó cuesta la mitad de recargo.
+  const [rama, setRama] = useState<MagicGroup | 'todas'>('todas')
   const porId = new Map(catalogo.map((p) => [p.id, p]))
   const elegidas = new Set(misSendas.map((s) => s.pathId))
-  const disponibles = catalogo.filter((p) => !elegidas.has(p.id))
+  const sinAprender = catalogo.filter((p) => !elegidas.has(p.id))
+  const disponibles = rama === 'todas' ? sinAprender : sinAprender.filter((p) => p.group === rama)
 
   const candidata = nuevaSenda ? porId.get(Number(nuevaSenda)) : undefined
   const costeDeLaNueva =
@@ -446,8 +473,6 @@ function PestanaDeSendas({
               const tope = nivelMaximoDeSenda(esInicial, nivelDeLaInicial)
               const siguiente = senda.level + 1
               const subir = siguiente <= tope ? costeDeNivel(siguiente, indice, misma) : null
-              const devolucionDelNivel = costeDeNivel(senda.level, indice, misma).total
-              const puedeBajar = senda.level > 1
               const pagado = pagadoPorLaSenda(indice, senda.level, misma)
               return (
                 <li key={senda.pathId} className="px-2 py-1.5">
@@ -460,51 +485,61 @@ function PestanaDeSendas({
                       <span className="block truncate text-mini text-ink-soft/80">
                         {path ? enMinusculas(MAGIC_GROUP_LABELS[path.group]) : '—'} · Nivel {senda.level}:{' '}
                         {NOMBRE_DEL_NIVEL[senda.level]}
+                        {/* LO QUE CUESTA EL SIGUIENTE, escrito. Los botones lo
+                            llevan en su `title`, y en un móvil no hay `title`
+                            que valga. */}
+                        {subir && ` · nivel ${siguiente}: ${subir.total} exp`}
                       </span>
                     </span>
 
                     <span className="flex shrink-0 items-center gap-1">
-                      {puedeBajar && (
-                        <button
-                          type="button"
-                          disabled={ocupado || !path}
-                          onClick={() => path && onBajar(path, senda.level - 1, devolucionDelNivel)}
-                          title={`Bajar a nivel ${senda.level - 1} y devolver ${devolucionDelNivel} de experiencia`}
-                          className="rounded-sm border border-rule-dark/40 px-1.5 py-0.5 text-mini font-semibold text-ink-soft transition-colors hover:bg-parchment-dark disabled:opacity-40"
-                        >
-                          −1
-                        </button>
-                      )}
-                      {subir == null ? (
-                        <span
-                          className="text-mini font-medium text-bronze"
-                          title={
-                            esInicial
-                              ? 'No hay nivel por encima de Archimago'
-                              : 'Una senda nueva no puede pasar del nivel de la senda inicial'
-                          }
-                        >
-                          {senda.level >= 4 ? 'Archimago' : `Tope: nivel ${tope}`}
-                        </span>
-                      ) : saldo >= subir.total ? (
-                        <button
-                          type="button"
-                          disabled={ocupado || !path}
-                          onClick={() => path && onSubir(path, siguiente, subir.total)}
-                          title={
-                            subir.recargo > 0
-                              ? `Nivel ${siguiente}: ${subir.base} de tabla + ${subir.recargo} por ser una senda nueva`
-                              : `Nivel ${siguiente}`
-                          }
-                          className="rounded-sm border border-maroon/45 px-2 py-0.5 text-mini font-semibold text-maroon transition-colors hover:bg-maroon hover:text-parchment disabled:opacity-40"
-                        >
-                          Adquirir nivel {siguiente} · {subir.total} exp
-                        </button>
-                      ) : (
-                        <span className="text-mini text-danger" title={`Hacen falta ${subir.total} y tiene ${saldo}`}>
-                          Faltan {subir.total - saldo} exp
-                        </span>
-                      )}
+                      {/* EL NIVEL, CON LOS MISMOS BOTONES QUE EN EL EJÉRCITO
+                          (ver EntryMagicSection): se pulsa el nivel al que se
+                          quiere llegar y da igual si es para arriba o para
+                          abajo. Subir cobra todos los niveles que se saltan de
+                          una vez; bajar los devuelve. */}
+                      <span className="flex overflow-hidden rounded-sm border border-rule-dark/40">
+                        {MAGIC_LEVELS.map((nivel) => {
+                          const actual = nivel === senda.level
+                          const pasaDelTope = nivel > tope
+                          const salto = costeEntreNiveles(indice, misma, senda.level, nivel)
+                          const noLlega = nivel > senda.level && salto > saldo
+                          return (
+                            <button
+                              key={nivel}
+                              type="button"
+                              disabled={ocupado || !path || actual || pasaDelTope || noLlega}
+                              aria-pressed={actual}
+                              onClick={() => {
+                                if (!path) return
+                                if (nivel > senda.level) onSubir(path, nivel, salto)
+                                else onBajar(path, nivel, salto)
+                              }}
+                              title={
+                                actual
+                                  ? `${NOMBRE_DEL_NIVEL[nivel]}`
+                                  : pasaDelTope
+                                    ? 'Una senda nueva no puede pasar del nivel de la senda inicial'
+                                    : nivel > senda.level
+                                      ? noLlega
+                                        ? `Faltan ${salto - saldo} de experiencia`
+                                        : `Subir a nivel ${nivel} (${NOMBRE_DEL_NIVEL[nivel]}) por ${salto} de experiencia`
+                                      : `Bajar a nivel ${nivel} (${NOMBRE_DEL_NIVEL[nivel]}) y devolver ${salto}`
+                              }
+                              className={clsx(
+                                'w-6 py-0.5 text-mini font-medium tabular-nums transition-colors',
+                                actual
+                                  ? 'bg-maroon text-parchment'
+                                  : pasaDelTope || noLlega
+                                    ? 'bg-parchment text-ink-soft/30'
+                                    : 'bg-parchment text-ink-soft hover:bg-parchment-dark',
+                              )}
+                            >
+                              {nivel}
+                            </button>
+                          )
+                        })}
+                      </span>
                       <button
                         type="button"
                         disabled={ocupado || !path}
@@ -531,6 +566,29 @@ function PestanaDeSendas({
             texto={`Requiere Torre de Hechicería. Una senda nueva nunca pasa del nivel de la inicial, y cada una que se abre encarece los niveles de las siguientes: +5 y +6 en su misma disciplina, +10 y +12 en otra.`}
           />
         )}
+        <div className="flex flex-wrap gap-0.5 rounded-sm border border-rule-dark/30 bg-parchment/70 p-0.5">
+          {(['todas', ...MAGIC_GROUPS] as const).map((r) => {
+            const cuantas = r === 'todas' ? sinAprender.length : sinAprender.filter((p) => p.group === r).length
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => {
+                  setRama(r)
+                  setNuevaSenda('')
+                }}
+                aria-pressed={r === rama}
+                className={clsx(
+                  'rounded-sm px-2 py-0.5 text-mini font-semibold tracking-wide transition-colors',
+                  r === rama ? 'bg-bronze text-parchment' : 'text-ink-soft hover:bg-parchment-dark',
+                )}
+              >
+                {r === 'todas' ? 'Todas' : enMinusculas(MAGIC_GROUP_LABELS[r])}
+                <span className="ml-1 text-micro tabular-nums opacity-70">{cuantas}</span>
+              </button>
+            )
+          })}
+        </div>
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={nuevaSenda}
@@ -540,7 +598,8 @@ function PestanaDeSendas({
             <option value="">Elegir una senda…</option>
             {disponibles.map((p) => (
               <option key={p.id} value={p.id}>
-                {enMinusculas(p.name)} · {enMinusculas(MAGIC_GROUP_LABELS[p.group])}
+                {enMinusculas(p.name)}
+                {rama === 'todas' ? ` · ${enMinusculas(MAGIC_GROUP_LABELS[p.group])}` : ''}
               </option>
             ))}
           </select>

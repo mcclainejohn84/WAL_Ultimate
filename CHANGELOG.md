@@ -13,6 +13,19 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.198 — 09/11/2026 08:54
+
+- El nivel de cada senda se cambia con los **botones 1-2-3-4**, los mismos del
+  constructor de ejércitos: se pulsa el nivel al que se quiere llegar, suba o
+  baje, y se cobra o se devuelve todo lo que haya de por medio. Los niveles
+  que no se pueden pagar, o que pasan del tope de la senda inicial, salen
+  apagados; al lado del nombre se lee lo que cuesta el siguiente.
+- Al adquirir una senda nueva se puede **filtrar por rama** (Elementales,
+  Místicas, Oscuras, Manuscritos), con el número de sendas que quedan en cada
+  una.
+
+---
+
 ## 0.197 — 09/11/2026 08:50
 
 - En la magia de los Personajes de Renombre, todo se **adquiere**: una sola
