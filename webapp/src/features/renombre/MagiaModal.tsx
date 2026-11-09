@@ -119,9 +119,12 @@ export function MagiaModal({
   const [abierta, setAbierta] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [porQuitar, setPorQuitar] = useState<{ titulo: string; mensaje: string; hacer: () => Promise<void> } | null>(
-    null,
-  )
+  const [porQuitar, setPorQuitar] = useState<{
+    titulo: string
+    mensaje: string
+    confirmar?: string
+    hacer: () => Promise<void>
+  } | null>(null)
   // Al listado de detrás se le avisa UNA VEZ, al cerrar: cada cambio recarga
   // la página entera y aquí se hacen muchos seguidos.
   const [tocado, setTocado] = useState(false)
@@ -284,15 +287,19 @@ export function MagiaModal({
                   )
                 }
                 onBajar={(path, nivel, devolucion) =>
-                  void hacer(() =>
-                    SpecialCharacterRepository.bajarSenda(
-                      personaje.id,
-                      path.id,
-                      enMinusculas(path.name),
-                      nivel,
-                      devolucion,
-                    ),
-                  )
+                  setPorQuitar({
+                    titulo: 'Retroceder la senda',
+                    confirmar: 'Sí, retroceder',
+                    mensaje: `La senda de ${enMinusculas(path.name)} va a retroceder al nivel ${nivel} y se le devolverán ${devolucion} puntos de experiencia a ${personaje.name}. Quedará apuntado en su libro.`,
+                    hacer: () =>
+                      SpecialCharacterRepository.bajarSenda(
+                        personaje.id,
+                        path.id,
+                        enMinusculas(path.name),
+                        nivel,
+                        devolucion,
+                      ),
+                  })
                 }
                 onOlvidar={(path, devolucion, nombre) =>
                   setPorQuitar({
@@ -394,8 +401,8 @@ export function MagiaModal({
         <ConfirmDialog
           title={porQuitar.titulo}
           message={porQuitar.mensaje}
-          confirmLabel="Sí, quitarlo"
-          cancelLabel="No"
+          confirmLabel={porQuitar.confirmar ?? 'Sí, quitarlo'}
+          cancelLabel="Cancelar"
           onConfirm={() => void hacer(porQuitar.hacer)}
           onCancel={() => setPorQuitar(null)}
         />
@@ -458,7 +465,7 @@ function PestanaDeSendas({
   return (
     <div className="space-y-3">
       <section>
-        <EncabezadoDeGrupo etiqueta="Sendas que practica" cuantas={misSendas.length} />
+        <EncabezadoDeGrupo etiqueta="Sendas de magia" cuantas={misSendas.length} />
         {misSendas.length === 0 ? (
           <p className="rounded-sm border border-dashed border-rule-dark/30 px-3 py-3 text-center text-mini italic text-ink-soft">
             Todavía no practica ninguna. La primera es la senda con la que empieza la campaña y no cuesta experiencia.
@@ -513,6 +520,10 @@ function PestanaDeSendas({
                               onClick={() => {
                                 if (!path) return
                                 if (nivel > senda.level) onSubir(path, nivel, salto)
+                                // RETROCEDER PREGUNTA ANTES, igual que quitar
+                                // una habilidad: los cuatro botones están
+                                // pegados y pulsar el de al lado deshace una
+                                // compra de cuarenta puntos sin querer.
                                 else onBajar(path, nivel, salto)
                               }}
                               title={

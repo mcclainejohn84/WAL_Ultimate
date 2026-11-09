@@ -70,3 +70,17 @@ estorbar.
 En la pantalla van los datos y los controles. Si un control necesita
 aclaración, un icono reconocible con su `title` y su `aria-label` —cortos y
 sobre lo que hace, nunca sobre lo que cambió.
+
+**Y SI AUN ASÍ PARECE QUE HACE FALTA UN TEXTO EXPLICATIVO, SE PREGUNTA ANTES
+DE ESCRIBIRLO.** No se escribe y se enseña a ver qué le parece: se pregunta,
+y si dice que sí, entonces se escribe. Esto no afecta a los rótulos de los
+controles, a los estados ("Ninguna todavía") ni a los mensajes de
+confirmación que él mismo haya pedido.
+
+## Todo lo que se crea se puede editar desde el Editor
+
+Cada vez que entre en el programa algo nuevo que sean DATOS —un catálogo, una
+lista de opciones, una tabla del reglamento—, entra con su pantalla en el
+menú "Editor" para crearlo, cambiarlo y borrarlo a mano. Nada de catálogos
+que solo se puedan tocar cambiando el código: el objetivo es que todo esté
+parametrizado y se edite desde la aplicación.

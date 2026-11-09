@@ -13,6 +13,15 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.199 — 09/11/2026 10:07
+
+- En la magia de un Personaje de Renombre, el apartado se llama **"Sendas de
+  magia"**.
+- **Retroceder una senda pregunta antes**, diciendo a qué nivel se queda y
+  cuánta experiencia se devuelve.
+
+---
+
 ## 0.198 — 09/11/2026 08:54
 
 - El nivel de cada senda se cambia con los **botones 1-2-3-4**, los mismos del
