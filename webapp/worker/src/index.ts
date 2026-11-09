@@ -12,8 +12,7 @@
 //                                se da de alta).
 //   POST /auth/password       — Cambia la contraseña. Exige la ACTUAL.
 //   POST /auth/reset          — Restablece la contraseña de CUALQUIER usuario
-//                                sin saber la suya. Exige la contraseña de
-//                                administrador (ver RESTABLECER).
+//                                sin saber la suya. PÚBLICO (ver RESTABLECER).
 //   GET  /snapshot            — Vuelca TODAS las filas de las 18 tablas de
 //                                CATÁLOGO (todo menos army_lists y afines) en
 //                                un único JSON. Público (sin contraseña, igual
@@ -48,9 +47,14 @@
 // sí es público —nombre, fecha, preferencias— y las consultas que la cruzan para
 // sacar el nombre del dueño de un ejército siguen funcionando igual.
 //
+// RESTABLECER UNA CONTRASEÑA NO EXIGE NADA (ver onResetPassword): quien la
+// olvida escribe su nombre y una nueva. Es una decisión tomada a sabiendas —
+// cualquiera que llegue a la pantalla de entrada puede cambiarle la
+// contraseña a cualquiera—, y lo que la hace asumible es que cada
+// restablecimiento deja su línea en el registro, a la vista del grupo.
+//
 // LO QUE ESTO NO ES. No hay HTTPS-only cookies, ni expiración, ni límite de
-// intentos, ni recuperación de contraseña: quien olvide la suya necesita a
-// alguien con acceso a la base. Es una herramienta de un grupo cerrado de
+// intentos. Es una herramienta de un grupo cerrado de
 // jugadores, no un producto multiusuario, y el objetivo es que la URL de la API
 // deje de ser una llave maestra — no resistir un ataque dirigido.
 //
@@ -78,12 +82,6 @@ import { SEED_STATEMENTS } from './seed-data'
 export interface Env {
   DB: D1Database
   /**
-   * SHA-256 (hex) de la contraseña de administrador que permite RESTABLECER la
-   * contraseña de cualquiera. Opcional: si no está puesto vale el de abajo.
-   * Se cambia con `wrangler secret put ADMIN_RESET_HASH`.
-   */
-  ADMIN_RESET_HASH?: string
-  /**
    * Bucket R2 con las imágenes de las hojas (ilustración y emblema propio).
    *
    * Es OPCIONAL a propósito: mientras no esté configurado el binding, la app
@@ -93,13 +91,6 @@ export interface Env {
    */
   IMAGES?: R2Bucket
 }
-
-/**
- * SHA-256 de la contraseña de administrador por defecto. El hash y no la
- * contraseña: así el código no la publica, ni siquiera a quien lea el
- * repositorio. Se sustituye poniendo el secreto ADMIN_RESET_HASH.
- */
-const ADMIN_RESET_HASH_POR_DEFECTO = 'd522da0e48ed89aa82b086bce82d2214035a535a4de4fe4c9b52f4393faac083'
 
 const BOOKMARK_HEADER = 'X-D1-Bookmark'
 /** Id del usuario que escribe, y SHA-256 de su contraseña. Ver AUTENTICACIÓN arriba. */
@@ -369,8 +360,6 @@ interface AuthRequestBody {
   passwordHash?: string
   /** Solo en /auth/password: el hash de la contraseña ACTUAL. */
   currentHash?: string
-  /** Solo en /auth/reset: el hash de la contraseña de administrador. */
-  adminHash?: string
 }
 
 /** El usuario tal y como lo espera el cliente (domain/types#User). */
@@ -458,9 +447,10 @@ async function onChangePassword(request: Request, env: Env): Promise<Response> {
  *
  * `username` es el usuario AL QUE se le cambió la contraseña, no quien lo hizo:
  * en un restablecimiento nadie ha entrado, así que no hay un "quien" que anotar.
- * Por eso la descripción dice expresamente si fue un cambio propio —sabiendo la
- * contraseña vieja— o un restablecimiento con la de administrador. Confundir
- * las dos cosas en el registro sería peor que no registrarlas.
+ * Por eso la descripción dice expresamente si fue un cambio propio —sabiendo
+ * la contraseña vieja— o un restablecimiento desde la pantalla de entrada, que
+ * no exige saber nada. Confundir las dos cosas en el registro sería peor que
+ * no registrarlas.
  *
  * Nunca lanza: perder una línea del registro no puede tumbar un cambio de
  * contraseña que YA está hecho.
@@ -479,19 +469,22 @@ async function registrarCambioDeClave(env: Env, user: UserRow, descripcion: stri
 }
 
 /**
- * Restablece la contraseña de cualquier usuario SIN saber la suya, a cambio de
- * la contraseña de administrador. Ver la sección RESTABLECER de la cabecera:
- * es una puerta de atrás consentida, y lo que la hace asumible es que queda
- * registrada a la vista de todo el grupo.
+ * Restablece la contraseña de cualquier usuario SIN saber la suya y SIN
+ * contraseña de administrador: se escribe el nombre y la nueva, y ya.
+ *
+ * Es una decisión del usuario, tomada a sabiendas: antes hacía falta la
+ * contraseña de administrador y quien la olvidaba dependía de que alguien se
+ * la pasara. A cambio, cualquiera que llegue a la pantalla de entrada puede
+ * cambiarle la contraseña a cualquiera — y lo que lo hace asumible es que
+ * cada restablecimiento DEJA SU LÍNEA en el registro, a la vista de todo el
+ * grupo (pantalla "Log"). Es la misma apuesta de siempre en este programa:
+ * un grupo cerrado de jugadores que se conocen, no un producto público.
  */
 async function onResetPassword(request: Request, env: Env): Promise<Response> {
-  const { username, passwordHash, adminHash } = (await request.json()) as AuthRequestBody
+  const { username, passwordHash } = (await request.json()) as AuthRequestBody
   const nombre = username?.trim() ?? ''
-  if (!nombre || !passwordHash || !adminHash) {
+  if (!nombre || !passwordHash) {
     return jsonResponse({ error: 'Faltan datos para restablecer la contraseña.' }, 400)
-  }
-  if (adminHash !== (env.ADMIN_RESET_HASH ?? ADMIN_RESET_HASH_POR_DEFECTO)) {
-    return jsonResponse({ error: 'La contraseña de administrador no es correcta.' }, 401)
   }
 
   const user = await env.DB.prepare('SELECT id, username, created_at FROM users WHERE username = ? COLLATE NOCASE')
@@ -509,7 +502,7 @@ async function onResetPassword(request: Request, env: Env): Promise<Response> {
     .bind(user.id, passwordHash)
     .run()
 
-  await registrarCambioDeClave(env, user, 'Restableció la contraseña con la contraseña de administrador')
+  await registrarCambioDeClave(env, user, 'Restableció la contraseña desde la pantalla de entrada')
   return jsonResponse({ ok: true })
 }
 

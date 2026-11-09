@@ -6,6 +6,7 @@ import { BattleRepository } from '@/data/repositories/battleRepository'
 import { ensureArmyListsOwned } from '@/data/repositories/catalogMaintenance'
 import { mensajeDeMigracionPendiente } from '@/data/repositories/schemaHealth'
 import { useAsync } from '@/shared/hooks/useAsync'
+import { usePreferenciaLocal } from '@/shared/hooks/usePreferenciaLocal'
 import { useSession } from '@/shared/session/useSession'
 import { useVisibleFactions } from '@/shared/session/useVisibleFactions'
 import { useFavoriteFactionId } from '@/shared/session/useFavoriteFactionId'
@@ -48,10 +49,17 @@ function FiltroDeEstadoSelector({
   valor,
   onChange,
   recuentos,
+  antiguos,
+  viendoAntiguos,
+  onAntiguos,
 }: {
   valor: FiltroDeEstado
   onChange: (v: FiltroDeEstado) => void
   recuentos: Record<FiltroDeEstado, number>
+  /** Cuántos ejércitos llevan más de un mes sin tocarse. */
+  antiguos: number
+  viendoAntiguos: boolean
+  onAntiguos: (v: boolean) => void
 }) {
   return (
     <div className="mb-2 flex items-center gap-2">
@@ -76,6 +84,34 @@ function FiltroDeEstadoSelector({
             </button>
           </span>
         ))}
+        {/* LOS ANTIGUOS, APARTE. No es un estado más de la lista —se puede
+            tener uno viejo y sin completar—, así que no entra en la misma
+            fila de opciones excluyentes: es un interruptor, y solo se ofrece
+            si de verdad hay alguno que esconder. */}
+        {antiguos > 0 && (
+          <>
+            <span aria-hidden className="mx-1 h-3 w-px bg-rule-dark/25" />
+            <button
+              type="button"
+              aria-pressed={viendoAntiguos}
+              onClick={() => onAntiguos(!viendoAntiguos)}
+              title={
+                viendoAntiguos
+                  ? 'Esconder los ejércitos que llevan más de un mes sin tocarse'
+                  : 'Enseñar los ejércitos que llevan más de un mes sin tocarse'
+              }
+              className={clsx(
+                'rounded-sm px-1.5 py-0.5 text-mini transition-colors',
+                viendoAntiguos ? 'font-semibold text-maroon' : 'text-ink-soft/70 hover:bg-bronze/10 hover:text-ink',
+              )}
+            >
+              Antiguos
+              <span className={clsx('ml-1 tabular-nums', viendoAntiguos ? 'text-maroon/70' : 'text-ink-soft/45')}>
+                {antiguos}
+              </span>
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
@@ -172,6 +208,11 @@ export function ArmyListsPage() {
   // siguen a un clic, y el recuento al lado de cada filtro dice cuántos hay sin
   // tener que ir a mirar.
   const [filtro, setFiltro] = useState<FiltroDeEstado>('pendientes')
+  // LOS DE MÁS DE UN MES NO SALEN salvo que se pidan, y se recuerda de una
+  // visita a otra (ver usePreferenciaLocal). La cuenta va por la última vez
+  // que se tocó el ejército, no por cuándo se creó: uno de hace un año que se
+  // sigue retocando no es antiguo.
+  const [viendoAntiguos, setViendoAntiguos] = usePreferenciaLocal('ejercitos_antiguos', user?.id, false)
 
   /**
    * Marca o desmarca una lista como TERMINADA. Cerrada, el constructor se abre
@@ -250,7 +291,12 @@ export function ArmyListsPage() {
     completados: todas.filter((l) => l.ready).length,
     pendientes: todas.filter((l) => !l.ready).length,
   }
-  const visibles = filtro === 'todos' ? todas : todas.filter((l) => (filtro === 'completados' ? l.ready : !l.ready))
+  const haceUnMes = new Date()
+  haceUnMes.setMonth(haceUnMes.getMonth() - 1)
+  const esAntiguo = (l: ArmyListSummary) => new Date(l.updatedAt).getTime() < haceUnMes.getTime()
+  const antiguos = todas.filter(esAntiguo).length
+  const porEstado = filtro === 'todos' ? todas : todas.filter((l) => (filtro === 'completados' ? l.ready : !l.ready))
+  const visibles = viendoAntiguos ? porEstado : porEstado.filter((l) => !esAntiguo(l))
 
   return (
     <div>
@@ -300,14 +346,23 @@ export function ArmyListsPage() {
           terminado el listado saldría vacío y sin ningún mando a la vista para
           deshacerlo: la pantalla diría que no tienes nada teniéndolo. */}
       {!loading && todas.length > 0 && (
-        <FiltroDeEstadoSelector valor={filtro} onChange={setFiltro} recuentos={recuentos} />
+        <FiltroDeEstadoSelector
+          valor={filtro}
+          onChange={setFiltro}
+          recuentos={recuentos}
+          antiguos={antiguos}
+          viendoAntiguos={viendoAntiguos}
+          onAntiguos={setViendoAntiguos}
+        />
       )}
 
       {!loading && todas.length > 0 && visibles.length === 0 && (
         <p className="rounded-sm border border-rule-dark/30 bg-parchment/60 px-4 py-6 text-center text-sm text-ink-soft">
-          {filtro === 'completados'
-            ? 'Ninguno de tus ejércitos está marcado como completado todavía.'
-            : 'Todos tus ejércitos están completados.'}
+          {!viendoAntiguos && antiguos > 0
+            ? `No hay ninguno reciente que enseñar. Hay ${antiguos} de más de un mes.`
+            : filtro === 'completados'
+              ? 'Ninguno de tus ejércitos está marcado como completado todavía.'
+              : 'Todos tus ejércitos están completados.'}
         </p>
       )}
 

@@ -13,6 +13,18 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.203 — 09/11/2026 11:11
+
+- **Restablecer una contraseña ya no pide la de administrador**: se escribe el
+  usuario y la nueva, y listo. Cada restablecimiento deja su línea en el Log,
+  que es lo que lo hace asumible — cualquiera que llegue a la pantalla de
+  entrada puede cambiarle la contraseña a cualquiera.
+- En Ejércitos, los que llevan **más de un mes sin tocarse no se enseñan**.
+  Al lado del filtro de estado hay un interruptor con cuántos hay, y lo que
+  elijas se recuerda la próxima vez que entres.
+
+---
+
 ## 0.202 — 09/11/2026 11:05
 
 - El filtro de facciones de Personajes de Renombre vuelve a ser un

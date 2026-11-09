@@ -41,9 +41,8 @@ export function UserGate({ children }: { children: ReactNode }) {
   const [mode, setMode] = useState<Mode>('entrar')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  /** Solo al restablecer: repetición de la nueva y contraseña de administrador. */
+  /** Solo al restablecer: la repetición de la nueva. */
   const [repetida, setRepetida] = useState('')
-  const [admin, setAdmin] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
@@ -89,16 +88,11 @@ export function UserGate({ children }: { children: ReactNode }) {
           setError('Las dos contraseñas nuevas no coinciden.')
           return
         }
-        if (!admin) {
-          setError('Hace falta la contraseña de administrador para restablecer.')
-          return
-        }
-        await UserRepository.resetPassword(username, admin, password)
+        await UserRepository.resetPassword(username, password)
         setInfo('Contraseña restablecida. Ya puedes entrar con ella.')
         setMode('entrar')
         setPassword('')
         setRepetida('')
-        setAdmin('')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -117,7 +111,6 @@ export function UserGate({ children }: { children: ReactNode }) {
     setInfo(null)
     setPassword('')
     setRepetida('')
-    setAdmin('')
   }
 
   return (
@@ -159,12 +152,6 @@ export function UserGate({ children }: { children: ReactNode }) {
                 autoComplete="new-password"
                 value={repetida}
                 onChange={(e) => setRepetida(e.target.value)}
-              />
-              <PasswordField
-                label="Contraseña de administrador"
-                autoComplete="off"
-                value={admin}
-                onChange={(e) => setAdmin(e.target.value)}
               />
               <p className="text-mini leading-relaxed text-ink-soft">
                 Restablecer queda anotado en el <b className="text-ink">Log</b>, donde lo ve todo el grupo.

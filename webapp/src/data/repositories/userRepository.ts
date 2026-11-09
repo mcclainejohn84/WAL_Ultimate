@@ -148,22 +148,20 @@ export const UserRepository = {
   },
 
   /**
-   * RESTABLECE la contraseña de cualquier usuario sin saber la suya, a cambio
-   * de la contraseña de administrador. Es para quien la ha olvidado.
+   * RESTABLECE la contraseña de cualquier usuario sin saber la suya. Es para
+   * quien la ha olvidado, y no pide nada más: ni la vieja, ni la de
+   * administrador (ver la sección RESTABLECER de worker/src/index.ts).
    *
    * No deja la sesión iniciada a propósito: quien restablece puede no ser el
    * dueño de la cuenta, así que lo que toca después es entrar con la nueva.
    *
-   * Queda registrado en el Log, y eso es lo que hace asumible tener esta puerta
-   * (ver la sección RESTABLECER de worker/src/index.ts).
+   * Queda registrado en el Log, y eso es lo único que lo hace asumible.
    */
-  async resetPassword(username: string, adminPassword: string, newPassword: string): Promise<void> {
+  async resetPassword(username: string, newPassword: string): Promise<void> {
     const { status, data } = await postAuth<Record<string, never>>('/auth/reset', {
       username: username.trim(),
-      adminHash: await sha256Hex(adminPassword),
       passwordHash: await sha256Hex(newPassword),
     })
-    if (status === 401) throw new Error('La contraseña de administrador no es correcta.')
     if (status === 404) throw new Error('No existe ningún usuario con ese nombre.')
     if (status !== 200) throw new Error(data.error ?? `No se pudo restablecer la contraseña (${status}).`)
   },
