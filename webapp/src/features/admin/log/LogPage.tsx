@@ -1,10 +1,15 @@
 // ============================================================================
 // "Log" — qué se ha tocado, quién y cuándo.
 //
-// Dos pestañas, porque son dos cosas distintas y mezclarlas confundiría:
-//   · Datos    — ediciones del catálogo hechas desde el Editor por vosotros
-//                (ver change_log / changeLogRepository).
-//   · Programa — versiones de la propia aplicación, leídas del CHANGELOG.
+// Pestañas, porque son cosas distintas y mezclarlas confundiría:
+//   · Datos      — ediciones del catálogo hechas desde el Editor por vosotros
+//                  (ver change_log / changeLogRepository).
+//   · Personajes — lo de los Personajes de Renombre, que es de cada partida y
+//                  en la misma lista tapaba lo demás: la experiencia que se
+//                  apunta, sus habilidades, su magia. Van aparte y SOLO se ven
+//                  los de los personajes que uno puede ver: un personaje
+//                  oculto es de su autor, también aquí (ver esVisiblePara).
+//   · Programa   — versiones de la propia aplicación, leídas del CHANGELOG.
 //
 // A propósito NO registra Fichas ni Ejércitos: son trabajo personal de cada
 // usuario, no catálogo compartido, y su ruido taparía lo que sí interesa.
@@ -19,6 +24,9 @@ import {
   type ChangeLogEntity,
 } from '@/data/repositories/changeLogRepository'
 import { parseChangelog } from '@/features/admin/log/changelog'
+import { UnitRepository } from '@/data/repositories/unitRepository'
+import { esVisiblePara } from '@/domain/personajeRenombre'
+import { useSession } from '@/shared/session/useSession'
 import { MigrateImagesPanel } from '@/features/admin/maintenance/MigrateImagesPanel'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { PageHeader } from '@/shared/ui/PageHeader'
@@ -27,7 +35,7 @@ import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { EmptyState } from '@/shared/ui/EmptyState'
 
-type Tab = 'datos' | 'programa' | 'mantenimiento'
+type Tab = 'datos' | 'personajes' | 'programa' | 'mantenimiento'
 
 const PAGE_SIZE = 200
 
@@ -71,6 +79,10 @@ export function LogPage() {
 
   const { data: entries, loading } = useAsync(() => ChangeLogRepository.list(limit), [limit])
   const { data: total } = useAsync(() => ChangeLogRepository.count())
+  // Para saber de qué personajes se pueden enseñar sus líneas: los ocultos son
+  // de su autor y aquí tampoco se asoman.
+  const { user: usuario } = useSession()
+  const { data: unidades } = useAsync(() => UnitRepository.listAll())
   const releases = useMemo(() => parseChangelog(), [])
 
   // Los desplegables se llenan con lo que de verdad hay en el registro, para
@@ -80,9 +92,31 @@ export function LogPage() {
     [entries],
   )
 
+  /** El nombre del personaje al que se refiere una línea, para enseñarlo al lado. */
+  const nombrePorUnidad = useMemo(() => new Map((unidades ?? []).map((u) => [u.id, u.name])), [unidades])
+
+  const personajesVisibles = useMemo(
+    () =>
+      new Set((unidades ?? []).filter((u) => u.isSpecialCharacter && esVisiblePara(u, usuario?.id)).map((u) => u.id)),
+    [unidades, usuario],
+  )
+
+  const deCatalogo = useMemo(() => (entries ?? []).filter((e) => e.entity !== 'personaje'), [entries])
+
+  const dePersonajes = useMemo(
+    () =>
+      (entries ?? []).filter(
+        (e) => e.entity === 'personaje' && e.entityId != null && personajesVisibles.has(e.entityId),
+      ),
+    [entries, personajesVisibles],
+  )
+
   const shown = useMemo(
-    () => (entries ?? []).filter((e) => (!user || e.username === user) && (!entity || e.entity === entity)),
-    [entries, user, entity],
+    () =>
+      (tab === 'personajes' ? dePersonajes : deCatalogo).filter(
+        (e) => (!user || e.username === user) && (tab === 'personajes' || !entity || e.entity === entity),
+      ),
+    [tab, dePersonajes, deCatalogo, user, entity],
   )
 
   const grouped = useMemo(() => {
@@ -106,6 +140,7 @@ export function LogPage() {
           {(
             [
               ['datos', 'Datos'],
+              ['personajes', 'Personajes'],
               ['programa', 'Programa'],
               ['mantenimiento', 'Mantenimiento'],
             ] as Array<[Tab, string]>
@@ -125,7 +160,7 @@ export function LogPage() {
           ))}
         </div>
 
-        {tab === 'datos' && (
+        {(tab === 'datos' || tab === 'personajes') && (
           <>
             <div className="w-44">
               <Select label="Usuario" value={user} onChange={(e) => setUser(e.target.value)}>
@@ -137,7 +172,7 @@ export function LogPage() {
                 ))}
               </Select>
             </div>
-            <div className="w-52">
+            <div className={clsx('w-52', tab !== 'datos' && 'hidden')}>
               <Select label="Tipo" value={entity} onChange={(e) => setEntity(e.target.value)}>
                 <option value="">Todo</option>
                 {(Object.keys(ENTITY_LABELS) as ChangeLogEntity[]).map((key) => (
@@ -151,16 +186,11 @@ export function LogPage() {
         )}
       </div>
 
-      {tab === 'datos' && (
+      {(tab === 'datos' || tab === 'personajes') && (
         <>
           {loading && <Spinner />}
 
-          {!loading && shown.length === 0 && (
-            <EmptyState
-              title="Todavía no hay cambios registrados"
-              description="Aquí irán apareciendo las ediciones del catálogo: facciones, unidades, reglas, equipo, monturas y carros."
-            />
-          )}
+          {!loading && shown.length === 0 && <EmptyState title="Todavía no hay cambios registrados" />}
 
           {!loading && shown.length > 0 && (
             <div className="space-y-5">
@@ -181,7 +211,12 @@ export function LogPage() {
                         >
                           {ACTION_LABELS[e.action]}
                         </span>
-                        <span className="min-w-0 flex-1 text-sm text-ink">{e.description}</span>
+                        <span className="min-w-0 flex-1 text-sm text-ink">
+                          {tab === 'personajes' && e.entityId != null && nombrePorUnidad.has(e.entityId) && (
+                            <b className="mr-1.5 font-semibold text-maroon">{nombrePorUnidad.get(e.entityId)}</b>
+                          )}
+                          {e.description}
+                        </span>
                         <span className="shrink-0 text-xs font-medium text-ink-soft">{e.username}</span>
                       </div>
                     ))}

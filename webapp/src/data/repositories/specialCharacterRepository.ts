@@ -207,7 +207,7 @@ export const SpecialCharacterRepository = {
   async setCosteOculto(unitId: number, oculto: boolean): Promise<void> {
     await execCatalog('UPDATE units SET hide_cost = ? WHERE id = ?', [oculto ? 1 : 0, unitId])
     await ChangeLogRepository.record(
-      'unidad',
+      'personaje',
       'editar',
       oculto
         ? 'Dejó de cobrar el coste de un personaje de renombre'
@@ -233,7 +233,7 @@ export const SpecialCharacterRepository = {
       }
     }
     await ChangeLogRepository.record(
-      'unidad',
+      'personaje',
       'editar',
       oculto ? 'Ocultó el personaje de renombre' : 'Dejó de ocultar el personaje de renombre',
       unitId,
@@ -318,7 +318,7 @@ export const SpecialCharacterRepository = {
       getCurrentUser()?.id ?? null,
     ])
     await ChangeLogRepository.record(
-      'unidad',
+      'personaje',
       'editar',
       `Apuntó ${amount > 0 ? '+' : ''}${Math.round(amount)} de experiencia${note.trim() ? ` (${note.trim()})` : ''}`,
       unitId,

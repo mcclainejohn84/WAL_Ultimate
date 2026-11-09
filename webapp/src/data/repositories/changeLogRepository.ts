@@ -29,7 +29,20 @@ import { exec, query } from '@/data/sqlite/client'
 import { queryLocalOne } from '@/data/sqlite/localCatalog'
 import { getCurrentUser } from '@/shared/session/useSession'
 
-export type ChangeLogEntity = 'faccion' | 'unidad' | 'regla' | 'equipo' | 'opcion' | 'montura' | 'carro' | 'usuario'
+export type ChangeLogEntity =
+  | 'faccion'
+  | 'unidad'
+  | 'regla'
+  | 'equipo'
+  | 'opcion'
+  | 'montura'
+  | 'carro'
+  | 'usuario'
+  // Los PERSONAJES DE RENOMBRE llevan entidad propia aunque por dentro sean
+  // unidades: lo suyo —la experiencia, sobre todo— se apunta cada partida y
+  // en la misma lista que el catálogo tapaba lo que se va a auditar. En el
+  // Log tienen su pestaña.
+  | 'personaje'
 export type ChangeLogAction = 'crear' | 'editar' | 'borrar'
 
 export interface ChangeLogEntry {
@@ -52,6 +65,7 @@ export const ENTITY_LABELS: Record<ChangeLogEntity, string> = {
   montura: 'Montura/Dotación',
   carro: 'Carro',
   usuario: 'Usuario',
+  personaje: 'Personaje de renombre',
 }
 
 export const ACTION_LABELS: Record<ChangeLogAction, string> = {
@@ -73,21 +87,22 @@ function mapEntry(row: Record<string, unknown>): ChangeLogEntry {
 }
 
 /**
- * LOS PERSONAJES DE RENOMBRE NO SE REGISTRAN. Nunca, y por eso se decide aquí y
- * no en cada sitio que llama a `record`.
+ * LOS PERSONAJES DE RENOMBRE SE REGISTRAN APARTE, con entidad propia, y por eso
+ * se decide aquí y no en cada sitio que llama a `record`: lo que llega como
+ * 'unidad' sobre un personaje de renombre se guarda como 'personaje', y en el
+ * Log tiene su pestaña.
  *
- * El motivo es que se pueden OCULTAR (ver units.hidden): un personaje oculto
- * solo lo ve su autor, y de nada sirve esconderlo del listado si el Log le está
- * contando a todo el mundo que existe, cómo se llama y cuánta experiencia lleva.
- * El registro es una pantalla común y no filtra por autor.
+ * Antes no se registraban en absoluto, y el motivo era que se pueden OCULTAR
+ * (ver units.hidden): un personaje oculto solo lo ve su autor, y de nada sirve
+ * esconderlo del listado si el Log le está contando a todo el mundo que existe,
+ * cómo se llama y cuánta experiencia lleva. Eso NO ha cambiado — lo que lo
+ * resuelve ahora es que la pestaña de Personajes se filtra por lo que cada uno
+ * puede ver (ver esVisiblePara y LogPage).
  *
  * Se comprueba contra la copia local del catálogo, así que no cuesta red. Si la
  * unidad ya no está —un borrado registra DESPUÉS de borrar— no se puede saber
- * desde aquí, y por eso ese caso concreto lo mira `UnitRepository.remove` antes
- * de borrar.
- *
- * Lo ya registrado se queda: son cosas que pasaron y reescribir el historial
- * para maquillarlo sería peor que la fuga que se está tapando.
+ * desde aquí, y por eso el borrado de un personaje lo sigue sin registrar
+ * `UnitRepository.remove`: sin su fila no hay forma de saber si estaba oculto.
  */
 async function esPersonajeDeRenombre(unitId: number): Promise<boolean> {
   try {
@@ -117,7 +132,8 @@ export const ChangeLogRepository = {
     description: string,
     entityId?: number | null,
   ): Promise<void> {
-    if (entity === 'unidad' && entityId != null && (await esPersonajeDeRenombre(entityId))) return
+    const deVerdad =
+      entity === 'unidad' && entityId != null && (await esPersonajeDeRenombre(entityId)) ? 'personaje' : entity
     const user = getCurrentUser()
     try {
       await exec(
@@ -127,7 +143,7 @@ export const ChangeLogRepository = {
           new Date().toISOString(),
           user?.id ?? null,
           user?.username ?? 'desconocido',
-          entity,
+          deVerdad,
           entityId ?? null,
           action,
           description,

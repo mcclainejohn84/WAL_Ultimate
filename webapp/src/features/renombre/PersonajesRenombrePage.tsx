@@ -25,6 +25,9 @@ import { FactionRepository } from '@/data/repositories/factionRepository'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/EmptyState'
+import { clsx } from 'clsx'
+import { useSession } from '@/shared/session/useSession'
+import { useFiltroDeFacciones } from '@/features/renombre/filtroDeFacciones'
 import { Modal } from '@/shared/ui/Modal'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
@@ -58,13 +61,15 @@ function CabeceraDeFaccion({ faccion, cuantos }: { faccion: Pick<Faction, 'name'
 }
 
 /** Valor del filtro cuando no filtra nada. Es una cadena porque sale de un <select>. */
-const TODAS = 'todas'
 
 export function PersonajesRenombrePage() {
   const { data: personajes, loading, reload } = useAsync(() => SpecialCharacterRepository.listAll())
   const { data: facciones } = useAsync(() => FactionRepository.listAll())
   const [creando, setCreando] = useState(false)
-  const [faccionFiltro, setFaccionFiltro] = useState<string>(TODAS)
+  // QUÉ FACCIONES se están mirando, y se acuerda de una visita a otra (ver
+  // filtroDeFacciones). Vacío = todas.
+  const { user: usuario } = useSession()
+  const [faccionesElegidas, setFaccionesElegidas] = useFiltroDeFacciones(usuario?.id)
   const [error, setError] = useState<string | null>(null)
 
   // LA RUEDA, SOLO LA PRIMERA VEZ. Con `if (loading)` a secas, cualquier
@@ -80,7 +85,7 @@ export function PersonajesRenombrePage() {
   // el mensaje de "no hay ninguno" salen todos del mismo sitio y no pueden
   // contradecirse (un contador que suma los de todas las facciones sobre una
   // lista filtrada es el fallo clásico de esta pantalla).
-  const lista = faccionFiltro === TODAS ? todos : todos.filter((p) => String(p.factionId) === faccionFiltro)
+  const lista = faccionesElegidas.size === 0 ? todos : todos.filter((p) => faccionesElegidas.has(p.factionId))
   // Agrupados por facción y en el orden en que vienen las facciones, no
   // alfabético: es el orden que el usuario ya conoce del resto del programa.
   const porFaccion = new Map<number, PersonajeEspecial[]>()
@@ -119,40 +124,65 @@ export function PersonajesRenombrePage() {
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {faccionesDelFiltro.length > 1 && (
-        <div className="mb-5 flex flex-wrap items-end gap-3">
-          <div className="w-64">
-            <Select label="Facción" value={faccionFiltro} onChange={(e) => setFaccionFiltro(e.target.value)}>
-              <option value={TODAS}>Todas las facciones</option>
-              {faccionesDelFiltro.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <p className="pb-1.5 text-xs text-ink-soft">
-            {lista.length === 1 ? '1 personaje' : `${lista.length} personajes`}
-            {faccionFiltro !== TODAS && todos.length !== lista.length && ` de ${todos.length}`}
-          </p>
+        <div className="mb-5 flex flex-wrap items-center gap-0.5 rounded-sm border border-rule-dark/30 bg-parchment/70 p-0.5">
+          <button
+            type="button"
+            onClick={() => setFaccionesElegidas(new Set())}
+            aria-pressed={faccionesElegidas.size === 0}
+            className={clsx(
+              'rounded-sm px-2.5 py-1 text-xs font-semibold tracking-wide transition-colors',
+              faccionesElegidas.size === 0 ? 'bg-bronze text-parchment' : 'text-ink-soft hover:bg-parchment-dark',
+            )}
+          >
+            Todas
+            <span className="ml-1.5 text-mini tabular-nums opacity-70">{todos.length}</span>
+          </button>
+          {faccionesDelFiltro.map((f) => {
+            const marcada = faccionesElegidas.has(f.id)
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => {
+                  const siguiente = new Set(faccionesElegidas)
+                  if (marcada) siguiente.delete(f.id)
+                  else siguiente.add(f.id)
+                  setFaccionesElegidas(siguiente)
+                }}
+                aria-pressed={marcada}
+                className={clsx(
+                  'rounded-sm px-2.5 py-1 text-xs font-semibold tracking-wide transition-colors',
+                  marcada
+                    ? 'bg-maroon text-parchment shadow-sm shadow-black/20'
+                    : 'text-ink-soft hover:bg-parchment-dark',
+                )}
+              >
+                {f.name}
+                <span className="ml-1.5 text-mini tabular-nums opacity-70">
+                  {todos.filter((p) => p.factionId === f.id).length}
+                </span>
+              </button>
+            )
+          })}
         </div>
       )}
 
       {lista.length === 0 ? (
         <EmptyState
-          title={faccionFiltro === TODAS ? 'Todavía no hay ninguno' : 'Ninguno en esta facción'}
+          title={faccionesElegidas.size === 0 ? 'Todavía no hay ninguno' : 'Ninguno en esas facciones'}
           description={
-            faccionFiltro === TODAS
+            faccionesElegidas.size === 0
               ? 'Elige un personaje de una facción y se copiará entero para darle nombre e historia.'
               : 'Prueba con otra facción, o quita el filtro para verlos todos.'
           }
           action={
-            faccionFiltro === TODAS ? (
+            faccionesElegidas.size === 0 ? (
               <Button variant="primary" onClick={() => setCreando(true)}>
                 <PlusIcon className="h-4 w-4" />
                 Nuevo personaje
               </Button>
             ) : (
-              <Button variant="secondary" onClick={() => setFaccionFiltro(TODAS)}>
+              <Button variant="secondary" onClick={() => setFaccionesElegidas(new Set())}>
                 Ver todas las facciones
               </Button>
             )

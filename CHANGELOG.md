@@ -13,6 +13,19 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.201 — 09/11/2026 10:27
+
+- El Log tiene pestaña propia de **Personajes**, separada de la de Datos: la
+  experiencia que se apunta, las habilidades, la magia y lo demás de los
+  Personajes de Renombre, con el nombre del personaje delante. Hasta ahora no
+  se registraba nada de ellos; lo que lo impedía era que un personaje oculto
+  no puede asomar, y lo resuelve que esta pestaña solo enseña los personajes
+  que uno puede ver.
+- En Personajes de Renombre, el filtro de facción pasa a ser de **varias a la
+  vez** y **se acuerda** de lo que tenías marcado la próxima vez que entres.
+
+---
+
 ## 0.200 — 09/11/2026 10:21
 
 - **Los dos catálogos de los Personajes de Renombre pasan a la base de datos y
