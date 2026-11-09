@@ -3,10 +3,11 @@
 // mágicas, saberes arcanos y pergaminos, con lo que cuesta cada cosa en
 // experiencia.
 //
-// Vive en el código por lo mismo que el catálogo de habilidades y el de
-// cicatrices (ver domain/habilidadesDeRenombre): es el reglamento, no datos
-// del grupo. La base guarda solo QUÉ tiene cada personaje, por la `clave`
-// estable de cada entrada.
+// ESTO ES LA SEMILLA, NO LA VERDAD. El catálogo se edita desde el Editor y
+// vive en la tabla `magic_skills` (ver magicRepository); lo de aquí solo
+// rellena esa tabla la primera vez y hace de respaldo mientras no exista.
+// Las reglas de precio (los niveles, los recargos) sí siguen siendo código:
+// son fórmulas, no datos.
 //
 // DÓNDE SE GUARDA CADA COSA:
 //   - Las sendas y su nivel, en `unit_magic_paths` (ver magicRepository).

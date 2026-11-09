@@ -154,6 +154,8 @@ const SNAPSHOT_TABLES = [
   'magic_paths',
   'magic_spells',
   'unit_magic_paths',
+  'character_skills',
+  'magic_skills',
   'category_composition_rules',
   // Apéndices: texto largo con formato, pero se lee siempre junto a la ficha
   // de la unidad, así que viaja con el resto del catálogo.
@@ -1226,6 +1228,32 @@ const MIGRATIONS: string[] = [
   // nuevas, porque el precio de subir de nivel sube con cada senda abierta
   // (ver domain/magiaDeRenombre).
   'ALTER TABLE unit_magic_paths ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0',
+  // LOS DOS CATÁLOGOS DE LOS PERSONAJES DE RENOMBRE, que hasta ahora vivían
+  // escritos en el código. Pasan a la base para poder editarlos desde el
+  // Editor como cualquier otro catálogo; las filas las siembra la aplicación
+  // (ver catalogMaintenance), que es donde está el reglamento de salida.
+  `CREATE TABLE IF NOT EXISTS character_skills (
+     id          INTEGER PRIMARY KEY AUTOINCREMENT,
+     skill_key   TEXT NOT NULL UNIQUE,
+     name        TEXT NOT NULL,
+     kind        TEXT NOT NULL,
+     cost        INTEGER,
+     description TEXT,
+     sort_order  INTEGER NOT NULL DEFAULT 0
+   )`,
+  `CREATE TABLE IF NOT EXISTS magic_skills (
+     id           INTEGER PRIMARY KEY AUTOINCREMENT,
+     skill_key    TEXT NOT NULL UNIQUE,
+     name         TEXT NOT NULL,
+     kind         TEXT NOT NULL,
+     cost         INTEGER NOT NULL DEFAULT 0,
+     description  TEXT NOT NULL DEFAULT '',
+     requires_key TEXT,
+     level        INTEGER,
+     difficulty   TEXT,
+     building     TEXT,
+     sort_order   INTEGER NOT NULL DEFAULT 0
+   )`,
   // Ahora las listas los ofrecen POR DEFECTO, al revés que antes.
   //
   // Es una columna NUEVA en vez de darle la vuelta a la anterior con un UPDATE

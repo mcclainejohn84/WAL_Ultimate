@@ -31,14 +31,10 @@ import { computeEntryCost } from '@/domain/armyValidation'
 import { MagicRepository } from '@/data/repositories/magicRepository'
 import { SpecialCharacterRepository } from '@/data/repositories/specialCharacterRepository'
 import { CICATRIZ_POR_CLAVE, type CicatrizDeRenombre } from '@/domain/cicatricesDeRenombre'
-import {
-  ETIQUETAS_DE_TIPO,
-  HABILIDAD_POR_CLAVE,
-  type HabilidadDeRenombre,
-  type TipoDeHabilidad,
-} from '@/domain/habilidadesDeRenombre'
+import { ETIQUETAS_DE_TIPO, type HabilidadDeRenombre, type TipoDeHabilidad } from '@/domain/habilidadesDeRenombre'
+import { CharacterSkillRepository } from '@/data/repositories/characterSkillRepository'
 import { MAGIC_GROUP_LABELS, sendasDeLaEntrada, type MagicPathDetail, type MagicSpell } from '@/domain/magic'
-import { ETIQUETAS_DE_MAGIA, MAGIA_POR_CLAVE, spellIdDePergamino, type HabilidadMagica } from '@/domain/magiaDeRenombre'
+import { ETIQUETAS_DE_MAGIA, spellIdDePergamino, type HabilidadMagica } from '@/domain/magiaDeRenombre'
 import { mergeSpecialRules } from '@/domain/unitFormat'
 import { mostrarPdf } from '@/features/army-lists/pdfWindow'
 import type { ArmyListDetail, ArmyListEntry, AttributeProfile, SpecialRule } from '@/domain/types'
@@ -386,14 +382,18 @@ export interface FichaDeRenombre {
   pergaminos: number[]
 }
 
-export function fichaDeRenombre(clavesDeHabilidad: string[], clavesDeCicatriz: string[]): FichaDeRenombre {
+export function fichaDeRenombre(
+  clavesDeHabilidad: string[],
+  clavesDeCicatriz: string[],
+  catalogos: { habilidades: Map<string, HabilidadDeRenombre>; magia: Map<string, HabilidadMagica> },
+): FichaDeRenombre {
   const suyas = clavesDeHabilidad
-    .map((clave) => HABILIDAD_POR_CLAVE.get(clave))
+    .map((clave) => catalogos.habilidades.get(clave))
     .filter((h): h is HabilidadDeRenombre => h != null)
   // Las de magia viven en la misma tabla que las de personaje y se distinguen
   // por el prefijo de su clave (ver domain/magiaDeRenombre).
   const magia = clavesDeHabilidad
-    .map((clave) => MAGIA_POR_CLAVE.get(clave))
+    .map((clave) => catalogos.magia.get(clave))
     .filter((h): h is HabilidadMagica => h != null)
   const deMagia = (tipo: HabilidadMagica['tipo']) =>
     magia.filter((h) => h.tipo === tipo).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
@@ -913,13 +913,21 @@ export async function exportArmyListToPdf(
   // a la tabla, cada cosa con lo que hace.
   const entradasDeRenombre = sortedEntries.filter((e) => e.unit.isSpecialCharacter)
   if (entradasDeRenombre.length > 0) {
+    // Los dos catálogos se piden UNA vez para todos los personajes: salen de
+    // la base, que es donde se editan, y traen el respaldo del código si la
+    // tabla todavía no existe.
+    const [catalogoDeHabilidades, catalogoDeMagia] = await Promise.all([
+      CharacterSkillRepository.mapa(),
+      MagicRepository.magicSkillMap(),
+    ])
+    const catalogos = { habilidades: catalogoDeHabilidades, magia: catalogoDeMagia }
     const fichas = await Promise.all(
       entradasDeRenombre.map(async (entry) => {
         const [habilidades, cicatrices] = await Promise.all([
           SpecialCharacterRepository.listHabilidades(entry.unit.id),
           SpecialCharacterRepository.listCicatrices(entry.unit.id),
         ])
-        return { entry, ficha: fichaDeRenombre(habilidades, cicatrices) }
+        return { entry, ficha: fichaDeRenombre(habilidades, cicatrices, catalogos) }
       }),
     )
     const conAlgo = fichas.filter((f) => !fichaDeRenombreVacia(f.ficha))

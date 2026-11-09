@@ -19,6 +19,7 @@ import {
   type MagicSpell,
   type MagicSpellInput,
 } from '@/domain/magic'
+import { CATALOGO_DE_MAGIA, type HabilidadMagica, type TipoDeMagia } from '@/domain/magiaDeRenombre'
 import type { EntryMagicPath } from '@/domain/types'
 
 /**
@@ -28,6 +29,57 @@ import type { EntryMagicPath } from '@/domain/types'
  */
 export interface SendaDeUnidad extends EntryMagicPath {
   sortOrder: number
+}
+
+/** Una fila del catálogo de magia: la entrada más lo que hace falta para editarla. */
+export interface FilaDeMagia extends HabilidadMagica {
+  id: number
+  orden: number
+}
+
+export interface MagicSkillInputPropio {
+  clave: string
+  nombre: string
+  tipo: TipoDeMagia
+  coste: number
+  descripcion: string
+  requiere?: string | null
+  nivel?: number | null
+  dificultad?: string | null
+  edificio?: string | null
+}
+
+const ORDEN_DE_MAGIA: TipoDeMagia[] = ['habilidad', 'avanzada', 'saber']
+
+function mapMagicSkill(row: Record<string, unknown>): FilaDeMagia {
+  return {
+    id: row.id as number,
+    clave: row.skill_key as string,
+    nombre: row.name as string,
+    tipo: row.kind as TipoDeMagia,
+    coste: (row.cost as number) ?? 0,
+    descripcion: (row.description as string) ?? '',
+    requiere: (row.requires_key as string) ?? undefined,
+    nivel: (row.level as number) ?? undefined,
+    dificultad: (row.difficulty as string) ?? undefined,
+    edificio: (row.building as string) ?? undefined,
+    orden: (row.sort_order as number) ?? 0,
+  }
+}
+
+function ordenarMagia(filas: FilaDeMagia[]): FilaDeMagia[] {
+  return [...filas].sort(
+    (a, b) =>
+      ORDEN_DE_MAGIA.indexOf(a.tipo) - ORDEN_DE_MAGIA.indexOf(b.tipo) ||
+      (a.nivel ?? 0) - (b.nivel ?? 0) ||
+      a.orden - b.orden ||
+      a.id - b.id,
+  )
+}
+
+/** La semilla vestida de filas, para cuando la tabla todavía no está. */
+function semillaDeMagia(): FilaDeMagia[] {
+  return CATALOGO_DE_MAGIA.map((h, indice) => ({ ...h, id: -(indice + 1), orden: indice }))
 }
 
 function mapPath(row: Record<string, unknown>): MagicPath {
@@ -127,6 +179,76 @@ export const MagicRepository = {
       { sql: 'DELETE FROM magic_paths WHERE id = ?', params: [id] },
     ])
     await ChangeLogRepository.record('regla', 'borrar', `Borró la senda de magia "${path.name}"`, id)
+  },
+
+  // --------------------------------------------------------------------------
+  // EL CATÁLOGO DE MAGIA DE LOS PERSONAJES DE RENOMBRE (magic_skills):
+  // habilidades mágicas, avanzadas y saberes arcanos.
+  //
+  // Nació escrito en el código (domain/magiaDeRenombre), que ahora es solo la
+  // SEMILLA y el respaldo de cuando la tabla todavía no existe. Lo que manda
+  // es la base, porque es lo que se edita desde el Editor.
+  // --------------------------------------------------------------------------
+
+  async listMagicSkills(): Promise<FilaDeMagia[]> {
+    try {
+      const filas = await queryLocal<FilaDeMagia>('SELECT * FROM magic_skills', [], mapMagicSkill)
+      return filas.length > 0 ? ordenarMagia(filas) : semillaDeMagia()
+    } catch {
+      return semillaDeMagia()
+    }
+  },
+
+  /** Por clave, que es como se guarda lo que tiene cada personaje. */
+  async magicSkillMap(): Promise<Map<string, HabilidadMagica>> {
+    return new Map((await MagicRepository.listMagicSkills()).map((h) => [h.clave, h]))
+  },
+
+  async createMagicSkill(input: MagicSkillInputPropio): Promise<number> {
+    const [{ next }] = await queryLocal(
+      'SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM magic_skills WHERE kind = ?',
+      [input.tipo],
+      (row) => ({ next: row.next as number }),
+    )
+    return execCatalog(
+      `INSERT INTO magic_skills (skill_key, name, kind, cost, description, requires_key, level, difficulty, building, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        input.clave,
+        input.nombre,
+        input.tipo,
+        input.coste,
+        input.descripcion,
+        input.requiere ?? null,
+        input.nivel ?? null,
+        input.dificultad ?? null,
+        input.edificio ?? null,
+        next,
+      ],
+    )
+  },
+
+  /** La clave no se toca: es lo que tienen apuntado los personajes (unit_skills). */
+  async updateMagicSkill(id: number, input: Omit<MagicSkillInputPropio, 'clave'>): Promise<void> {
+    await execCatalog(
+      `UPDATE magic_skills SET name = ?, kind = ?, cost = ?, description = ?, requires_key = ?,
+              level = ?, difficulty = ?, building = ? WHERE id = ?`,
+      [
+        input.nombre,
+        input.tipo,
+        input.coste,
+        input.descripcion,
+        input.requiere ?? null,
+        input.nivel ?? null,
+        input.dificultad ?? null,
+        input.edificio ?? null,
+        id,
+      ],
+    )
+  },
+
+  async removeMagicSkill(id: number): Promise<void> {
+    await execCatalog('DELETE FROM magic_skills WHERE id = ?', [id])
   },
 
   // --------------------------------------------------------------------------

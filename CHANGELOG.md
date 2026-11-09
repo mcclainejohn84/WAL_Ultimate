@@ -13,6 +13,22 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.200 — 09/11/2026 10:21
+
+- **Los dos catálogos de los Personajes de Renombre pasan a la base de datos y
+  se editan desde el Editor.** Lo que había escrito en el código se siembra
+  solo la primera vez, así que nadie pierde nada, y a partir de ahí manda lo
+  que haya en la base.
+- Pantalla nueva **"Habilidades de personaje"**: rangos, mejoras de atributo,
+  habilidades y características sociales, con crear, editar y borrar. Antes de
+  borrar dice cuántos personajes la tienen.
+- La pantalla de magia pasa a llamarse **"Sendas de magia y habilidades
+  mágicas"**: las sendas se pueden filtrar por rama y debajo están las
+  habilidades mágicas, las avanzadas y los saberes arcanos, también editables.
+  Los pergaminos son hechizos de las propias sendas y se editan donde siempre.
+
+---
+
 ## 0.199 — 09/11/2026 10:07
 
 - En la magia de un Personaje de Renombre, el apartado se llama **"Sendas de

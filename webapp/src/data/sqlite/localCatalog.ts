@@ -78,6 +78,10 @@ const CATALOG_TABLES = [
   // compuesta se lee como si fuera normal.
   'unit_troop_profiles',
   'unit_equipment_profiles',
+  // Los dos catálogos de los Personajes de Renombre, editables desde el
+  // Editor (ver characterSkillRepository y magicRepository).
+  'character_skills',
+  'magic_skills',
 ] as const
 
 type CatalogSnapshot = Partial<Record<(typeof CATALOG_TABLES)[number], Record<string, unknown>[]>>

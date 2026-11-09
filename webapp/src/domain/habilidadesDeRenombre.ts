@@ -4,7 +4,13 @@
 // Rangos, mejoras de atributo, habilidades y características sociales, con lo
 // que cuesta cada una en puntos de experiencia y lo que hace.
 //
-// POR QUÉ VIVE EN EL CÓDIGO Y NO EN LA BASE DE DATOS. Porque es el reglamento,
+// ESTO ES LA SEMILLA, NO LA VERDAD. Desde que el catálogo se edita en el
+// Editor, las entradas de aquí solo se usan para rellenar la tabla
+// `character_skills` la primera vez (ver characterSkillRepository) y como
+// respaldo si esa tabla todavía no existe. Lo que mande en pantalla es lo que
+// haya en la base, con lo que el usuario haya cambiado.
+//
+// POR QUÉ NACIÓ EN EL CÓDIGO Y NO EN LA BASE DE DATOS. Porque es el reglamento,
 // no datos del grupo: no lo edita nadie desde el programa, es el mismo para
 // todas las partidas y no cambia salvo que cambie el libro. En una tabla
 // obligaría a una migración con 131 filas de texto, a mantenerlo sincronizado
@@ -25,6 +31,9 @@ export const ETIQUETAS_DE_TIPO: Record<TipoDeHabilidad, string> = {
   habilidad: 'Habilidades',
   social: 'Características sociales',
 }
+
+/** El orden del reglamento, que es el que espera quien lo tiene en la mano. */
+export const ORDEN_DE_TIPOS: TipoDeHabilidad[] = ['rango', 'atributo', 'habilidad', 'social']
 
 export interface HabilidadDeRenombre {
   /** Clave estable, la que se guarda en la base. NUNCA se cambia. */

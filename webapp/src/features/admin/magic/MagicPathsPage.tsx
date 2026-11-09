@@ -38,6 +38,7 @@ import { TextField } from '@/shared/ui/TextField'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { Modal } from '@/shared/ui/Modal'
 import { PlusIcon, TrashIcon } from '@/shared/ui/icons'
+import { MagicSkillsPanel } from '@/features/admin/magic/MagicSkillsPanel'
 
 const EMPTY_SPELL: MagicSpellInput = {
   level: 1,
@@ -197,6 +198,8 @@ export function MagicPathsPage() {
   const [editingPathName, setEditingPathName] = useState('')
   const [editingPathGroup, setEditingPathGroup] = useState<MagicGroup>('ELEMENTALES')
   const [error, setError] = useState<string | null>(null)
+  // Treinta sendas en una columna son tres pantallas de scroll.
+  const [rama, setRama] = useState<MagicGroup | 'todas'>('todas')
 
   const selected = (paths ?? []).find((p) => p.id === selectedId) ?? null
   const warnings = selected ? pathWarnings(selected.spells) : []
@@ -215,7 +218,7 @@ export function MagicPathsPage() {
   return (
     <div>
       <PageHeader
-        title="Sendas de Magia"
+        title="Sendas de magia y habilidades mágicas"
         description="Las sendas que puede conocer un hechicero, con sus hechizos. Se asignan a cada personaje desde el apartado «Magia» de su ficha."
         actions={
           <Button variant="primary" onClick={() => setCreatingPath(true)}>
@@ -231,8 +234,28 @@ export function MagicPathsPage() {
       {!loading && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
           <Panel title="Sendas">
+            <div className="mb-2 flex flex-wrap gap-0.5 rounded-sm border border-rule-dark/30 bg-parchment/70 p-0.5">
+              {(['todas', ...MAGIC_GROUPS] as const).map((r) => {
+                const cuantas = r === 'todas' ? (paths ?? []).length : (paths ?? []).filter((p) => p.group === r).length
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRama(r)}
+                    aria-pressed={r === rama}
+                    className={clsx(
+                      'rounded-sm px-2 py-0.5 text-mini font-semibold tracking-wide transition-colors',
+                      r === rama ? 'bg-bronze text-parchment' : 'text-ink-soft hover:bg-parchment-dark',
+                    )}
+                  >
+                    {r === 'todas' ? 'Todas' : MAGIC_GROUP_LABELS[r]}
+                    <span className="ml-1 text-micro tabular-nums opacity-70">{cuantas}</span>
+                  </button>
+                )
+              })}
+            </div>
             <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
-              {MAGIC_GROUPS.map((group) => {
+              {MAGIC_GROUPS.filter((g) => rama === 'todas' || g === rama).map((group) => {
                 const groupPaths = (paths ?? []).filter((p) => p.group === group)
                 if (groupPaths.length === 0) return null
                 return (
@@ -379,6 +402,12 @@ export function MagicPathsPage() {
               )}
             </Panel>
           )}
+        </div>
+      )}
+
+      {!loading && (
+        <div className="mt-6">
+          <MagicSkillsPanel />
         </div>
       )}
 

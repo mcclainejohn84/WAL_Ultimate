@@ -41,7 +41,6 @@ import {
   COSTE_DEL_PERGAMINO,
   ETIQUETAS_DE_MAGIA,
   GREMIO,
-  MAGIA_POR_CLAVE,
   NIVEL_MAXIMO_DE_PERGAMINO,
   NOMBRE_DEL_NIVEL,
   TORRE,
@@ -51,7 +50,6 @@ import {
   devolucionDeHabilidadMagica,
   esClaveDeMagia,
   faltanSaberesPorDebajo,
-  magiaDeTipo,
   nivelMaximoDeSenda,
   spellIdDePergamino,
   type HabilidadMagica,
@@ -105,6 +103,10 @@ export function MagiaModal({
   const { data: catalogoDeSendas } = useAsync(() => MagicRepository.listPaths())
   const { data: sendasConHechizos } = useAsync(() => MagicRepository.listPathsWithSpells())
   const { data: sendas, reload: recargarSendas } = useAsync(() => MagicRepository.listUnitPaths(personaje.id))
+  // EL CATÁLOGO SALE DE LA BASE, que es donde se edita (ver la pantalla
+  // "Sendas de magia y habilidades mágicas" del Editor). El del código es la
+  // semilla.
+  const { data: catalogoDeMagia } = useAsync(() => MagicRepository.listMagicSkills())
   const { data: claves, reload: recargarClaves } = useAsync(() =>
     SpecialCharacterRepository.listHabilidades(personaje.id),
   )
@@ -136,8 +138,11 @@ export function MagiaModal({
   const misSendas = sendas ?? []
 
   // ---- Lo que sabe el personaje, repartido por listas --------------------
+  const magiaPorClave = new Map((catalogoDeMagia ?? []).map((h) => [h.clave, h]))
+  const magiaDeTipo = (tipo: 'habilidad' | 'avanzada' | 'saber') =>
+    (catalogoDeMagia ?? []).filter((h) => h.tipo === tipo)
   const deMagia = misClaves.filter(esClaveDeMagia)
-  const misHabilidades = deMagia.map((c) => MAGIA_POR_CLAVE.get(c)).filter((h) => h != null)
+  const misHabilidades = deMagia.map((c) => magiaPorClave.get(c)).filter((h) => h != null)
   const cuantasHabilidades = misHabilidades.filter((h) => h.tipo === 'habilidad' || h.tipo === 'avanzada').length
   const saberesPorNivel: Record<number, number> = {}
   for (const h of misHabilidades)
@@ -195,7 +200,8 @@ export function MagiaModal({
     void hacer(() => SpecialCharacterRepository.quitarHabilidad(personaje.id, clave, nombre, devolucion))
   }
 
-  const cargando = catalogoDeSendas == null || sendas == null || claves == null || experiencia == null
+  const cargando =
+    catalogoDeSendas == null || sendas == null || claves == null || experiencia == null || catalogoDeMagia == null
 
   return (
     <Modal
@@ -326,7 +332,7 @@ export function MagiaModal({
                 devolucion={(h) => devolucionDeHabilidadMagica(h.coste, cuantasHabilidades, sendasArchimago)}
                 bloqueo={(h) => {
                   if (h.requiere && !tiene.has(h.requiere)) {
-                    return `Requiere ${MAGIA_POR_CLAVE.get(h.requiere)?.nombre ?? 'otra habilidad'}`
+                    return `Requiere ${magiaPorClave.get(h.requiere)?.nombre ?? 'otra habilidad'}`
                   }
                   if (h.clave === 'magia:aprendiz-de-mago' && sendasArchimago === 0) return 'Requiere ser Archimago'
                   return null

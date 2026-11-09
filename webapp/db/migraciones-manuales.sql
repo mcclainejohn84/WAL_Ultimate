@@ -111,3 +111,28 @@ CREATE TABLE IF NOT EXISTS unit_scars (
 -- de Renombre, que es suya y no de la lista en la que entren.
 ALTER TABLE unit_magic_paths ADD COLUMN level INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE unit_magic_paths ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;
+
+-- Los dos catálogos editables de los Personajes de Renombre. Se siembran solos
+-- desde la aplicación (ver catalogMaintenance).
+CREATE TABLE IF NOT EXISTS character_skills (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  skill_key   TEXT NOT NULL UNIQUE,
+  name        TEXT NOT NULL,
+  kind        TEXT NOT NULL,
+  cost        INTEGER,
+  description TEXT,
+  sort_order  INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS magic_skills (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  skill_key    TEXT NOT NULL UNIQUE,
+  name         TEXT NOT NULL,
+  kind         TEXT NOT NULL,
+  cost         INTEGER NOT NULL DEFAULT 0,
+  description  TEXT NOT NULL DEFAULT '',
+  requires_key TEXT,
+  level        INTEGER,
+  difficulty   TEXT,
+  building     TEXT,
+  sort_order   INTEGER NOT NULL DEFAULT 0
+);

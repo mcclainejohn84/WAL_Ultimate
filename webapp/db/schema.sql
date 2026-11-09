@@ -691,6 +691,51 @@ CREATE TABLE unit_magic_paths (
 );
 
 -- ----------------------------------------------------------------------------
+-- EL CATÁLOGO DE HABILIDADES DE LOS PERSONAJES DE RENOMBRE: rangos, mejoras de
+-- atributo, habilidades y características sociales. Se siembra con el
+-- reglamento (ver data/seeds/characterSkills.ts) y a partir de ahí se edita
+-- desde el Editor como cualquier otro catálogo.
+CREATE TABLE character_skills (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- Clave estable: es lo que se guarda en unit_skills, así que renombrar la
+    -- habilidad no puede cambiarla nunca.
+    skill_key   TEXT NOT NULL UNIQUE,
+    name        TEXT NOT NULL,
+    -- 'rango' | 'atributo' | 'habilidad' | 'social'
+    kind        TEXT NOT NULL,
+    -- NULL en las características sociales, cuyo precio lo pone cuántas lleva
+    -- ya el personaje y no la característica.
+    cost        INTEGER,
+    description TEXT,
+    sort_order  INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_character_skills_kind ON character_skills(kind, sort_order);
+
+-- EL CATÁLOGO DE MAGIA de los Personajes de Renombre: habilidades mágicas,
+-- avanzadas y saberes arcanos. Los pergaminos no están aquí: son hechizos de
+-- nivel 1 y 2 de las propias sendas (ver magic_spells).
+CREATE TABLE magic_skills (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    skill_key    TEXT NOT NULL UNIQUE,
+    name         TEXT NOT NULL,
+    -- 'habilidad' | 'avanzada' | 'saber'
+    kind         TEXT NOT NULL,
+    cost         INTEGER NOT NULL DEFAULT 0,
+    description  TEXT NOT NULL DEFAULT '',
+    -- Clave de la habilidad que hay que tener antes (las avanzadas).
+    requires_key TEXT,
+    -- Nivel y dificultad de un saber arcano.
+    level        INTEGER,
+    difficulty   TEXT,
+    -- Edificio que hace falta, escrito tal cual sale en la pantalla.
+    building     TEXT,
+    sort_order   INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_magic_skills_kind ON magic_skills(kind, sort_order);
+
+-- ----------------------------------------------------------------------------
 CREATE TABLE unit_sheets (
     unit_id            INTEGER PRIMARY KEY REFERENCES units(id) ON DELETE CASCADE,
     -- Las imágenes viven en R2 (ver /image en worker/src/index.ts): aquí solo

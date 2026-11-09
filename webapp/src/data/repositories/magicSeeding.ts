@@ -19,6 +19,7 @@ import { execCatalogBatch, type BatchStatement } from '@/data/sqlite/client'
 import { queryLocal } from '@/data/sqlite/localCatalog'
 import { MAGIC_PATH_SEED } from '@/data/seeds/magicPaths'
 import { isMagicGroup } from '@/domain/magic'
+import { CATALOGO_DE_MAGIA } from '@/domain/magiaDeRenombre'
 
 /** Número de sentencias por lote. El Worker rechaza más de 50 por batch (ver MAX_MUTATE_STATEMENTS). */
 const CHUNK = 45
@@ -120,4 +121,41 @@ export async function seedMagicPaths(): Promise<MagicSeedResult> {
   }
 
   return { sendasCreadas: pending.length, hechizosCreados: spellStatements.length }
+}
+
+/**
+ * Siembra el catálogo de MAGIA DE LOS PERSONAJES DE RENOMBRE (habilidades
+ * mágicas, avanzadas y saberes arcanos) con lo que trae el reglamento, por su
+ * clave. Mismo criterio que las sendas: solo rellena huecos y no toca ni una
+ * fila existente — si el usuario ha cambiado un precio o una descripción, es
+ * suya.
+ */
+export async function seedMagicSkills(): Promise<number> {
+  const existentes = new Set(
+    await queryLocal('SELECT skill_key FROM magic_skills', [], (row) => row.skill_key as string),
+  )
+  const faltan = CATALOGO_DE_MAGIA.filter((h) => !existentes.has(h.clave))
+  if (faltan.length === 0) return 0
+
+  const sentencias: BatchStatement[] = faltan.map((h) => ({
+    sql: `INSERT OR IGNORE INTO magic_skills
+            (skill_key, name, kind, cost, description, requires_key, level, difficulty, building, sort_order)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    params: [
+      h.clave,
+      h.nombre,
+      h.tipo,
+      h.coste,
+      h.descripcion,
+      h.requiere ?? null,
+      h.nivel ?? null,
+      h.dificultad ?? null,
+      h.edificio ?? null,
+      CATALOGO_DE_MAGIA.indexOf(h),
+    ],
+  }))
+  for (let i = 0; i < sentencias.length; i += CHUNK) {
+    await execCatalogBatch(sentencias.slice(i, i + CHUNK))
+  }
+  return faltan.length
 }

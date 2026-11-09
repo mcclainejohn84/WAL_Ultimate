@@ -12,7 +12,8 @@ import { credencialActual } from '@/data/network/auth'
 import { EQUIPMENT_ALIASES, UPGRADE_ALIASES, expandName } from '@/domain/catalogAliases'
 import { UnitRepository } from '@/data/repositories/unitRepository'
 import { UpgradeRepository, UnitTypeTagRepository } from '@/data/repositories/lookupRepositories'
-import { seedMagicPaths } from '@/data/repositories/magicSeeding'
+import { seedMagicPaths, seedMagicSkills } from '@/data/repositories/magicSeeding'
+import { seedCharacterSkills } from '@/data/repositories/characterSkillRepository'
 import { seedDefaultCompositionRules } from '@/data/repositories/compositionRuleRepository'
 import type { AttributeProfileInput } from '@/domain/types'
 
@@ -532,6 +533,20 @@ export async function runCatalogMaintenance(): Promise<void> {
       // magia. No se marca como hecha: se reintenta en la próxima carga.
       console.warn('[WHArmy] No se pudo cargar el catálogo de sendas de magia:', err)
     }
+  }
+
+  // Los dos catálogos de los Personajes de Renombre. Sin marca en
+  // localStorage: son dos consultas locales y un lote solo cuando falta algo,
+  // y así una entrada nueva del reglamento entra sola en la siguiente carga.
+  try {
+    await seedCharacterSkills()
+  } catch (err) {
+    console.warn('[WHArmy] No se pudo cargar el catálogo de habilidades de personaje:', err)
+  }
+  try {
+    await seedMagicSkills()
+  } catch (err) {
+    console.warn('[WHArmy] No se pudo cargar el catálogo de habilidades mágicas:', err)
   }
 
   if (!flagDone(ETIQUETAS_MAGIA_KEY)) {

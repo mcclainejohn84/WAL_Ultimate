@@ -29,12 +29,12 @@
 import { useRef, useState } from 'react'
 import { clsx } from 'clsx'
 import { SpecialCharacterRepository, type PersonajeEspecial } from '@/data/repositories/specialCharacterRepository'
+import { CharacterSkillRepository } from '@/data/repositories/characterSkillRepository'
 import {
   ETIQUETAS_DE_TIPO,
-  HABILIDAD_POR_CLAVE,
+  ORDEN_DE_TIPOS,
   TOPE_DE_SOCIALES,
   costeDeSocial,
-  habilidadesDeTipo,
   type HabilidadDeRenombre,
   type TipoDeHabilidad,
 } from '@/domain/habilidadesDeRenombre'
@@ -44,9 +44,6 @@ import { Modal } from '@/shared/ui/Modal'
 import { Button } from '@/shared/ui/Button'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { CheckIcon, ChevronDownIcon, PlusIcon, SearchIcon, TrashIcon } from '@/shared/ui/icons'
-
-/** El orden del reglamento, que es el que espera quien lo tiene en la mano. */
-const ORDEN_DE_TIPOS: TipoDeHabilidad[] = ['rango', 'atributo', 'habilidad', 'social']
 
 /**
  * Rótulos cortos para las pestañas. "Características sociales" entero no cabe
@@ -70,6 +67,10 @@ export function HabilidadesModal({
   onCambio: () => void
 }) {
   const { data: claves, reload } = useAsync(() => SpecialCharacterRepository.listHabilidades(personaje.id))
+  // EL CATÁLOGO SALE DE LA BASE, que es donde se edita (ver
+  // characterSkillRepository y la pantalla "Habilidades de personaje" del
+  // Editor). El del código solo es la semilla.
+  const { data: catalogoDeHabilidades } = useAsync(() => CharacterSkillRepository.list())
   // La experiencia se recalcula aquí dentro y no se hereda de `personaje`: se
   // gasta sin cerrar el diálogo, y un saldo congelado dejaría comprar dos veces
   // lo que solo se puede pagar una.
@@ -101,7 +102,8 @@ export function HabilidadesModal({
 
   const tiene = new Set(claves ?? [])
   const saldo = experiencia ?? 0
-  const suyas = (claves ?? []).map((c) => HABILIDAD_POR_CLAVE.get(c)).filter((h) => h != null)
+  const porClave = new Map((catalogoDeHabilidades ?? []).map((h) => [h.clave, h]))
+  const suyas = (claves ?? []).map((c) => porClave.get(c)).filter((h) => h != null)
   const socialesQueTiene = suyas.filter((h) => h.tipo === 'social').length
   const sinSitioParaSociales = socialesQueTiene >= TOPE_DE_SOCIALES
 
@@ -152,7 +154,9 @@ export function HabilidadesModal({
   }
 
   const termino = busqueda.trim().toLowerCase()
-  const delCatalogo = habilidadesDeTipo(tipo).filter((h) => termino === '' || h.nombre.toLowerCase().includes(termino))
+  const delCatalogo = (catalogoDeHabilidades ?? []).filter(
+    (h) => h.tipo === tipo && (termino === '' || h.nombre.toLowerCase().includes(termino)),
+  )
 
   return (
     <Modal
