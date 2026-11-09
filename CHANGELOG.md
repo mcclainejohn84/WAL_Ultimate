@@ -13,6 +13,17 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.195 — 09/11/2026 01:28
+
+- La pantalla de Personajes de Renombre **ya no se vacía en cada cambio**.
+  Tocar una habilidad, una cicatriz o una senda dejaba la página entera en una
+  rueda mientras iba a la red, y con ella desaparecía el diálogo que estaba
+  abierto. Ahora la rueda sale solo la primera vez.
+- Las sendas de un personaje se guardan **en el orden en que se pulsan** y el
+  listado de detrás se entera al cerrar el diálogo, no a cada clic.
+
+---
+
 ## 0.194 — 08/11/2026 23:53
 
 - **La magia de los Personajes de Renombre es suya.** El que sea hechicero

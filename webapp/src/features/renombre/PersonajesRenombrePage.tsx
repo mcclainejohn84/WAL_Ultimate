@@ -67,7 +67,13 @@ export function PersonajesRenombrePage() {
   const [faccionFiltro, setFaccionFiltro] = useState<string>(TODAS)
   const [error, setError] = useState<string | null>(null)
 
-  if (loading) return <Spinner />
+  // LA RUEDA, SOLO LA PRIMERA VEZ. Con `if (loading)` a secas, cualquier
+  // recarga posterior —y hay una cada vez que se toca una habilidad, una
+  // cicatriz o una senda— vaciaba la pantalla entera y la dejaba en una rueda
+  // durante el viaje a la red: las láminas desaparecían y, con ellas, el
+  // diálogo que estaba abierto. Mientras ya haya personajes en pantalla se
+  // siguen enseñando los de antes y lo nuevo entra cuando llega.
+  if (loading && personajes == null) return <Spinner />
 
   const todos = personajes ?? []
   // El filtro se aplica ANTES de agrupar, así que los grupos, los contadores y
