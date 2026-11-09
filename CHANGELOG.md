@@ -13,6 +13,16 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.206 — 09/11/2026 17:17
+
+- El aviso de "la base no está al día" **se cura solo**: antes de acusar pide
+  las migraciones otra vez (por si el Worker se ha desplegado con la página
+  abierta) y, mientras siga levantado, vuelve a comprobar cada medio minuto.
+  En cuanto deja de faltar, el candado se abre y el cartel desaparece sin
+  recargar.
+
+---
+
 ## 0.205 — 09/11/2026 17:00
 
 - Un apéndice nuevo se dice en tres pasos: **facción, tipo y elemento**. La

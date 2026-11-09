@@ -30,6 +30,16 @@
 //
 // NO SE PUEDE OCULTAR cuando bloquea: un aviso que se quita de en medio y deja
 // la aplicación sin guardar sería lo peor de las dos cosas.
+//
+// Y SE CURA SOLO, que es lo que faltaba. Antes se comprobaba UNA vez al
+// arrancar y lo que saliera de ahí valía para toda la sesión: si el Worker se
+// desplegaba con la página abierta —o si la lectura pillaba una réplica de D1
+// que todavía no tenía la tabla recién creada—, el programa se quedaba en
+// solo lectura acusando de algo que ya estaba arreglado, y solo se salía
+// recargando. Ahora, antes de acusar se piden las migraciones otra vez por si
+// el Worker acaba de llegar, y mientras el aviso esté levantado se vuelve a
+// comprobar cada medio minuto: en cuanto pasa, el candado se abre y el cartel
+// desaparece sin que nadie toque nada.
 // ============================================================================
 import { useEffect, useState } from 'react'
 import { findPendingMigrations } from '@/data/repositories/schemaHealth'
@@ -47,7 +57,9 @@ function wait(ms: number): Promise<void> {
 /** Tope de espera a las migraciones: si no llegan (Worker caído), se comprueba igualmente. */
 const MIGRATIONS_WAIT_MS = 8000
 /** Margen para que un ALTER TABLE recién aplicado llegue a las réplicas de lectura de D1. */
-const REPLICA_LAG_MS = 3000
+const REPLICA_LAG_MS = 4000
+/** Cada cuánto se vuelve a mirar mientras el aviso está levantado. */
+const REINTENTO_MS = 30000
 
 export function PendingMigrationsBanner() {
   const [pending, setPending] = useState<string[]>([])
@@ -69,21 +81,45 @@ export function PendingMigrationsBanner() {
 
   useEffect(() => {
     let cancelled = false
+    let reloj: ReturnType<typeof setTimeout> | undefined
 
-    void (async () => {
-      // Esperar a que las migraciones se hayan intentado. Sin esto, el aviso
-      // comprobaba el esquema mientras seguían en vuelo (las dos cosas arrancan
-      // a la vez desde DatabaseGate) y acusaba justo después de desplegar.
-      await Promise.race([migrationsAttempted, wait(MIGRATIONS_WAIT_MS)])
+    async function ciclo(primera: boolean) {
+      if (primera) {
+        // Esperar a que las migraciones se hayan intentado. Sin esto, el aviso
+        // comprobaba el esquema mientras seguían en vuelo (las dos cosas
+        // arrancan a la vez desde DatabaseGate) y acusaba justo después de
+        // desplegar.
+        await Promise.race([migrationsAttempted, wait(MIGRATIONS_WAIT_MS)])
+      }
       if (cancelled) return
-      const list = await comprobar()
+      let list = await comprobar()
       if (cancelled) return
+
+      // ANTES DE ACUSAR, INSISTIR DE VERDAD: pedir las migraciones otra vez.
+      // El caso típico es desplegar el Worker con la página ya abierta — las
+      // migraciones de esta sesión se pidieron a un Worker viejo y nadie las
+      // va a volver a pedir.
+      if (list.length > 0) {
+        await runMigrations().catch(() => undefined)
+        if (cancelled) return
+        await wait(REPLICA_LAG_MS)
+        if (cancelled) return
+        list = await findPendingMigrations()
+        if (cancelled) return
+      }
+
       setResultado(ultimoResultadoDeMigraciones())
       anotar(list)
-    })()
+      // Mientras falte algo se sigue mirando: así el candado se abre solo en
+      // cuanto deja de faltar, sin recargar.
+      if (list.length > 0) reloj = setTimeout(() => void ciclo(false), REINTENTO_MS)
+    }
+
+    void ciclo(true)
 
     return () => {
       cancelled = true
+      if (reloj) clearTimeout(reloj)
     }
   }, [])
 
