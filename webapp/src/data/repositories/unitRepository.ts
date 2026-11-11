@@ -128,6 +128,7 @@ function mapUnit(row: Record<string, unknown>): Unit {
     factionId: row.faction_id as number,
     categoryId: (row.category_id as number) ?? null,
     typeTagId: (row.type_tag_id as number) ?? null,
+    typeTagCode: (row.type_tag_code as string) ?? null,
     unitType,
     name: row.name as string,
     // La columna puede no existir todavía si la D1 no se ha migrado: en ese
@@ -341,10 +342,11 @@ export const UnitRepository = {
 
   async listByFaction(factionId: number): Promise<UnitSummary[]> {
     return queryLocal(
-      `SELECT u.*, f.name AS faction_name, c.name AS category_name
+      `SELECT u.*, f.name AS faction_name, c.name AS category_name, t.code AS type_tag_code
        FROM units u
        JOIN factions f ON f.id = u.faction_id
        LEFT JOIN unit_categories c ON c.id = u.category_id
+       LEFT JOIN unit_type_tags t ON t.id = u.type_tag_id
        WHERE u.faction_id = ?
        ORDER BY c.sort_order, ${PERSONAJE_ORDER_EXPR}, u.name`,
       [factionId],
@@ -365,10 +367,11 @@ export const UnitRepository = {
    */
   async listAll(): Promise<UnitSummary[]> {
     return queryLocal(
-      `SELECT u.*, f.name AS faction_name, c.name AS category_name
+      `SELECT u.*, f.name AS faction_name, c.name AS category_name, t.code AS type_tag_code
        FROM units u
        JOIN factions f ON f.id = u.faction_id
        LEFT JOIN unit_categories c ON c.id = u.category_id
+       LEFT JOIN unit_type_tags t ON t.id = u.type_tag_id
        ORDER BY f.sort_order, f.name, c.sort_order, ${PERSONAJE_ORDER_EXPR}, u.name`,
       [],
       (row) => ({
@@ -387,10 +390,11 @@ export const UnitRepository = {
     const like = `%${text.trim()}%`
     const yo = getCurrentUser()?.id ?? null
     const filas = await queryLocal(
-      `SELECT u.*, f.name AS faction_name, c.name AS category_name
+      `SELECT u.*, f.name AS faction_name, c.name AS category_name, t.code AS type_tag_code
        FROM units u
        JOIN factions f ON f.id = u.faction_id
        LEFT JOIN unit_categories c ON c.id = u.category_id
+       LEFT JOIN unit_type_tags t ON t.id = u.type_tag_id
        WHERE u.name LIKE ?
        ORDER BY f.name, u.name
        LIMIT 50`,

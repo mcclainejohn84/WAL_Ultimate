@@ -18,6 +18,7 @@ import { ALIAS_MAX, inicialesDe, normalizarAlias, unidadesConLasMismasIniciales 
 import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
 import { esEditablePor } from '@/domain/personajeRenombre'
+import { isWizardTag } from '@/domain/magic'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { Panel } from '@/shared/ui/Panel'
 import { Spinner } from '@/shared/ui/Spinner'
@@ -702,6 +703,35 @@ export function UnitDetailPage() {
                     }
                   />
                 </div>
+
+                {/* HECHICERO, solo en personajes. Lo que de verdad decide si
+                  puede llevar sendas es esto O la etiqueta Hechicero/Archimago
+                  (ver esHechicero); la casilla existe para el personaje que es
+                  mago sin que su etiqueta lo diga. Hasta ahora la columna
+                  existía y no había forma de marcarla desde ninguna pantalla,
+                  así que un Personaje de Renombre con la etiqueta puesta no
+                  enseñaba su botón de Magia. */}
+                {unit.unitType === 'personaje' && (
+                  <div className="col-span-12">
+                    <label
+                      className="flex cursor-pointer items-center gap-2 text-xs text-ink-soft"
+                      title="Podrá llevar sendas de magia. La etiqueta Hechicero o Archimago hace lo mismo."
+                    >
+                      <input
+                        type="checkbox"
+                        className="accent-maroon"
+                        checked={draft.scalar.isWizard}
+                        onChange={(e) =>
+                          updateDraft((d) => ({ ...d, scalar: { ...d.scalar, isWizard: e.target.checked } }))
+                        }
+                      />
+                      Hechicero
+                      {!draft.scalar.isWizard && isWizardTag(unit.typeTag?.code) && (
+                        <span className="text-mini text-ink-soft/70">(ya lo es por su etiqueta)</span>
+                      )}
+                    </label>
+                  </div>
+                )}
 
                 {/* Fila 3 — solo tropa: un personaje es una sola miniatura, así
                   que no tiene tamaños ni puede ser 0-1, y la fila desaparece

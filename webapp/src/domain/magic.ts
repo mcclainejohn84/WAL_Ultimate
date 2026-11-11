@@ -46,8 +46,13 @@ export function isWizardTag(code: string | null | undefined): boolean {
  * antiguos que solo tienen la etiqueta y personajes nuevos que solo tienen la
  * casilla. Exigir las dos dejaría a unos cuantos magos sin magia.
  */
-export function esHechicero(unidad: { isWizard: boolean; typeTag?: { code: string } | null }): boolean {
-  return unidad.isWizard || isWizardTag(unidad.typeTag?.code)
+export function esHechicero(unidad: {
+  isWizard: boolean
+  typeTag?: { code: string } | null
+  /** El código suelto, para quien solo trae el resumen de la unidad (ver UnitSummary). */
+  typeTagCode?: string | null
+}): boolean {
+  return unidad.isWizard || isWizardTag(unidad.typeTag?.code) || isWizardTag(unidad.typeTagCode)
 }
 
 /**

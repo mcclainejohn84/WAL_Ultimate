@@ -13,6 +13,18 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.211 — 11/11/2026 15:09
+
+- **El botón de "Magia" sale ahora con cualquiera de las dos marcas**: la
+  casilla "Hechicero" de su ficha o la etiqueta Hechicero/Archimago. Antes
+  miraba solo la casilla, así que un personaje que era mago por su etiqueta
+  llevaba sendas en el ejército y en el PDF, pero no tenía dónde editarlas.
+- **La casilla "Hechicero" vuelve a estar en la ficha de unidad** (solo en
+  personajes). La columna existía desde hace tiempo, pero no había ninguna
+  pantalla donde marcarla. Si ya es mago por su etiqueta, lo dice al lado.
+
+---
+
 ## 0.210 — 11/11/2026 15:03
 
 - **Del personaje de otro se ve TODO otra vez**: en 0.209 se bloqueó

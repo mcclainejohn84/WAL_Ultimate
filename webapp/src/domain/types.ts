@@ -153,6 +153,13 @@ export interface Unit {
   factionId: number
   categoryId: number | null
   typeTagId: number | null
+  /**
+   * El CÓDIGO de la etiqueta ('HECHICERO', 'ARCHIMAGO'…), ya resuelto. Viene
+   * con los listados porque de él depende si un personaje puede llevar magia
+   * (ver esHechicero) y la lámina de Personajes de Renombre no tiene de dónde
+   * sacarlo si no. null = sin etiqueta, o listado antiguo que no la traía.
+   */
+  typeTagCode?: string | null
   unitType: UnitType
   name: string
   /**

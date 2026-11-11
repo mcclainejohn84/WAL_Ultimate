@@ -47,6 +47,7 @@ import { mensajeDeMigracionPendiente } from '@/data/repositories/schemaHealth'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
 import { esEditablePor } from '@/domain/personajeRenombre'
+import { esHechicero } from '@/domain/magic'
 import { Modal } from '@/shared/ui/Modal'
 import { HabilidadesModal } from '@/features/renombre/HabilidadesModal'
 import { CicatricesModal } from '@/features/renombre/CicatricesModal'
@@ -470,7 +471,7 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
         {/* Solo si es hechicero. Sus sendas se deciden AQUÍ y no al montar
             el ejército, que es lo que hacen los magos del catálogo (ver
             MagiaModal). */}
-        {personaje.isWizard && (
+        {esHechicero(personaje) && (
           <button
             type="button"
             onClick={() => setViendoMagia(true)}
