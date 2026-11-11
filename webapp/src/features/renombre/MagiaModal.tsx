@@ -54,7 +54,7 @@ import {
   spellIdDePergamino,
   type HabilidadMagica,
 } from '@/domain/magiaDeRenombre'
-import { BotonDeInfo, Descripcion, EncabezadoDeGrupo } from '@/features/renombre/piezas'
+import { BotonDeInfo, Descripcion, EncabezadoDeGrupo, LoQueTiene } from '@/features/renombre/piezas'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { Modal } from '@/shared/ui/Modal'
 import { Button } from '@/shared/ui/Button'
@@ -93,10 +93,13 @@ function costeEntreNiveles(indice: number, misma: boolean, actual: number, desti
 
 export function MagiaModal({
   personaje,
+  soloLectura = false,
   onClose,
   onCambio,
 }: {
   personaje: PersonajeEspecial
+  /** En el personaje de OTRO: su magia se lee de corrido, sin pestañas ni catálogo. */
+  soloLectura?: boolean
   onClose: () => void
   onCambio: () => void
 }) {
@@ -200,6 +203,29 @@ export function MagiaModal({
     void hacer(() => SpecialCharacterRepository.quitarHabilidad(personaje.id, clave, nombre, devolucion))
   }
 
+  /** Las habilidades mágicas de un tipo que de verdad tiene, listas para pintar. */
+  function deSuTipo(tipo: 'habilidad' | 'avanzada') {
+    return misHabilidades
+      .filter((h) => h.tipo === tipo)
+      .map((h) => ({ clave: h.clave, nombre: h.nombre, detalle: null, descripcion: h.descripcion }))
+  }
+
+  /** Sus pergaminos, resueltos contra el catálogo de hechizos (se guardan por id). */
+  const hechizoPorId = new Map(
+    (sendasConHechizos ?? []).flatMap((senda) => senda.spells.map((h) => [h.id, { hechizo: h, senda }] as const)),
+  )
+  const susPergaminos = misClaves
+    .map((c) => spellIdDePergamino(c))
+    .filter((id) => id != null)
+    .map((id) => hechizoPorId.get(id))
+    .filter((x) => x != null)
+    .map(({ hechizo, senda }) => ({
+      clave: `pergamino:${hechizo.id}`,
+      nombre: hechizo.name,
+      detalle: `${senda.name}, nivel ${hechizo.level}`,
+      descripcion: hechizo.rules ?? null,
+    }))
+
   const cargando =
     catalogoDeSendas == null || sendas == null || claves == null || experiencia == null || catalogoDeMagia == null
 
@@ -242,160 +268,209 @@ export function MagiaModal({
           </dl>
         </div>
 
-        <div className="flex flex-wrap gap-0.5 rounded-sm border border-rule-dark/30 bg-parchment/70 p-0.5">
-          {PESTANAS.map((p) => (
-            <button
-              key={p.clave}
-              type="button"
-              onClick={() => setPestana(p.clave)}
-              title={p.largo}
-              aria-pressed={p.clave === pestana}
-              className={clsx(
-                'rounded-sm px-2 py-0.5 text-mini font-semibold tracking-wide transition-colors',
-                p.clave === pestana
-                  ? 'bg-maroon text-parchment shadow-sm shadow-black/20'
-                  : 'text-ink-soft hover:bg-parchment-dark',
-              )}
-            >
-              {p.corto}
-            </button>
-          ))}
-        </div>
-
-        {cargando ? (
-          <Spinner />
+        {/* EN EL PERSONAJE DE OTRO, SIN PESTAÑAS. Las cuatro listas son el
+            escaparate de lo que se puede comprar, con lo que tiene marcado
+            dentro; a quien solo viene a mirar lo que sabe este mago le sobran
+            las tres cuartas partes. Se le da lo que tiene, de corrido. */}
+        {soloLectura ? (
+          cargando ? (
+            <Spinner />
+          ) : (
+            <div>
+              <LoQueTiene
+                etiqueta="Sendas de magia"
+                vacio="No practica ninguna senda."
+                cosas={misSendas.map((senda) => {
+                  const cual = sendaPorId.get(senda.pathId)
+                  return {
+                    clave: `senda:${senda.pathId}`,
+                    nombre: cual?.name ?? `Senda #${senda.pathId}`,
+                    detalle: `${NOMBRE_DEL_NIVEL[senda.level] ?? `Nivel ${senda.level}`}`,
+                    descripcion: cual ? MAGIC_GROUP_LABELS[cual.group] : null,
+                  }
+                })}
+              />
+              <LoQueTiene etiqueta={ETIQUETAS_DE_MAGIA.habilidad} cosas={deSuTipo('habilidad')} />
+              <LoQueTiene etiqueta={ETIQUETAS_DE_MAGIA.avanzada} cosas={deSuTipo('avanzada')} />
+              <LoQueTiene
+                etiqueta={ETIQUETAS_DE_MAGIA.saber}
+                cosas={misHabilidades
+                  .filter((h) => h.tipo === 'saber')
+                  .map((h) => ({
+                    clave: h.clave,
+                    nombre: h.nombre,
+                    detalle: h.nivel ? `Nivel ${h.nivel}${h.dificultad ? ` · ${h.dificultad}` : ''}` : null,
+                    descripcion: h.descripcion,
+                  }))}
+              />
+              <LoQueTiene etiqueta={ETIQUETAS_DE_MAGIA.pergamino} cosas={susPergaminos} />
+            </div>
+          )
         ) : (
           <>
-            {pestana === 'sendas' && (
-              <PestanaDeSendas
-                catalogo={catalogoDeSendas ?? []}
-                misSendas={misSendas}
-                saldo={saldo}
-                ocupado={ocupado}
-                nivelDeLaInicial={nivelDeLaInicial}
-                esDeSuDisciplina={esDeSuDisciplina}
-                pagadoPorLaSenda={pagadoPorLaSenda}
-                onAbrir={(path, coste) =>
-                  void hacer(() =>
-                    SpecialCharacterRepository.abrirSenda(
-                      personaje.id,
-                      path.id,
-                      enMinusculas(path.name),
-                      1,
-                      coste,
-                      misSendas.length,
-                    ),
-                  )
-                }
-                onSubir={(path, nivel, coste) =>
-                  void hacer(() =>
-                    SpecialCharacterRepository.subirSenda(personaje.id, path.id, enMinusculas(path.name), nivel, coste),
-                  )
-                }
-                onBajar={(path, nivel, devolucion) =>
-                  setPorQuitar({
-                    titulo: 'Retroceder la senda',
-                    confirmar: 'Sí, retroceder',
-                    mensaje: `La senda de ${enMinusculas(path.name)} va a retroceder al nivel ${nivel} y se le devolverán ${devolucion} puntos de experiencia a ${personaje.name}. Quedará apuntado en su libro.`,
-                    hacer: () =>
-                      SpecialCharacterRepository.bajarSenda(
-                        personaje.id,
-                        path.id,
-                        enMinusculas(path.name),
-                        nivel,
-                        devolucion,
-                      ),
-                  })
-                }
-                onOlvidar={(path, devolucion, nombre) =>
-                  setPorQuitar({
-                    titulo: 'Olvidar la senda',
-                    mensaje: `¿Seguro que ${personaje.name} olvida la senda de ${nombre}? Se le devolverán ${devolucion} puntos de experiencia y quedará apuntado en su libro.`,
-                    hacer: () => SpecialCharacterRepository.olvidarSenda(personaje.id, path.id, nombre, devolucion),
-                  })
-                }
-              />
-            )}
+            <div className="flex flex-wrap gap-0.5 rounded-sm border border-rule-dark/30 bg-parchment/70 p-0.5">
+              {PESTANAS.map((p) => (
+                <button
+                  key={p.clave}
+                  type="button"
+                  onClick={() => setPestana(p.clave)}
+                  title={p.largo}
+                  aria-pressed={p.clave === pestana}
+                  className={clsx(
+                    'rounded-sm px-2 py-0.5 text-mini font-semibold tracking-wide transition-colors',
+                    p.clave === pestana
+                      ? 'bg-maroon text-parchment shadow-sm shadow-black/20'
+                      : 'text-ink-soft hover:bg-parchment-dark',
+                  )}
+                >
+                  {p.corto}
+                </button>
+              ))}
+            </div>
 
-            {pestana === 'habilidades' && (
-              <ListaComprable
-                grupos={[
-                  { etiqueta: ETIQUETAS_DE_MAGIA.habilidad, entradas: magiaDeTipo('habilidad') },
-                  { etiqueta: ETIQUETAS_DE_MAGIA.avanzada, entradas: magiaDeTipo('avanzada') },
-                ]}
-                tiene={tiene}
-                saldo={saldo}
-                ocupado={ocupado}
-                abierta={abierta}
-                setAbierta={setAbierta}
-                coste={(h) => costeDeHabilidadMagica(h.coste, cuantasHabilidades, sendasArchimago)}
-                devolucion={(h) => devolucionDeHabilidadMagica(h.coste, cuantasHabilidades, sendasArchimago)}
-                bloqueo={(h) => {
-                  if (h.requiere && !tiene.has(h.requiere)) {
-                    return `Requiere ${magiaPorClave.get(h.requiere)?.nombre ?? 'otra habilidad'}`
-                  }
-                  if (h.clave === 'magia:aprendiz-de-mago' && sendasArchimago === 0) return 'Requiere ser Archimago'
-                  return null
-                }}
-                onComprar={(h, coste) => comprar(h.clave, h.nombre, coste)}
-                onQuitar={(h, devuelve) =>
-                  setPorQuitar({
-                    titulo: 'Quitar la habilidad mágica',
-                    mensaje: `¿Seguro que le quitas "${h.nombre}" a ${personaje.name}? Se le devolverán ${devuelve} puntos de experiencia y quedará apuntado en su libro.`,
-                    hacer: async () => devolver(h.clave, h.nombre, devuelve),
-                  })
-                }
-              />
-            )}
-
-            {pestana === 'saberes' && (
+            {cargando ? (
+              <Spinner />
+            ) : (
               <>
-                <Nota texto={`${TORRE}. Además, el mago necesita el nivel del hechizo en alguna de sus sendas.`} />
-                <ListaComprable
-                  grupos={[{ etiqueta: ETIQUETAS_DE_MAGIA.saber, entradas: magiaDeTipo('saber') }]}
-                  tiene={tiene}
-                  saldo={saldo}
-                  ocupado={ocupado}
-                  abierta={abierta}
-                  setAbierta={setAbierta}
-                  coste={(h) => h.coste}
-                  devolucion={(h) => h.coste}
-                  etiqueta={(h) => `Nivel ${h.nivel} · ${h.dificultad}`}
-                  bloqueo={(h) => {
-                    const nivel = h.nivel ?? 1
-                    if (!misSendas.some((s) => s.level >= nivel)) return `Requiere nivel ${nivel} en una senda`
-                    if (faltanSaberesPorDebajo(nivel, saberesPorNivel)) return 'Faltan saberes de nivel inferior'
-                    return null
-                  }}
-                  onComprar={(h, coste) => comprar(h.clave, h.nombre, coste)}
-                  onQuitar={(h, devuelve) =>
-                    setPorQuitar({
-                      titulo: 'Quitar el saber arcano',
-                      mensaje: `¿Seguro que le quitas "${h.nombre}" a ${personaje.name}? Se le devolverán ${devuelve} puntos de experiencia y quedará apuntado en su libro.`,
-                      hacer: async () => devolver(h.clave, h.nombre, devuelve),
-                    })
-                  }
-                />
-              </>
-            )}
+                {pestana === 'sendas' && (
+                  <PestanaDeSendas
+                    catalogo={catalogoDeSendas ?? []}
+                    misSendas={misSendas}
+                    saldo={saldo}
+                    ocupado={ocupado}
+                    nivelDeLaInicial={nivelDeLaInicial}
+                    esDeSuDisciplina={esDeSuDisciplina}
+                    pagadoPorLaSenda={pagadoPorLaSenda}
+                    onAbrir={(path, coste) =>
+                      void hacer(() =>
+                        SpecialCharacterRepository.abrirSenda(
+                          personaje.id,
+                          path.id,
+                          enMinusculas(path.name),
+                          1,
+                          coste,
+                          misSendas.length,
+                        ),
+                      )
+                    }
+                    onSubir={(path, nivel, coste) =>
+                      void hacer(() =>
+                        SpecialCharacterRepository.subirSenda(
+                          personaje.id,
+                          path.id,
+                          enMinusculas(path.name),
+                          nivel,
+                          coste,
+                        ),
+                      )
+                    }
+                    onBajar={(path, nivel, devolucion) =>
+                      setPorQuitar({
+                        titulo: 'Retroceder la senda',
+                        confirmar: 'Sí, retroceder',
+                        mensaje: `La senda de ${enMinusculas(path.name)} va a retroceder al nivel ${nivel} y se le devolverán ${devolucion} puntos de experiencia a ${personaje.name}. Quedará apuntado en su libro.`,
+                        hacer: () =>
+                          SpecialCharacterRepository.bajarSenda(
+                            personaje.id,
+                            path.id,
+                            enMinusculas(path.name),
+                            nivel,
+                            devolucion,
+                          ),
+                      })
+                    }
+                    onOlvidar={(path, devolucion, nombre) =>
+                      setPorQuitar({
+                        titulo: 'Olvidar la senda',
+                        mensaje: `¿Seguro que ${personaje.name} olvida la senda de ${nombre}? Se le devolverán ${devolucion} puntos de experiencia y quedará apuntado en su libro.`,
+                        hacer: () => SpecialCharacterRepository.olvidarSenda(personaje.id, path.id, nombre, devolucion),
+                      })
+                    }
+                  />
+                )}
 
-            {pestana === 'pergaminos' && (
-              <PestanaDePergaminos
-                sendas={sendasConHechizos ?? []}
-                claves={misClaves}
-                saldo={saldo}
-                ocupado={ocupado}
-                onComprar={(hechizo, coste) =>
-                  comprar(claveDePergamino(hechizo.id), `Pergamino: ${hechizo.name}`, coste)
-                }
-                onQuitar={(hechizo, devuelve) =>
-                  setPorQuitar({
-                    titulo: 'Quitar el pergamino',
-                    mensaje: `¿Seguro que le quitas el pergamino de "${hechizo.name}" a ${personaje.name}? Se le devolverán ${devuelve} puntos de experiencia.`,
-                    hacer: async () => devolver(claveDePergamino(hechizo.id), `Pergamino: ${hechizo.name}`, devuelve),
-                  })
-                }
-              />
+                {pestana === 'habilidades' && (
+                  <ListaComprable
+                    grupos={[
+                      { etiqueta: ETIQUETAS_DE_MAGIA.habilidad, entradas: magiaDeTipo('habilidad') },
+                      { etiqueta: ETIQUETAS_DE_MAGIA.avanzada, entradas: magiaDeTipo('avanzada') },
+                    ]}
+                    tiene={tiene}
+                    saldo={saldo}
+                    ocupado={ocupado}
+                    abierta={abierta}
+                    setAbierta={setAbierta}
+                    coste={(h) => costeDeHabilidadMagica(h.coste, cuantasHabilidades, sendasArchimago)}
+                    devolucion={(h) => devolucionDeHabilidadMagica(h.coste, cuantasHabilidades, sendasArchimago)}
+                    bloqueo={(h) => {
+                      if (h.requiere && !tiene.has(h.requiere)) {
+                        return `Requiere ${magiaPorClave.get(h.requiere)?.nombre ?? 'otra habilidad'}`
+                      }
+                      if (h.clave === 'magia:aprendiz-de-mago' && sendasArchimago === 0) return 'Requiere ser Archimago'
+                      return null
+                    }}
+                    onComprar={(h, coste) => comprar(h.clave, h.nombre, coste)}
+                    onQuitar={(h, devuelve) =>
+                      setPorQuitar({
+                        titulo: 'Quitar la habilidad mágica',
+                        mensaje: `¿Seguro que le quitas "${h.nombre}" a ${personaje.name}? Se le devolverán ${devuelve} puntos de experiencia y quedará apuntado en su libro.`,
+                        hacer: async () => devolver(h.clave, h.nombre, devuelve),
+                      })
+                    }
+                  />
+                )}
+
+                {pestana === 'saberes' && (
+                  <>
+                    <Nota texto={`${TORRE}. Además, el mago necesita el nivel del hechizo en alguna de sus sendas.`} />
+                    <ListaComprable
+                      grupos={[{ etiqueta: ETIQUETAS_DE_MAGIA.saber, entradas: magiaDeTipo('saber') }]}
+                      tiene={tiene}
+                      saldo={saldo}
+                      ocupado={ocupado}
+                      abierta={abierta}
+                      setAbierta={setAbierta}
+                      coste={(h) => h.coste}
+                      devolucion={(h) => h.coste}
+                      etiqueta={(h) => `Nivel ${h.nivel} · ${h.dificultad}`}
+                      bloqueo={(h) => {
+                        const nivel = h.nivel ?? 1
+                        if (!misSendas.some((s) => s.level >= nivel)) return `Requiere nivel ${nivel} en una senda`
+                        if (faltanSaberesPorDebajo(nivel, saberesPorNivel)) return 'Faltan saberes de nivel inferior'
+                        return null
+                      }}
+                      onComprar={(h, coste) => comprar(h.clave, h.nombre, coste)}
+                      onQuitar={(h, devuelve) =>
+                        setPorQuitar({
+                          titulo: 'Quitar el saber arcano',
+                          mensaje: `¿Seguro que le quitas "${h.nombre}" a ${personaje.name}? Se le devolverán ${devuelve} puntos de experiencia y quedará apuntado en su libro.`,
+                          hacer: async () => devolver(h.clave, h.nombre, devuelve),
+                        })
+                      }
+                    />
+                  </>
+                )}
+
+                {pestana === 'pergaminos' && (
+                  <PestanaDePergaminos
+                    sendas={sendasConHechizos ?? []}
+                    claves={misClaves}
+                    saldo={saldo}
+                    ocupado={ocupado}
+                    onComprar={(hechizo, coste) =>
+                      comprar(claveDePergamino(hechizo.id), `Pergamino: ${hechizo.name}`, coste)
+                    }
+                    onQuitar={(hechizo, devuelve) =>
+                      setPorQuitar({
+                        titulo: 'Quitar el pergamino',
+                        mensaje: `¿Seguro que le quitas el pergamino de "${hechizo.name}" a ${personaje.name}? Se le devolverán ${devuelve} puntos de experiencia.`,
+                        hacer: async () =>
+                          devolver(claveDePergamino(hechizo.id), `Pergamino: ${hechizo.name}`, devuelve),
+                      })
+                    }
+                  />
+                )}
+              </>
             )}
           </>
         )}

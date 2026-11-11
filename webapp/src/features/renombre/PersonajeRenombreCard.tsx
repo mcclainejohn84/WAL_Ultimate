@@ -437,51 +437,57 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
           experiencia, en granate, que es lo que se hace después de cada
           partida. */}
       <div className="mt-auto flex flex-wrap items-center gap-0.5 border-t border-rule-dark/25 bg-parchment-dark/20 px-2 py-1.5">
+        {/* VER NO ES EDITAR. Los cuatro primeros botones salen SIEMPRE: en el
+            personaje de otro abren la misma ventana en modo lectura, con lo
+            que tiene y lo que hace cada cosa, y sin catálogo ni papelera. Lo
+            que desaparece es lo que solo sirve para cambiarlo: apuntar
+            experiencia, el retrato y el trasfondo, ocultar y borrar. */}
+        <button
+          type="button"
+          onClick={() => setSumando(true)}
+          className={clsx(
+            ACCION_DE_LAMINA,
+            puedeEditar ? 'text-maroon hover:bg-maroon/10' : 'text-ink-soft hover:bg-bronze/10 hover:text-bronze',
+          )}
+        >
+          {puedeEditar && <PlusIcon className="h-3.5 w-3.5" />}
+          Experiencia
+        </button>
+        <button
+          type="button"
+          onClick={() => setViendoHabilidades(true)}
+          className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
+        >
+          Habilidades
+        </button>
+        <button
+          type="button"
+          onClick={() => setViendoCicatrices(true)}
+          className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
+        >
+          Cicatrices
+        </button>
+        {/* Solo si es hechicero. Sus sendas se deciden AQUÍ y no al montar
+            el ejército, que es lo que hacen los magos del catálogo (ver
+            MagiaModal). */}
+        {personaje.isWizard && (
+          <button
+            type="button"
+            onClick={() => setViendoMagia(true)}
+            className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
+          >
+            Magia
+          </button>
+        )}
         {puedeEditar ? (
-          <>
-            <button
-              type="button"
-              onClick={() => setSumando(true)}
-              className={clsx(ACCION_DE_LAMINA, 'text-maroon hover:bg-maroon/10')}
-            >
-              <PlusIcon className="h-3.5 w-3.5" />
-              Experiencia
-            </button>
-            <button
-              type="button"
-              onClick={() => setViendoHabilidades(true)}
-              className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
-            >
-              Habilidades
-            </button>
-            <button
-              type="button"
-              onClick={() => setViendoCicatrices(true)}
-              className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
-            >
-              Cicatrices
-            </button>
-            {/* Solo si es hechicero. Sus sendas se deciden AQUÍ y no al montar
-                el ejército, que es lo que hacen los magos del catálogo (ver
-                MagiaModal). */}
-            {personaje.isWizard && (
-              <button
-                type="button"
-                onClick={() => setViendoMagia(true)}
-                className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
-              >
-                Magia
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setEditando(true)}
-              className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
-            >
-              <PencilIcon className="h-3.5 w-3.5" />
-              Retrato y trasfondo
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={() => setEditando(true)}
+            className={clsx(ACCION_DE_LAMINA, 'text-ink-soft hover:bg-bronze/10 hover:text-bronze')}
+          >
+            <PencilIcon className="h-3.5 w-3.5" />
+            Retrato y trasfondo
+          </button>
         ) : (
           <span className={clsx(ACCION_DE_LAMINA, 'text-ink-soft/60')} title="Es de otro jugador">
             <LockIcon className="h-3.5 w-3.5" />
@@ -533,7 +539,7 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
           {/* Los atributos, el equipo y el coste se editan en la ficha de
               unidad, que sigue estando en "Editor" y por tanto solo se ofrece en
               modo administrador. */}
-          {actingAsAdmin && puedeEditar && (
+          {actingAsAdmin && (
             <Link
               to={`/admin/unidades/${personaje.id}`}
               className="inline-flex items-center rounded-sm px-2 py-1 text-xs font-medium text-ink-soft underline decoration-rule-dark/40 underline-offset-2 transition-colors hover:text-ink"
@@ -581,6 +587,7 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
 
       {sumando && (
         <ExperienciaModal
+          soloLectura={!puedeEditar}
           personaje={personaje}
           onClose={() => setSumando(false)}
           onApuntado={() => {
@@ -590,14 +597,31 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
       )}
 
       {viendoHabilidades && (
-        <HabilidadesModal personaje={personaje} onClose={() => setViendoHabilidades(false)} onCambio={onCambio} />
+        <HabilidadesModal
+          personaje={personaje}
+          soloLectura={!puedeEditar}
+          onClose={() => setViendoHabilidades(false)}
+          onCambio={onCambio}
+        />
       )}
 
       {viendoCicatrices && (
-        <CicatricesModal personaje={personaje} onClose={() => setViendoCicatrices(false)} onCambio={onCambio} />
+        <CicatricesModal
+          personaje={personaje}
+          soloLectura={!puedeEditar}
+          onClose={() => setViendoCicatrices(false)}
+          onCambio={onCambio}
+        />
       )}
 
-      {viendoMagia && <MagiaModal personaje={personaje} onClose={() => setViendoMagia(false)} onCambio={onCambio} />}
+      {viendoMagia && (
+        <MagiaModal
+          personaje={personaje}
+          soloLectura={!puedeEditar}
+          onClose={() => setViendoMagia(false)}
+          onCambio={onCambio}
+        />
+      )}
     </article>
   )
 }
@@ -852,10 +876,13 @@ function fechaCorta(iso: string): string {
 
 function ExperienciaModal({
   personaje,
+  soloLectura = false,
   onClose,
   onApuntado,
 }: {
   personaje: PersonajeEspecial
+  /** En el personaje de OTRO: su libro se lee entero, pero no se le apunta nada. */
+  soloLectura?: boolean
   onClose: () => void
   onApuntado: () => void
 }) {
@@ -909,35 +936,37 @@ function ExperienciaModal({
       <div className="space-y-4">
         <BarraDeExperiencia valor={total} size="md" />
 
-        <div className="rounded-sm border border-rule-dark/30 bg-parchment/60 p-3">
-          <div className="flex items-end gap-2">
-            <div className="w-28 shrink-0">
-              <TextField
-                label="Experiencia"
-                type="number"
-                placeholder="0"
-                value={cantidad}
-                onChange={(e) => setCantidad(e.target.value)}
-              />
+        {!soloLectura && (
+          <div className="rounded-sm border border-rule-dark/30 bg-parchment/60 p-3">
+            <div className="flex items-end gap-2">
+              <div className="w-28 shrink-0">
+                <TextField
+                  label="Experiencia"
+                  type="number"
+                  placeholder="0"
+                  value={cantidad}
+                  onChange={(e) => setCantidad(e.target.value)}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <TextField
+                  label="Evento"
+                  placeholder="Aguantó la carga de los Caballeros"
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                />
+              </div>
+              <Button variant="primary" onClick={apuntar} disabled={!cantidadValida || guardando}>
+                {guardando ? 'Apuntando…' : 'Apuntar'}
+              </Button>
             </div>
-            <div className="min-w-0 flex-1">
-              <TextField
-                label="Evento"
-                placeholder="Aguantó la carga de los Caballeros"
-                value={motivo}
-                onChange={(e) => setMotivo(e.target.value)}
-              />
-            </div>
-            <Button variant="primary" onClick={apuntar} disabled={!cantidadValida || guardando}>
-              {guardando ? 'Apuntando…' : 'Apuntar'}
-            </Button>
+            {sePasa && (
+              <p className="mt-2 text-mini text-amber-700">
+                Con esto pasaría de {EXPERIENCIA_MAXIMA}. Se apunta igual —lo que pasó, pasó—, pero conviene saberlo.
+              </p>
+            )}
           </div>
-          {sePasa && (
-            <p className="mt-2 text-mini text-amber-700">
-              Con esto pasaría de {EXPERIENCIA_MAXIMA}. Se apunta igual —lo que pasó, pasó—, pero conviene saberlo.
-            </p>
-          )}
-        </div>
+        )}
 
         {error && <p className="text-sm text-danger">{error}</p>}
 

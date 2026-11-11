@@ -59,10 +59,13 @@ const ETIQUETAS_CORTAS: Record<TipoDeHabilidad, string> = {
 
 export function HabilidadesModal({
   personaje,
+  soloLectura = false,
   onClose,
   onCambio,
 }: {
   personaje: PersonajeEspecial
+  /** En el personaje de OTRO: se ve lo que tiene, sin catálogo ni papelera. */
+  soloLectura?: boolean
   onClose: () => void
   onCambio: () => void
 }) {
@@ -228,16 +231,18 @@ export function HabilidadesModal({
                           <span className="shrink-0 text-mini tabular-nums text-ink-soft/80">
                             {costeDeDevolucion(h)} exp.
                           </span>
-                          <button
-                            type="button"
-                            disabled={ocupado}
-                            onClick={() => setPorQuitar(h)}
-                            aria-label={`Quitar ${h.nombre}`}
-                            title={`Quitarla y devolver ${costeDeDevolucion(h)} de experiencia`}
-                            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-ink-soft/70 transition-colors hover:bg-danger/10 hover:text-danger disabled:opacity-40"
-                          >
-                            <TrashIcon className="h-3.5 w-3.5" />
-                          </button>
+                          {!soloLectura && (
+                            <button
+                              type="button"
+                              disabled={ocupado}
+                              onClick={() => setPorQuitar(h)}
+                              aria-label={`Quitar ${h.nombre}`}
+                              title={`Quitarla y devolver ${costeDeDevolucion(h)} de experiencia`}
+                              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-ink-soft/70 transition-colors hover:bg-danger/10 hover:text-danger disabled:opacity-40"
+                            >
+                              <TrashIcon className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                         </div>
                         {abierta === `suyas:${h.clave}` && h.descripcion && <Descripcion texto={h.descripcion} />}
                       </li>
@@ -249,136 +254,139 @@ export function HabilidadesModal({
           )}
         </section>
 
-        {/* EL CATÁLOGO, plegado: se abre solo quien viene a comprar. */}
+        {/* EL CATÁLOGO, plegado: se abre solo quien viene a comprar. En el
+            personaje de otro no se pinta: no hay nada que comprarle. */}
         {/* Sin filete propio: la lista de arriba ya termina en uno y dos
             seguidos se ven como un error de dibujo. */}
-        <section ref={catalogo} className="pt-1">
-          <button
-            type="button"
-            onClick={alternarCatalogo}
-            aria-expanded={anadiendo}
-            className="flex w-full items-center justify-between gap-2 rounded-sm border border-rule-dark/35 bg-parchment-dark/30 px-2.5 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-parchment-dark"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <PlusIcon className="h-3.5 w-3.5 text-maroon" />
-              Añadir habilidades
-            </span>
-            <ChevronDownIcon
-              className={clsx('h-3.5 w-3.5 shrink-0 text-ink-soft transition-transform', anadiendo && 'rotate-180')}
-            />
-          </button>
+        {!soloLectura && (
+          <section ref={catalogo} className="pt-1">
+            <button
+              type="button"
+              onClick={alternarCatalogo}
+              aria-expanded={anadiendo}
+              className="flex w-full items-center justify-between gap-2 rounded-sm border border-rule-dark/35 bg-parchment-dark/30 px-2.5 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-parchment-dark"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <PlusIcon className="h-3.5 w-3.5 text-maroon" />
+                Añadir habilidades
+              </span>
+              <ChevronDownIcon
+                className={clsx('h-3.5 w-3.5 shrink-0 text-ink-soft transition-transform', anadiendo && 'rotate-180')}
+              />
+            </button>
 
-          {anadiendo && (
-            <div className="mt-2 space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="flex flex-wrap gap-0.5 rounded-sm border border-rule-dark/30 bg-parchment/70 p-0.5">
-                  {ORDEN_DE_TIPOS.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setTipo(t)}
-                      title={ETIQUETAS_DE_TIPO[t]}
-                      aria-pressed={t === tipo}
-                      className={clsx(
-                        'rounded-sm px-2 py-0.5 text-mini font-semibold tracking-wide transition-colors',
-                        t === tipo
-                          ? 'bg-maroon text-parchment shadow-sm shadow-black/20'
-                          : 'text-ink-soft hover:bg-parchment-dark',
-                      )}
-                    >
-                      {ETIQUETAS_CORTAS[t]}
-                    </button>
-                  ))}
+            {anadiendo && (
+              <div className="mt-2 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap gap-0.5 rounded-sm border border-rule-dark/30 bg-parchment/70 p-0.5">
+                    {ORDEN_DE_TIPOS.map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setTipo(t)}
+                        title={ETIQUETAS_DE_TIPO[t]}
+                        aria-pressed={t === tipo}
+                        className={clsx(
+                          'rounded-sm px-2 py-0.5 text-mini font-semibold tracking-wide transition-colors',
+                          t === tipo
+                            ? 'bg-maroon text-parchment shadow-sm shadow-black/20'
+                            : 'text-ink-soft hover:bg-parchment-dark',
+                        )}
+                      >
+                        {ETIQUETAS_CORTAS[t]}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="relative min-w-[8rem] flex-1">
+                    <span className="sr-only">Buscar una habilidad por su nombre</span>
+                    <SearchIcon className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-soft/70" />
+                    <input
+                      type="search"
+                      value={busqueda}
+                      onChange={(e) => setBusqueda(e.target.value)}
+                      placeholder="Buscar…"
+                      className="w-full rounded-sm border border-rule-dark/45 bg-parchment/70 py-0.5 pl-7 pr-2 text-xs text-ink outline-none transition-colors focus:border-bronze focus:ring-2 focus:ring-bronze/25"
+                    />
+                  </label>
                 </div>
-                <label className="relative min-w-[8rem] flex-1">
-                  <span className="sr-only">Buscar una habilidad por su nombre</span>
-                  <SearchIcon className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-soft/70" />
-                  <input
-                    type="search"
-                    value={busqueda}
-                    onChange={(e) => setBusqueda(e.target.value)}
-                    placeholder="Buscar…"
-                    className="w-full rounded-sm border border-rule-dark/45 bg-parchment/70 py-0.5 pl-7 pr-2 text-xs text-ink outline-none transition-colors focus:border-bronze focus:ring-2 focus:ring-bronze/25"
-                  />
-                </label>
-              </div>
 
-              <ul className="divide-y divide-rule-dark/12">
-                {delCatalogo.map((h) => {
-                  const yaLaTiene = tiene.has(h.clave)
-                  const coste = costeDeCompra(h)
-                  const llega = saldo >= coste
-                  const topeLlena = h.tipo === 'social' && sinSitioParaSociales
-                  return (
-                    <li key={h.clave} className="px-0.5 py-1">
-                      <div className="flex items-center gap-2">
-                        <span className="flex min-w-0 flex-1 items-center gap-1.5">
-                          <span
-                            className={clsx(
-                              'min-w-0 truncate text-xs',
-                              yaLaTiene ? 'font-medium text-maroon' : 'text-ink',
-                            )}
-                          >
-                            {h.nombre}
-                          </span>
-                          {h.descripcion && (
-                            <BotonDeInfo
-                              nombre={h.nombre}
-                              abierto={abierta === `cat:${h.clave}`}
-                              onClick={() => setAbierta(abierta === `cat:${h.clave}` ? null : `cat:${h.clave}`)}
-                            />
-                          )}
-                        </span>
-                        <span className="w-12 shrink-0 text-right text-mini tabular-nums text-ink-soft/80">
-                          {coste} exp.
-                        </span>
-                        <span className="flex w-20 shrink-0 justify-end">
-                          {yaLaTiene ? (
-                            <span className="inline-flex items-center gap-1 text-mini font-medium text-maroon">
-                              <CheckIcon className="h-3 w-3" />
-                              Ya adquirido
-                            </span>
-                          ) : topeLlena ? (
-                            // EL TOPE NO SE EXPLICA EN UN PÁRRAFO, se ve en el
-                            // sitio donde se pulsaría: dos y no hay más.
+                <ul className="divide-y divide-rule-dark/12">
+                  {delCatalogo.map((h) => {
+                    const yaLaTiene = tiene.has(h.clave)
+                    const coste = costeDeCompra(h)
+                    const llega = saldo >= coste
+                    const topeLlena = h.tipo === 'social' && sinSitioParaSociales
+                    return (
+                      <li key={h.clave} className="px-0.5 py-1">
+                        <div className="flex items-center gap-2">
+                          <span className="flex min-w-0 flex-1 items-center gap-1.5">
                             <span
-                              className="text-mini font-medium text-bronze"
-                              title={`Un personaje no puede tener más de ${TOPE_DE_SOCIALES} características sociales`}
+                              className={clsx(
+                                'min-w-0 truncate text-xs',
+                                yaLaTiene ? 'font-medium text-maroon' : 'text-ink',
+                              )}
                             >
-                              Tope de {TOPE_DE_SOCIALES}
+                              {h.nombre}
                             </span>
-                          ) : llega ? (
-                            <button
-                              type="button"
-                              disabled={ocupado}
-                              onClick={() => void comprar(h)}
-                              className="rounded-sm border border-maroon/45 px-2 py-0.5 text-mini font-semibold text-maroon transition-colors hover:bg-maroon hover:text-parchment disabled:opacity-40"
-                            >
-                              Añadir
-                            </button>
-                          ) : (
-                            // NO SE OFRECE LO QUE NO SE PUEDE PAGAR, y se dice
-                            // cuánto falta. Un botón que al pulsarlo contesta
-                            // "no te llega" hace perder un clic y no informa.
-                            <span className="text-mini text-danger" title={`Hacen falta ${coste} y tiene ${saldo}`}>
-                              Faltan {coste - saldo} exp
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                      {abierta === `cat:${h.clave}` && h.descripcion && <Descripcion texto={h.descripcion} />}
+                            {h.descripcion && (
+                              <BotonDeInfo
+                                nombre={h.nombre}
+                                abierto={abierta === `cat:${h.clave}`}
+                                onClick={() => setAbierta(abierta === `cat:${h.clave}` ? null : `cat:${h.clave}`)}
+                              />
+                            )}
+                          </span>
+                          <span className="w-12 shrink-0 text-right text-mini tabular-nums text-ink-soft/80">
+                            {coste} exp.
+                          </span>
+                          <span className="flex w-20 shrink-0 justify-end">
+                            {yaLaTiene ? (
+                              <span className="inline-flex items-center gap-1 text-mini font-medium text-maroon">
+                                <CheckIcon className="h-3 w-3" />
+                                Ya adquirido
+                              </span>
+                            ) : topeLlena ? (
+                              // EL TOPE NO SE EXPLICA EN UN PÁRRAFO, se ve en el
+                              // sitio donde se pulsaría: dos y no hay más.
+                              <span
+                                className="text-mini font-medium text-bronze"
+                                title={`Un personaje no puede tener más de ${TOPE_DE_SOCIALES} características sociales`}
+                              >
+                                Tope de {TOPE_DE_SOCIALES}
+                              </span>
+                            ) : llega ? (
+                              <button
+                                type="button"
+                                disabled={ocupado}
+                                onClick={() => void comprar(h)}
+                                className="rounded-sm border border-maroon/45 px-2 py-0.5 text-mini font-semibold text-maroon transition-colors hover:bg-maroon hover:text-parchment disabled:opacity-40"
+                              >
+                                Añadir
+                              </button>
+                            ) : (
+                              // NO SE OFRECE LO QUE NO SE PUEDE PAGAR, y se dice
+                              // cuánto falta. Un botón que al pulsarlo contesta
+                              // "no te llega" hace perder un clic y no informa.
+                              <span className="text-mini text-danger" title={`Hacen falta ${coste} y tiene ${saldo}`}>
+                                Faltan {coste - saldo} exp
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                        {abierta === `cat:${h.clave}` && h.descripcion && <Descripcion texto={h.descripcion} />}
+                      </li>
+                    )
+                  })}
+                  {delCatalogo.length === 0 && (
+                    <li className="px-1 py-2 text-center text-mini italic text-ink-soft">
+                      No hay ninguna que se llame así.
                     </li>
-                  )
-                })}
-                {delCatalogo.length === 0 && (
-                  <li className="px-1 py-2 text-center text-mini italic text-ink-soft">
-                    No hay ninguna que se llame así.
-                  </li>
-                )}
-              </ul>
-            </div>
-          )}
-        </section>
+                  )}
+                </ul>
+              </div>
+            )}
+          </section>
+        )}
 
         {error && <p className="rounded-sm bg-danger-dark/10 px-2 py-1 text-mini text-danger">{error}</p>}
       </div>

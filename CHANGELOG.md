@@ -13,6 +13,23 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.210 — 11/11/2026 15:03
+
+- **Del personaje de otro se ve TODO otra vez**: en 0.209 se bloqueó
+  escondiendo, y se escondió también lo que solo era mirar. Las cuatro
+  ventanas —Experiencia, Habilidades, Cicatrices y Magia— vuelven a abrirse,
+  en modo lectura: su libro de experiencia entero, sus habilidades y
+  cicatrices con lo que hace cada una, y su magia (sendas y nivel, habilidades
+  mágicas, avanzadas, saberes y pergaminos). Lo que no sale es el catálogo de
+  lo que podría comprar ni los botones de adquirir, devolver y quitar.
+- **Vuelve la ficha de unidad**, que es la que se había quedado sin sitio: el
+  enlace está otra vez en la lámina y la pantalla se abre entera —perfil,
+  equipo, monturas, opciones y coste—. En la de otro se mira y no se toca: sin
+  botón de guardar y con todos los controles apagados.
+- La de los tuyos se edita exactamente igual que siempre.
+
+---
+
 ## 0.209 — 09/11/2026 23:02
 
 - **El personaje de renombre de otro jugador ya no se puede tocar.** Se ve

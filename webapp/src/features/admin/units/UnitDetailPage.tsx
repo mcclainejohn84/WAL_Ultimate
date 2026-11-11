@@ -277,32 +277,19 @@ export function UnitDetailPage() {
   }
 
   /**
-   * LA FICHA DE UN PERSONAJE DE OTRO NO SE ABRE.
+   * LA FICHA DE UN PERSONAJE DE OTRO SE MIRA, PERO NO SE TOCA.
    *
-   * Esta pantalla es una herramienta de edición de cabo a rabo: no hay nada
-   * que mirar aquí que no se vea mejor en su lámina o en su hoja de unidad,
-   * así que en vez de dejar cien controles apagados no se entra. Lo que NO es
-   * un personaje de renombre sigue siendo del catálogo y se edita como
-   * siempre (ver esEditablePor).
+   * Se abre entera —perfil, equipo, monturas, opciones, coste—, porque es
+   * donde está lo que define a ese personaje y verlo no le hace daño a nadie.
+   * Lo que no sale es el botón de guardar, y todo lo demás queda apagado con
+   * un `fieldset disabled`: es el navegador quien desactiva cada control de
+   * dentro, así que no hay forma de que se escape uno al añadir mañana otro
+   * campo (ver esEditablePor).
+   *
+   * Lo que NO es un personaje de renombre sigue siendo del catálogo y se
+   * edita como siempre.
    */
-  if (unit && !esEditablePor(unit, usuario?.id)) {
-    return (
-      <div>
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-3 flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
-        >
-          <ArrowLeftIcon className="h-4 w-4" />
-          Volver
-        </button>
-        <PageHeader title={unit.name} description={unit.faction.name} />
-        <p className="flex items-center gap-2 rounded-sm border border-rule-dark/40 bg-parchment/70 px-4 py-3 text-sm text-ink-soft">
-          <LockIcon className="h-4 w-4 shrink-0" />
-          De otro jugador
-        </p>
-      </div>
-    )
-  }
+  const soloLectura = unit != null && !esEditablePor(unit, usuario?.id)
 
   if (error || !unit || !draft) {
     return (
@@ -573,22 +560,31 @@ export function UnitDetailPage() {
         description={`${unit.faction.name}${unit.category ? ` · ${unit.category.name}` : ''}`}
         actions={
           <div className="flex items-center gap-3">
-            {dirty && !saving && <span className="text-xs font-medium text-bronze">● Cambios sin guardar</span>}
-            {/* Los apéndices se guardan en su propia ventana, aparte del
+            {soloLectura ? (
+              <span className="flex items-center gap-1.5 text-sm text-ink-soft" title="Es de otro jugador">
+                <LockIcon className="h-4 w-4" />
+                De otro jugador
+              </span>
+            ) : (
+              <>
+                {dirty && !saving && <span className="text-xs font-medium text-bronze">● Cambios sin guardar</span>}
+                {/* Los apéndices se guardan en su propia ventana, aparte del
                 borrador de la ficha (ver AppendicesModal): son textos largos y
                 no deben depender de que aquí se pulse "Guardar cambios". */}
-            <Button variant="secondary" onClick={() => setShowAppendices(true)}>
-              Apéndices{numApendices > 0 ? ` (${numApendices})` : ''}
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleSave}
-              disabled={saving || aliasEscritoRepetido}
-              title={aliasEscritoRepetido ? 'Las iniciales están repetidas en esta facción' : undefined}
-            >
-              {savedFlash && !saving && <CheckIcon className="h-4 w-4" />}
-              {saving ? 'Guardando…' : savedFlash ? 'Guardado' : 'Guardar cambios'}
-            </Button>
+                <Button variant="secondary" onClick={() => setShowAppendices(true)}>
+                  Apéndices{numApendices > 0 ? ` (${numApendices})` : ''}
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleSave}
+                  disabled={saving || aliasEscritoRepetido}
+                  title={aliasEscritoRepetido ? 'Las iniciales están repetidas en esta facción' : undefined}
+                >
+                  {savedFlash && !saving && <CheckIcon className="h-4 w-4" />}
+                  {saving ? 'Guardando…' : savedFlash ? 'Guardado' : 'Guardar cambios'}
+                </Button>
+              </>
+            )}
           </div>
         }
       />
@@ -603,9 +599,13 @@ export function UnitDetailPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
-        <div className="space-y-6 lg:col-span-3">
-          {/* --------------------------------------------------------------
+      {/* `display: contents` para que el fieldset no toque la maquetación: lo
+          único que aporta es el `disabled`, que el navegador propaga a todos
+          los controles de dentro. */}
+      <fieldset disabled={soloLectura} className="contents">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+          <div className="space-y-6 lg:col-span-3">
+            {/* --------------------------------------------------------------
               Rejilla de 12 columnas, con los campos repartidos como se leen:
 
                 fila 1 · Nombre · Coste · Categoría
@@ -616,8 +616,8 @@ export function UnitDetailPage() {
               un coste son tres dígitos y un tamaño dos. Las filas se cierran
               siempre completas, sin medias líneas vacías.
               -------------------------------------------------------------- */}
-          <Panel title="Datos generales">
-            {/* Rejilla de 12 columnas con los campos repartidos como se leen:
+            <Panel title="Datos generales">
+              {/* Rejilla de 12 columnas con los campos repartidos como se leen:
 
                   fila 1 · Nombre · Coste · Categoría
                   fila 2 · Etiqueta · Equipo
@@ -630,80 +630,80 @@ export function UnitDetailPage() {
                 `items-end` alinea los campos por ABAJO, para que un rótulo que
                 se parta en dos líneas no deje su caja a otra altura que las de
                 al lado. */}
-            <div className="grid grid-cols-12 items-end gap-x-3 gap-y-4">
-              {/* Fila 1 */}
-              <div className="col-span-12 sm:col-span-6">
-                <TextField
-                  label="Nombre"
-                  value={draft.scalar.name}
-                  onChange={(e) => updateDraft((d) => ({ ...d, scalar: { ...d.scalar, name: e.target.value } }))}
-                />
-              </div>
-              <div className="col-span-4 sm:col-span-2">
-                <TextField
-                  label="Coste (pts)"
-                  type="number"
-                  max={999}
-                  value={draft.scalar.baseCost}
-                  onChange={(e) =>
-                    updateDraft((d) => ({ ...d, scalar: { ...d.scalar, baseCost: Number(e.target.value) } }))
-                  }
-                />
-              </div>
-              <div className="col-span-8 sm:col-span-4">
-                <Select
-                  label="Categoría"
-                  value={draft.scalar.categoryId ?? ''}
-                  onChange={(e) =>
-                    updateDraft((d) => ({
-                      ...d,
-                      scalar: { ...d.scalar, categoryId: e.target.value ? Number(e.target.value) : null },
-                    }))
-                  }
-                >
-                  <option value="">Sin categoría</option>
-                  {categories?.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+              <div className="grid grid-cols-12 items-end gap-x-3 gap-y-4">
+                {/* Fila 1 */}
+                <div className="col-span-12 sm:col-span-6">
+                  <TextField
+                    label="Nombre"
+                    value={draft.scalar.name}
+                    onChange={(e) => updateDraft((d) => ({ ...d, scalar: { ...d.scalar, name: e.target.value } }))}
+                  />
+                </div>
+                <div className="col-span-4 sm:col-span-2">
+                  <TextField
+                    label="Coste (pts)"
+                    type="number"
+                    max={999}
+                    value={draft.scalar.baseCost}
+                    onChange={(e) =>
+                      updateDraft((d) => ({ ...d, scalar: { ...d.scalar, baseCost: Number(e.target.value) } }))
+                    }
+                  />
+                </div>
+                <div className="col-span-8 sm:col-span-4">
+                  <Select
+                    label="Categoría"
+                    value={draft.scalar.categoryId ?? ''}
+                    onChange={(e) =>
+                      updateDraft((d) => ({
+                        ...d,
+                        scalar: { ...d.scalar, categoryId: e.target.value ? Number(e.target.value) : null },
+                      }))
+                    }
+                  >
+                    <option value="">Sin categoría</option>
+                    {categories?.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
 
-              {/* Fila 2. La ETIQUETA manda además en la magia: si es Hechicero
+                {/* Fila 2. La ETIQUETA manda además en la magia: si es Hechicero
                   o Archimago, al añadir el personaje a un ejército se le podrán
                   elegir sendas (ver isWizardTag). */}
-              <div className="col-span-12 sm:col-span-4">
-                <Select
-                  label="Etiqueta"
-                  value={draft.scalar.typeTagId ?? ''}
-                  onChange={(e) =>
-                    updateDraft((d) => ({
-                      ...d,
-                      scalar: { ...d.scalar, typeTagId: e.target.value ? Number(e.target.value) : null },
-                    }))
-                  }
-                >
-                  <option value="">Sin etiqueta</option>
-                  {typeTags?.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div className="col-span-12 sm:col-span-8">
-                <TextField
-                  label="Equipo"
-                  placeholder="p.ej. Arma de mano, escudo"
-                  value={draft.scalar.equipmentText ?? ''}
-                  onChange={(e) =>
-                    updateDraft((d) => ({ ...d, scalar: { ...d.scalar, equipmentText: e.target.value || null } }))
-                  }
-                />
-              </div>
+                <div className="col-span-12 sm:col-span-4">
+                  <Select
+                    label="Etiqueta"
+                    value={draft.scalar.typeTagId ?? ''}
+                    onChange={(e) =>
+                      updateDraft((d) => ({
+                        ...d,
+                        scalar: { ...d.scalar, typeTagId: e.target.value ? Number(e.target.value) : null },
+                      }))
+                    }
+                  >
+                    <option value="">Sin etiqueta</option>
+                    {typeTags?.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="col-span-12 sm:col-span-8">
+                  <TextField
+                    label="Equipo"
+                    placeholder="p.ej. Arma de mano, escudo"
+                    value={draft.scalar.equipmentText ?? ''}
+                    onChange={(e) =>
+                      updateDraft((d) => ({ ...d, scalar: { ...d.scalar, equipmentText: e.target.value || null } }))
+                    }
+                  />
+                </div>
 
-              {/* Fila 3 — solo tropa: un personaje es una sola miniatura, así
+                {/* Fila 3 — solo tropa: un personaje es una sola miniatura, así
                   que no tiene tamaños ni puede ser 0-1, y la fila desaparece
                   entera en vez de quedarse a medias.
 
@@ -711,82 +711,82 @@ export function UnitDetailPage() {
                   ancho fijo y no repartidos por la rejilla: con una columna de
                   cuatro doceavos cada uno, tres campos de dos cifras ocupaban
                   media pantalla. El 0-1 va detrás, en la misma línea. */}
-              {unit.unitType !== 'personaje' && (
-                <div className="col-span-12 flex flex-wrap items-end gap-x-3 gap-y-3">
-                  <div className="w-16">
-                    <TextField
-                      label="Mínimo"
-                      type="number"
-                      max={99}
-                      className="text-center"
-                      value={draft.scalar.minSize ?? ''}
-                      onChange={(e) =>
-                        updateDraft((d) => ({
-                          ...d,
-                          scalar: { ...d.scalar, minSize: e.target.value ? Number(e.target.value) : null },
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="w-16">
-                    <TextField
-                      label="Máximo"
-                      type="number"
-                      max={99}
-                      className="text-center"
-                      value={draft.scalar.maxSize ?? ''}
-                      onChange={(e) =>
-                        updateDraft((d) => ({
-                          ...d,
-                          scalar: { ...d.scalar, maxSize: e.target.value ? Number(e.target.value) : null },
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="w-16">
-                    <TextField
-                      label="Inicial"
-                      type="number"
-                      max={99}
-                      className="text-center"
-                      title="Tamaño de partida sugerido al añadir esta unidad a una lista (no es un límite, solo precarga la cantidad)."
-                      value={draft.scalar.defaultSize ?? ''}
-                      onChange={(e) =>
-                        updateDraft((d) => ({
-                          ...d,
-                          scalar: { ...d.scalar, defaultSize: e.target.value ? Number(e.target.value) : null },
-                        }))
-                      }
-                    />
-                  </div>
-                  <span className="pb-1.5 text-mini text-ink-soft/70">miniaturas</span>
+                {unit.unitType !== 'personaje' && (
+                  <div className="col-span-12 flex flex-wrap items-end gap-x-3 gap-y-3">
+                    <div className="w-16">
+                      <TextField
+                        label="Mínimo"
+                        type="number"
+                        max={99}
+                        className="text-center"
+                        value={draft.scalar.minSize ?? ''}
+                        onChange={(e) =>
+                          updateDraft((d) => ({
+                            ...d,
+                            scalar: { ...d.scalar, minSize: e.target.value ? Number(e.target.value) : null },
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="w-16">
+                      <TextField
+                        label="Máximo"
+                        type="number"
+                        max={99}
+                        className="text-center"
+                        value={draft.scalar.maxSize ?? ''}
+                        onChange={(e) =>
+                          updateDraft((d) => ({
+                            ...d,
+                            scalar: { ...d.scalar, maxSize: e.target.value ? Number(e.target.value) : null },
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="w-16">
+                      <TextField
+                        label="Inicial"
+                        type="number"
+                        max={99}
+                        className="text-center"
+                        title="Tamaño de partida sugerido al añadir esta unidad a una lista (no es un límite, solo precarga la cantidad)."
+                        value={draft.scalar.defaultSize ?? ''}
+                        onChange={(e) =>
+                          updateDraft((d) => ({
+                            ...d,
+                            scalar: { ...d.scalar, defaultSize: e.target.value ? Number(e.target.value) : null },
+                          }))
+                        }
+                      />
+                    </div>
+                    <span className="pb-1.5 text-mini text-ink-soft/70">miniaturas</span>
 
-                  {/* Ojo: el 0-1 no es tamaño. Limita cuántas UNIDADES de este
+                    {/* Ojo: el 0-1 no es tamaño. Limita cuántas UNIDADES de este
                       tipo caben en el ejército, no cuántas miniaturas la
                       forman. */}
-                  <label
-                    className="flex cursor-pointer items-center gap-2 pb-1.5 text-xs text-ink-soft"
-                    title="Solo una unidad de este tipo en todo el ejército. No limita el número de miniaturas."
-                  >
-                    <input
-                      type="checkbox"
-                      className="accent-maroon"
-                      checked={draft.scalar.isUnique}
-                      onChange={(e) =>
-                        updateDraft((d) => ({ ...d, scalar: { ...d.scalar, isUnique: e.target.checked } }))
-                      }
-                    />
-                    Unidad única (0-1)
-                  </label>
-                </div>
-              )}
-            </div>
-            {/* "Notas internas" se oculta de la ficha (se dejó de pedir
+                    <label
+                      className="flex cursor-pointer items-center gap-2 pb-1.5 text-xs text-ink-soft"
+                      title="Solo una unidad de este tipo en todo el ejército. No limita el número de miniaturas."
+                    >
+                      <input
+                        type="checkbox"
+                        className="accent-maroon"
+                        checked={draft.scalar.isUnique}
+                        onChange={(e) =>
+                          updateDraft((d) => ({ ...d, scalar: { ...d.scalar, isUnique: e.target.checked } }))
+                        }
+                      />
+                      Unidad única (0-1)
+                    </label>
+                  </div>
+                )}
+              </div>
+              {/* "Notas internas" se oculta de la ficha (se dejó de pedir
                 mostrarla) pero sigue viajando en draft.scalar.notes tal cual se
                 cargó, así que "Guardar cambios" no la borra de la base. */}
-          </Panel>
+            </Panel>
 
-          {/* --------------------------------------------------------------
+            {/* --------------------------------------------------------------
               EL ALIAS: UN RÓTULO Y UNA CASILLA, EN UNA LÍNEA.
               No son "datos generales" de la unidad —es un dato de dibujo que
               solo existe para el Despliegue—, así que sigue teniendo sitio
@@ -803,319 +803,319 @@ export function UnitDetailPage() {
               Va en una caja como la de los apartados de al lado para que no
               parezca un campo suelto entre paneles, pero de una sola línea.
               -------------------------------------------------------------- */}
-          <section className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-sm border border-rule-dark/40 bg-parchment/70 px-3 py-2">
-            <label htmlFor="alias-despliegue" className="font-display text-lg leading-tight font-semibold text-ink">
-              Alias
-            </label>
-            <input
-              id="alias-despliegue"
-              maxLength={ALIAS_MAX}
-              placeholder={inicialesDe(draft.scalar.name) || '—'}
-              value={draft.scalar.alias ?? ''}
-              onChange={(e) =>
-                updateDraft((d) => ({ ...d, scalar: { ...d.scalar, alias: normalizarAlias(e.target.value) } }))
-              }
-              title="Lo que se escribe dentro de la peana en el Despliegue, tres caracteres como mucho. En blanco se usan las iniciales del nombre. No se usa en ningún otro sitio."
-              className={clsx(
-                'w-16 rounded-sm border bg-parchment/70 px-2 py-1 text-center text-xs uppercase text-ink outline-none',
-                'transition-colors focus:border-bronze focus:ring-2 focus:ring-bronze/25',
-                aliasEscritoRepetido ? 'border-danger' : 'border-rule-dark/50',
-              )}
-            />
+            <section className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-sm border border-rule-dark/40 bg-parchment/70 px-3 py-2">
+              <label htmlFor="alias-despliegue" className="font-display text-lg leading-tight font-semibold text-ink">
+                Alias
+              </label>
+              <input
+                id="alias-despliegue"
+                maxLength={ALIAS_MAX}
+                placeholder={inicialesDe(draft.scalar.name) || '—'}
+                value={draft.scalar.alias ?? ''}
+                onChange={(e) =>
+                  updateDraft((d) => ({ ...d, scalar: { ...d.scalar, alias: normalizarAlias(e.target.value) } }))
+                }
+                title="Lo que se escribe dentro de la peana en el Despliegue, tres caracteres como mucho. En blanco se usan las iniciales del nombre. No se usa en ningún otro sitio."
+                className={clsx(
+                  'w-16 rounded-sm border bg-parchment/70 px-2 py-1 text-center text-xs uppercase text-ink outline-none',
+                  'transition-colors focus:border-bronze focus:ring-2 focus:ring-bronze/25',
+                  aliasEscritoRepetido ? 'border-danger' : 'border-rule-dark/50',
+                )}
+              />
 
-            {/* El choque se dice al lado, y debajo cuando no cabe: en un campo
+              {/* El choque se dice al lado, y debajo cuando no cabe: en un campo
                 de tres caracteres no cabe explicar nada.
 
                 Escritas a mano y repetidas → error, y no deja guardar. Si son
                 las automáticas del nombre → solo aviso: hay 31 choques
                 heredados en el catálogo y bloquear el guardado de todos ellos
                 impediría trabajar en una unidad por algo que no se ha tocado. */}
-            {choqueDeAlias.length > 0 && (
-              <p
-                className={clsx(
-                  'flex min-w-[14rem] flex-1 items-start gap-1.5 text-xs leading-relaxed',
-                  aliasEscritoRepetido ? 'text-danger' : 'text-bronze',
-                )}
-              >
-                <WarningIcon className="mt-px h-3.5 w-3.5 shrink-0" />
-                <span>
-                  <b>{aliasEfectivo}</b> ya {choqueDeAlias.length === 1 ? 'lo usa' : 'lo usan'}{' '}
-                  {choqueDeAlias.map((u) => u.name).join(', ')} en esta facción.{' '}
-                  {aliasEscritoRepetido
-                    ? 'Escribe otras iniciales para poder guardar.'
-                    : 'Escribe unas iniciales propias para distinguirlas en la mesa.'}
-                </span>
-              </p>
-            )}
-          </section>
+              {choqueDeAlias.length > 0 && (
+                <p
+                  className={clsx(
+                    'flex min-w-[14rem] flex-1 items-start gap-1.5 text-xs leading-relaxed',
+                    aliasEscritoRepetido ? 'text-danger' : 'text-bronze',
+                  )}
+                >
+                  <WarningIcon className="mt-px h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    <b>{aliasEfectivo}</b> ya {choqueDeAlias.length === 1 ? 'lo usa' : 'lo usan'}{' '}
+                    {choqueDeAlias.map((u) => u.name).join(', ')} en esta facción.{' '}
+                    {aliasEscritoRepetido
+                      ? 'Escribe otras iniciales para poder guardar.'
+                      : 'Escribe unas iniciales propias para distinguirlas en la mesa.'}
+                  </span>
+                </p>
+              )}
+            </section>
 
-          <Panel title="Opciones de equipo">
-            <RelationEditor
-              allItems={equipmentItems}
-              selectedIds={draft.equipmentIds}
-              onToggle={(otherId, enabled) => toggleDraft('equipmentIds', otherId, enabled)}
-              addLabel="Añadir opción de equipo"
-              onCreateNew={(query) => setCreatingEquipmentQuery(query)}
-              createNewLabel="Crear opción de equipo"
-              defaultIds={draft.defaultEquipmentIds}
-              onToggleDefault={(otherId, isDefault) => toggleDraftDefault('defaultEquipmentIds', otherId, isDefault)}
-            />
+            <Panel title="Opciones de equipo">
+              <RelationEditor
+                allItems={equipmentItems}
+                selectedIds={draft.equipmentIds}
+                onToggle={(otherId, enabled) => toggleDraft('equipmentIds', otherId, enabled)}
+                addLabel="Añadir opción de equipo"
+                onCreateNew={(query) => setCreatingEquipmentQuery(query)}
+                createNewLabel="Crear opción de equipo"
+                defaultIds={draft.defaultEquipmentIds}
+                onToggleDefault={(otherId, isDefault) => toggleDraftDefault('defaultEquipmentIds', otherId, isDefault)}
+              />
 
-            {/* De quién es cada opción, solo si la unidad tiene más de una
+              {/* De quién es cada opción, solo si la unidad tiene más de una
                 tropa. En una normal no habría nada que elegir: todas las
                 opciones son de todos. Sin marcar ninguna, la opción sigue
                 siendo de toda la unidad. */}
-            {draft.tropas.length > 0 && draft.equipmentIds.size > 0 && (
-              <div className="mt-3 border-t border-rule-dark/20 pt-3">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="text-micro font-semibold uppercase tracking-[0.12em] text-ink-soft/70">
-                      <th className="pb-1 text-left font-semibold">Opción</th>
-                      {tropasDeLaUnidad.map((tr) => (
-                        <th key={tr.profileId} className="pb-1 px-1 text-center font-semibold">
-                          {tr.nombre}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-rule-dark/12">
-                    {equipmentItems
-                      .filter((item) => draft.equipmentIds.has(item.id))
-                      .map((item) => (
-                        <tr key={item.id}>
-                          {/* Con el coste al lado: es lo que se mira al
+              {draft.tropas.length > 0 && draft.equipmentIds.size > 0 && (
+                <div className="mt-3 border-t border-rule-dark/20 pt-3">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-micro font-semibold uppercase tracking-[0.12em] text-ink-soft/70">
+                        <th className="pb-1 text-left font-semibold">Opción</th>
+                        {tropasDeLaUnidad.map((tr) => (
+                          <th key={tr.profileId} className="pb-1 px-1 text-center font-semibold">
+                            {tr.nombre}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-rule-dark/12">
+                      {equipmentItems
+                        .filter((item) => draft.equipmentIds.has(item.id))
+                        .map((item) => (
+                          <tr key={item.id}>
+                            {/* Con el coste al lado: es lo que se mira al
                               decidir quién la lleva, y en esta rejilla no se
                               ve el de la lista de arriba. */}
-                          <td className="py-1 pr-2 text-ink">
-                            {item.name}
-                            {item.cost !== undefined && <span className="ml-1 text-ink-soft">({item.cost} pts)</span>}
-                          </td>
-                          {tropasDeLaUnidad.map((tr) => (
-                            <td key={tr.profileId} className="px-1 py-1 text-center">
-                              <input
-                                type="checkbox"
-                                aria-label={`${item.name} para ${tr.nombre}`}
-                                checked={(draft.equipoPorTropa[item.id] ?? []).includes(tr.profileId)}
-                                onChange={(e) => toggleEquipoDeTropa(item.id, tr.profileId, e.target.checked)}
-                                className="h-3.5 w-3.5 accent-maroon"
-                              />
+                            <td className="py-1 pr-2 text-ink">
+                              {item.name}
+                              {item.cost !== undefined && <span className="ml-1 text-ink-soft">({item.cost} pts)</span>}
                             </td>
-                          ))}
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Panel>
+                            {tropasDeLaUnidad.map((tr) => (
+                              <td key={tr.profileId} className="px-1 py-1 text-center">
+                                <input
+                                  type="checkbox"
+                                  aria-label={`${item.name} para ${tr.nombre}`}
+                                  checked={(draft.equipoPorTropa[item.id] ?? []).includes(tr.profileId)}
+                                  onChange={(e) => toggleEquipoDeTropa(item.id, tr.profileId, e.target.checked)}
+                                  className="h-3.5 w-3.5 accent-maroon"
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Panel>
 
-          <Panel title="Opciones de unidad">
-            <RelationEditor
-              allItems={allUpgrades ?? []}
-              selectedIds={draft.upgradeIds}
-              onToggle={(otherId, enabled) => toggleDraft('upgradeIds', otherId, enabled)}
-              addLabel="Añadir opción de unidad"
-              onCreateNew={(query) => setCreatingUpgradeQuery(query)}
-              createNewLabel="Crear opción de unidad"
-              defaultIds={draft.defaultUpgradeIds}
-              onToggleDefault={(otherId, isDefault) => toggleDraftDefault('defaultUpgradeIds', otherId, isDefault)}
-            />
-          </Panel>
+            <Panel title="Opciones de unidad">
+              <RelationEditor
+                allItems={allUpgrades ?? []}
+                selectedIds={draft.upgradeIds}
+                onToggle={(otherId, enabled) => toggleDraft('upgradeIds', otherId, enabled)}
+                addLabel="Añadir opción de unidad"
+                onCreateNew={(query) => setCreatingUpgradeQuery(query)}
+                createNewLabel="Crear opción de unidad"
+                defaultIds={draft.defaultUpgradeIds}
+                onToggleDefault={(otherId, isDefault) => toggleDraftDefault('defaultUpgradeIds', otherId, isDefault)}
+              />
+            </Panel>
 
-          <Panel title="Reglas especiales">
-            <RelationEditor
-              allItems={ruleItems}
-              selectedIds={draft.specialRuleIds}
-              onToggle={(otherId, enabled) => toggleDraft('specialRuleIds', otherId, enabled)}
-              addLabel="Añadir regla especial"
-              confirmRemove
-            />
-          </Panel>
-        </div>
+            <Panel title="Reglas especiales">
+              <RelationEditor
+                allItems={ruleItems}
+                selectedIds={draft.specialRuleIds}
+                onToggle={(otherId, enabled) => toggleDraft('specialRuleIds', otherId, enabled)}
+                addLabel="Añadir regla especial"
+                confirmRemove
+              />
+            </Panel>
+          </div>
 
-        <div className="space-y-6 lg:col-span-2">
-          {/* La T.S. vive en la cabecera del PERFIL BASE y no en Datos
+          <div className="space-y-6 lg:col-span-2">
+            {/* La T.S. vive en la cabecera del PERFIL BASE y no en Datos
               generales: es un atributo más de la miniatura, y ahí se lee junto
               a F, R, H y el resto en vez de a dos cuadros de distancia.
 
               Lista cerrada porque los únicos valores legales son 0-6. El 0
               ("—") afirma que no tiene salvación, que es distinto de "todavía
               sin rellenar" (vacío). */}
-          <Panel
-            title="Perfil base"
-            headerRight={
-              <label className="flex items-center gap-1.5">
-                <span className="text-xs font-medium text-ink-soft">T.S.</span>
-                <select
-                  value={draft.scalar.armorSave ?? ''}
-                  onChange={(e) =>
-                    updateDraft((d) => ({
-                      ...d,
-                      scalar: { ...d.scalar, armorSave: e.target.value === '' ? null : Number(e.target.value) },
-                    }))
-                  }
-                  className="rounded-sm border border-rule-dark/40 bg-parchment px-1.5 py-1 text-xs text-ink outline-none focus:border-bronze"
-                >
-                  <option value="" />
-                  {ARMOR_SAVE_VALUES.map((value) => (
-                    <option key={value} value={value}>
-                      {formatArmorSave(value)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            }
-          >
-            {/* EL NOMBRE DE LA TROPA PRINCIPAL, solo si la unidad tiene más.
+            <Panel
+              title="Perfil base"
+              headerRight={
+                <label className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium text-ink-soft">T.S.</span>
+                  <select
+                    value={draft.scalar.armorSave ?? ''}
+                    onChange={(e) =>
+                      updateDraft((d) => ({
+                        ...d,
+                        scalar: { ...d.scalar, armorSave: e.target.value === '' ? null : Number(e.target.value) },
+                      }))
+                    }
+                    className="rounded-sm border border-rule-dark/40 bg-parchment px-1.5 py-1 text-xs text-ink outline-none focus:border-bronze"
+                  >
+                    <option value="" />
+                    {ARMOR_SAVE_VALUES.map((value) => (
+                      <option key={value} value={value}>
+                        {formatArmorSave(value)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              }
+            >
+              {/* EL NOMBRE DE LA TROPA PRINCIPAL, solo si la unidad tiene más.
                 Sin él, la principal se llama como la unidad entera, y en el
                 constructor —donde cada tropa tiene su cuadro de cantidad—
                 salía "Manada de Bestias (Gors)" sobre un campo de dos cifras
                 mientras la de al lado ponía "Ungor". */}
-            {baseProfile && draft.tropas.length > 0 && (
-              <div className="mb-3 w-40">
-                <TextField
-                  label="Nombre de esta tropa"
-                  value={draft.nombreDeLaPrincipal}
-                  placeholder="Gor"
-                  onChange={(e) => updateDraft((d) => ({ ...d, nombreDeLaPrincipal: e.target.value }))}
+              {baseProfile && draft.tropas.length > 0 && (
+                <div className="mb-3 w-40">
+                  <TextField
+                    label="Nombre de esta tropa"
+                    value={draft.nombreDeLaPrincipal}
+                    placeholder="Gor"
+                    onChange={(e) => updateDraft((d) => ({ ...d, nombreDeLaPrincipal: e.target.value }))}
+                  />
+                </div>
+              )}
+              {baseProfile ? (
+                <EditableAttributeTable
+                  value={draft.profileStats[baseProfile.id] ?? extractProfileInput(baseProfile)}
+                  onChange={(input) => setProfileStats(baseProfile.id, input)}
                 />
-              </div>
-            )}
-            {baseProfile ? (
-              <EditableAttributeTable
-                value={draft.profileStats[baseProfile.id] ?? extractProfileInput(baseProfile)}
-                onChange={(input) => setProfileStats(baseProfile.id, input)}
-              />
-            ) : (
-              <div>
-                <p className="mb-2 text-xs text-ink-soft">Esta unidad todavía no tiene ficha de atributos.</p>
-                <Button variant="ghost" onClick={createBaseProfileNow}>
-                  <PlusIcon className="h-4 w-4" />
-                  Crear ficha base
-                </Button>
-              </div>
-            )}
-          </Panel>
-
-          {/* UNIDADES COMPUESTAS. La tropa que ya está arriba —el perfil base,
-              con el coste y los tamaños de "Datos generales"— es la PRINCIPAL;
-              aquí van las demás. Sin ninguna, la unidad es normal y lo único
-              que se ve es el botón. */}
-          {unit.unitType !== 'personaje' && (
-            <Panel
-              title="Otras tropas de la unidad"
-              headerRight={
-                <Button variant="ghost" onClick={() => void anadirTropa()}>
-                  <PlusIcon className="h-4 w-4" />
-                  Añadir tropa
-                </Button>
-              }
-            >
-              {draft.tropas.length === 0 ? (
-                <p className="text-xs italic text-ink-soft/55">Ninguna.</p>
               ) : (
-                <div className="space-y-3">
-                  {draft.tropas.map((tropa, index) => (
-                    <div
-                      key={tropa.profileId}
-                      className="rounded-sm border border-rule-dark/30 bg-parchment-dark/15 p-3"
-                    >
-                      <div className="mb-2.5 flex flex-wrap items-end gap-x-3 gap-y-2">
-                        <div className="min-w-[7rem] flex-1">
-                          <TextField
-                            label="Nombre"
-                            value={tropa.name}
-                            placeholder="Ungor"
-                            onChange={(e) => setTropa(tropa.profileId, { name: e.target.value })}
-                          />
-                        </div>
-                        <div className="w-20">
-                          <TextField
-                            label="Puntos"
-                            type="number"
-                            max={999}
-                            className="text-center"
-                            value={tropa.cost}
-                            onChange={(e) => setTropa(tropa.profileId, { cost: Number(e.target.value) || 0 })}
-                          />
-                        </div>
-                        <div className="w-16">
-                          <TextField
-                            label="Mínimo"
-                            type="number"
-                            max={99}
-                            className="text-center"
-                            value={tropa.minSize ?? ''}
-                            onChange={(e) =>
-                              setTropa(tropa.profileId, { minSize: e.target.value ? Number(e.target.value) : null })
-                            }
-                          />
-                        </div>
-                        <div className="w-16">
-                          <TextField
-                            label="Máximo"
-                            type="number"
-                            max={99}
-                            className="text-center"
-                            value={tropa.maxSize ?? ''}
-                            onChange={(e) =>
-                              setTropa(tropa.profileId, { maxSize: e.target.value ? Number(e.target.value) : null })
-                            }
-                          />
-                        </div>
-                        <label className="flex items-center gap-1.5 pb-1.5 text-xs text-ink">
-                          <input
-                            type="checkbox"
-                            checked={tropa.countsTowardSize}
-                            onChange={(e) => setTropa(tropa.profileId, { countsTowardSize: e.target.checked })}
-                            className="h-3.5 w-3.5 accent-maroon"
-                          />
-                          Cuenta para el tamaño
-                        </label>
-                        <div className="ml-auto flex items-center gap-0.5 pb-1">
-                          <button
-                            type="button"
-                            onClick={() => moverTropa(index, -1)}
-                            disabled={index === 0}
-                            aria-label="Subir"
-                            title="Subir"
-                            className="rounded-sm p-1 text-ink-soft transition-colors hover:bg-bronze/10 hover:text-bronze disabled:opacity-30"
-                          >
-                            <ArrowUpIcon className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => moverTropa(index, 1)}
-                            disabled={index === draft.tropas.length - 1}
-                            aria-label="Bajar"
-                            title="Bajar"
-                            className="rounded-sm p-1 text-ink-soft transition-colors hover:bg-bronze/10 hover:text-bronze disabled:opacity-30"
-                          >
-                            <ArrowDownIcon className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setTropaPorQuitar(tropa)}
-                            aria-label={`Quitar ${tropa.name.trim() || 'la tropa'}`}
-                            title="Quitar"
-                            className="rounded-sm p-1 text-ink-soft transition-colors hover:bg-danger/10 hover:text-danger"
-                          >
-                            <TrashIcon className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                      <EditableAttributeTable
-                        value={draft.profileStats[tropa.profileId] ?? FICHA_EN_BLANCO}
-                        onChange={(input) => setProfileStats(tropa.profileId, input)}
-                      />
-                    </div>
-                  ))}
+                <div>
+                  <p className="mb-2 text-xs text-ink-soft">Esta unidad todavía no tiene ficha de atributos.</p>
+                  <Button variant="ghost" onClick={createBaseProfileNow}>
+                    <PlusIcon className="h-4 w-4" />
+                    Crear ficha base
+                  </Button>
                 </div>
               )}
             </Panel>
-          )}
 
-          {/* Solo en unidades de TROPA. Un personaje es una única miniatura:
+            {/* UNIDADES COMPUESTAS. La tropa que ya está arriba —el perfil base,
+              con el coste y los tamaños de "Datos generales"— es la PRINCIPAL;
+              aquí van las demás. Sin ninguna, la unidad es normal y lo único
+              que se ve es el botón. */}
+            {unit.unitType !== 'personaje' && (
+              <Panel
+                title="Otras tropas de la unidad"
+                headerRight={
+                  <Button variant="ghost" onClick={() => void anadirTropa()}>
+                    <PlusIcon className="h-4 w-4" />
+                    Añadir tropa
+                  </Button>
+                }
+              >
+                {draft.tropas.length === 0 ? (
+                  <p className="text-xs italic text-ink-soft/55">Ninguna.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {draft.tropas.map((tropa, index) => (
+                      <div
+                        key={tropa.profileId}
+                        className="rounded-sm border border-rule-dark/30 bg-parchment-dark/15 p-3"
+                      >
+                        <div className="mb-2.5 flex flex-wrap items-end gap-x-3 gap-y-2">
+                          <div className="min-w-[7rem] flex-1">
+                            <TextField
+                              label="Nombre"
+                              value={tropa.name}
+                              placeholder="Ungor"
+                              onChange={(e) => setTropa(tropa.profileId, { name: e.target.value })}
+                            />
+                          </div>
+                          <div className="w-20">
+                            <TextField
+                              label="Puntos"
+                              type="number"
+                              max={999}
+                              className="text-center"
+                              value={tropa.cost}
+                              onChange={(e) => setTropa(tropa.profileId, { cost: Number(e.target.value) || 0 })}
+                            />
+                          </div>
+                          <div className="w-16">
+                            <TextField
+                              label="Mínimo"
+                              type="number"
+                              max={99}
+                              className="text-center"
+                              value={tropa.minSize ?? ''}
+                              onChange={(e) =>
+                                setTropa(tropa.profileId, { minSize: e.target.value ? Number(e.target.value) : null })
+                              }
+                            />
+                          </div>
+                          <div className="w-16">
+                            <TextField
+                              label="Máximo"
+                              type="number"
+                              max={99}
+                              className="text-center"
+                              value={tropa.maxSize ?? ''}
+                              onChange={(e) =>
+                                setTropa(tropa.profileId, { maxSize: e.target.value ? Number(e.target.value) : null })
+                              }
+                            />
+                          </div>
+                          <label className="flex items-center gap-1.5 pb-1.5 text-xs text-ink">
+                            <input
+                              type="checkbox"
+                              checked={tropa.countsTowardSize}
+                              onChange={(e) => setTropa(tropa.profileId, { countsTowardSize: e.target.checked })}
+                              className="h-3.5 w-3.5 accent-maroon"
+                            />
+                            Cuenta para el tamaño
+                          </label>
+                          <div className="ml-auto flex items-center gap-0.5 pb-1">
+                            <button
+                              type="button"
+                              onClick={() => moverTropa(index, -1)}
+                              disabled={index === 0}
+                              aria-label="Subir"
+                              title="Subir"
+                              className="rounded-sm p-1 text-ink-soft transition-colors hover:bg-bronze/10 hover:text-bronze disabled:opacity-30"
+                            >
+                              <ArrowUpIcon className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moverTropa(index, 1)}
+                              disabled={index === draft.tropas.length - 1}
+                              aria-label="Bajar"
+                              title="Bajar"
+                              className="rounded-sm p-1 text-ink-soft transition-colors hover:bg-bronze/10 hover:text-bronze disabled:opacity-30"
+                            >
+                              <ArrowDownIcon className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTropaPorQuitar(tropa)}
+                              aria-label={`Quitar ${tropa.name.trim() || 'la tropa'}`}
+                              title="Quitar"
+                              className="rounded-sm p-1 text-ink-soft transition-colors hover:bg-danger/10 hover:text-danger"
+                            >
+                              <TrashIcon className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                        <EditableAttributeTable
+                          value={draft.profileStats[tropa.profileId] ?? FICHA_EN_BLANCO}
+                          onChange={(input) => setProfileStats(tropa.profileId, input)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Panel>
+            )}
+
+            {/* Solo en unidades de TROPA. Un personaje es una única miniatura:
               no puede llevar músico, portaestandarte ni campeón, así que
               ofrecerle esos puestos era invitar a crear datos imposibles.
               Mismo criterio que los tamaños mínimo/máximo de más arriba.
@@ -1125,37 +1125,71 @@ export function UnitDetailPage() {
               alguna, y en una unidad creada desde cero no había forma de
               añadir grupo de mando salvo importándola de un libro o copiando
               otra. */}
-          {unit.unitType !== 'personaje' && (
-            <Panel title="Grupo de mando">
-              <div className="mb-3 flex flex-wrap gap-x-5 gap-y-2 border-b border-rule-dark/20 pb-3">
-                {(commandRoles ?? []).map((role) => (
-                  <label key={role.id} className="flex items-center gap-2 text-xs text-ink">
-                    <input
-                      type="checkbox"
-                      className="accent-maroon"
-                      disabled={commandBusy}
-                      checked={commandOptions.some((o) => o.role.id === role.id)}
-                      onChange={(e) => toggleCommandRole(role, e.target.checked)}
-                    />
-                    {role.name}
-                  </label>
-                ))}
-              </div>
+            {unit.unitType !== 'personaje' && (
+              <Panel title="Grupo de mando">
+                <div className="mb-3 flex flex-wrap gap-x-5 gap-y-2 border-b border-rule-dark/20 pb-3">
+                  {(commandRoles ?? []).map((role) => (
+                    <label key={role.id} className="flex items-center gap-2 text-xs text-ink">
+                      <input
+                        type="checkbox"
+                        className="accent-maroon"
+                        disabled={commandBusy}
+                        checked={commandOptions.some((o) => o.role.id === role.id)}
+                        onChange={(e) => toggleCommandRole(role, e.target.checked)}
+                      />
+                      {role.name}
+                    </label>
+                  ))}
+                </div>
 
-              {commandOptions.length === 0 ? (
-                <p className="text-xs text-ink-soft italic">Esta unidad no lleva grupo de mando.</p>
-              ) : (
-                <ul className="space-y-3 text-xs">
-                  {commandOptions.map(({ role, cost, profile }) =>
-                    role.code === 'CAMPEON' ? (
-                      <li key={role.id}>
-                        <div className="flex items-center justify-between gap-3">
-                          <input
-                            value={draft.championNames[role.id] ?? DEFAULT_CHAMPION_NAME}
-                            onChange={(e) => setChampionName(role.id, e.target.value)}
-                            placeholder={DEFAULT_CHAMPION_NAME}
-                            className="min-w-0 flex-1 rounded-sm border border-rule-dark/40 bg-parchment/70 px-2 py-1 text-xs text-ink outline-none focus:border-bronze focus:ring-2 focus:ring-bronze/25"
-                          />
+                {commandOptions.length === 0 ? (
+                  <p className="text-xs text-ink-soft italic">Esta unidad no lleva grupo de mando.</p>
+                ) : (
+                  <ul className="space-y-3 text-xs">
+                    {commandOptions.map(({ role, cost, profile }) =>
+                      role.code === 'CAMPEON' ? (
+                        <li key={role.id}>
+                          <div className="flex items-center justify-between gap-3">
+                            <input
+                              value={draft.championNames[role.id] ?? DEFAULT_CHAMPION_NAME}
+                              onChange={(e) => setChampionName(role.id, e.target.value)}
+                              placeholder={DEFAULT_CHAMPION_NAME}
+                              className="min-w-0 flex-1 rounded-sm border border-rule-dark/40 bg-parchment/70 px-2 py-1 text-xs text-ink outline-none focus:border-bronze focus:ring-2 focus:ring-bronze/25"
+                            />
+                            <label className="flex shrink-0 items-center gap-1 text-ink-soft">
+                              +
+                              <EnteroInput
+                                min={0}
+                                value={draft.commandCosts[role.id] ?? cost}
+                                onChange={(e) => setCommandCost(role.id, Number(e.target.value) || 0)}
+                                className="w-14 rounded-sm border border-rule-dark/40 bg-parchment/70 px-1.5 py-1 text-center text-xs text-ink outline-none focus:border-bronze focus:ring-2 focus:ring-bronze/25"
+                              />
+                              pts
+                            </label>
+                          </div>
+                          {profile ? (
+                            <div className="mt-2">
+                              <EditableAttributeTable
+                                value={draft.profileStats[profile.id] ?? extractProfileInput(profile)}
+                                onChange={(input) => setProfileStats(profile.id, input)}
+                              />
+                            </div>
+                          ) : (
+                            // Mismo caso que la ficha base: un Campeón recién
+                            // añadido no trae perfil, y sin este botón no había
+                            // forma de dárselo.
+                            <div className="mt-2 flex items-center gap-3">
+                              <p className="text-xs text-ink-soft italic">Sin ficha propia todavía.</p>
+                              <Button variant="ghost" onClick={() => createCommandProfileNow(role.id)}>
+                                <PlusIcon className="h-4 w-4" />
+                                Crear ficha del campeón
+                              </Button>
+                            </div>
+                          )}
+                        </li>
+                      ) : (
+                        <li key={role.id} className="flex items-center justify-between gap-3">
+                          <span className="text-ink-soft">{role.name}</span>
                           <label className="flex shrink-0 items-center gap-1 text-ink-soft">
                             +
                             <EnteroInput
@@ -1166,125 +1200,92 @@ export function UnitDetailPage() {
                             />
                             pts
                           </label>
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                )}
+              </Panel>
+            )}
+
+            <Panel title="Montura/Dotación">
+              <RelationEditor
+                allItems={mountRelationItems}
+                selectedIds={draft.mountProfileIds}
+                onToggle={(otherId, enabled) => toggleDraftProfile(otherId, 'montura', enabled)}
+                addLabel="Añadir Montura/Dotación"
+                emptyLabel="Esta facción todavía no tiene monturas asociadas en el catálogo."
+              />
+              {draft.mountProfileIds.size > 0 && (
+                <div className="mt-4 space-y-4 border-t border-rule-dark/20 pt-4">
+                  {(mountItems ?? [])
+                    .filter((p) => draft.mountProfileIds.has(p.id))
+                    .map((p) => (
+                      <div key={p.id}>
+                        <div className="mb-1 flex items-center justify-between gap-3">
+                          <p className="text-xs font-medium text-ink-soft">{p.name}</p>
+                          {unit.unitType === 'personaje' && (
+                            <div className="w-20">
+                              <TextField
+                                label="Coste (pts)"
+                                type="number"
+                                min={0}
+                                placeholder="0"
+                                value={draft.mountProfileCosts[p.id] ?? ''}
+                                onChange={(e) =>
+                                  setProfileCost(p.id, 'montura', e.target.value ? Number(e.target.value) : null)
+                                }
+                              />
+                            </div>
+                          )}
                         </div>
-                        {profile ? (
-                          <div className="mt-2">
-                            <EditableAttributeTable
-                              value={draft.profileStats[profile.id] ?? extractProfileInput(profile)}
-                              onChange={(input) => setProfileStats(profile.id, input)}
-                            />
-                          </div>
-                        ) : (
-                          // Mismo caso que la ficha base: un Campeón recién
-                          // añadido no trae perfil, y sin este botón no había
-                          // forma de dárselo.
-                          <div className="mt-2 flex items-center gap-3">
-                            <p className="text-xs text-ink-soft italic">Sin ficha propia todavía.</p>
-                            <Button variant="ghost" onClick={() => createCommandProfileNow(role.id)}>
-                              <PlusIcon className="h-4 w-4" />
-                              Crear ficha del campeón
-                            </Button>
-                          </div>
-                        )}
-                      </li>
-                    ) : (
-                      <li key={role.id} className="flex items-center justify-between gap-3">
-                        <span className="text-ink-soft">{role.name}</span>
-                        <label className="flex shrink-0 items-center gap-1 text-ink-soft">
-                          +
-                          <EnteroInput
-                            min={0}
-                            value={draft.commandCosts[role.id] ?? cost}
-                            onChange={(e) => setCommandCost(role.id, Number(e.target.value) || 0)}
-                            className="w-14 rounded-sm border border-rule-dark/40 bg-parchment/70 px-1.5 py-1 text-center text-xs text-ink outline-none focus:border-bronze focus:ring-2 focus:ring-bronze/25"
-                          />
-                          pts
-                        </label>
-                      </li>
-                    ),
-                  )}
-                </ul>
+                        <AttributeTable profile={p} />
+                      </div>
+                    ))}
+                </div>
               )}
             </Panel>
-          )}
 
-          <Panel title="Montura/Dotación">
-            <RelationEditor
-              allItems={mountRelationItems}
-              selectedIds={draft.mountProfileIds}
-              onToggle={(otherId, enabled) => toggleDraftProfile(otherId, 'montura', enabled)}
-              addLabel="Añadir Montura/Dotación"
-              emptyLabel="Esta facción todavía no tiene monturas asociadas en el catálogo."
-            />
-            {draft.mountProfileIds.size > 0 && (
-              <div className="mt-4 space-y-4 border-t border-rule-dark/20 pt-4">
-                {(mountItems ?? [])
-                  .filter((p) => draft.mountProfileIds.has(p.id))
-                  .map((p) => (
-                    <div key={p.id}>
-                      <div className="mb-1 flex items-center justify-between gap-3">
-                        <p className="text-xs font-medium text-ink-soft">{p.name}</p>
-                        {unit.unitType === 'personaje' && (
-                          <div className="w-20">
-                            <TextField
-                              label="Coste (pts)"
-                              type="number"
-                              min={0}
-                              placeholder="0"
-                              value={draft.mountProfileCosts[p.id] ?? ''}
-                              onChange={(e) =>
-                                setProfileCost(p.id, 'montura', e.target.value ? Number(e.target.value) : null)
-                              }
-                            />
-                          </div>
-                        )}
+            <Panel title="Perfil de carro">
+              <RelationEditor
+                allItems={chariotRelationItems}
+                selectedIds={draft.chariotProfileIds}
+                onToggle={(otherId, enabled) => toggleDraftProfile(otherId, 'carro', enabled)}
+                addLabel="Añadir perfil de carro"
+                emptyLabel="Esta facción todavía no tiene carros asociados en el catálogo."
+              />
+              {draft.chariotProfileIds.size > 0 && (
+                <div className="mt-4 space-y-4 border-t border-rule-dark/20 pt-4">
+                  {(chariotItems ?? [])
+                    .filter((p) => draft.chariotProfileIds.has(p.id))
+                    .map((p) => (
+                      <div key={p.id}>
+                        <div className="mb-1 flex items-center justify-between gap-3">
+                          <p className="text-xs font-medium text-ink-soft">{p.name}</p>
+                          {unit.unitType === 'personaje' && (
+                            <div className="w-20">
+                              <TextField
+                                label="Coste (pts)"
+                                type="number"
+                                min={0}
+                                placeholder="0"
+                                value={draft.chariotProfileCosts[p.id] ?? ''}
+                                onChange={(e) =>
+                                  setProfileCost(p.id, 'carro', e.target.value ? Number(e.target.value) : null)
+                                }
+                              />
+                            </div>
+                          )}
+                        </div>
+                        <AttributeTable profile={p} />
                       </div>
-                      <AttributeTable profile={p} />
-                    </div>
-                  ))}
-              </div>
-            )}
-          </Panel>
-
-          <Panel title="Perfil de carro">
-            <RelationEditor
-              allItems={chariotRelationItems}
-              selectedIds={draft.chariotProfileIds}
-              onToggle={(otherId, enabled) => toggleDraftProfile(otherId, 'carro', enabled)}
-              addLabel="Añadir perfil de carro"
-              emptyLabel="Esta facción todavía no tiene carros asociados en el catálogo."
-            />
-            {draft.chariotProfileIds.size > 0 && (
-              <div className="mt-4 space-y-4 border-t border-rule-dark/20 pt-4">
-                {(chariotItems ?? [])
-                  .filter((p) => draft.chariotProfileIds.has(p.id))
-                  .map((p) => (
-                    <div key={p.id}>
-                      <div className="mb-1 flex items-center justify-between gap-3">
-                        <p className="text-xs font-medium text-ink-soft">{p.name}</p>
-                        {unit.unitType === 'personaje' && (
-                          <div className="w-20">
-                            <TextField
-                              label="Coste (pts)"
-                              type="number"
-                              min={0}
-                              placeholder="0"
-                              value={draft.chariotProfileCosts[p.id] ?? ''}
-                              onChange={(e) =>
-                                setProfileCost(p.id, 'carro', e.target.value ? Number(e.target.value) : null)
-                              }
-                            />
-                          </div>
-                        )}
-                      </div>
-                      <AttributeTable profile={p} />
-                    </div>
-                  ))}
-              </div>
-            )}
-          </Panel>
+                    ))}
+                </div>
+              )}
+            </Panel>
+          </div>
         </div>
-      </div>
+      </fieldset>
 
       {showAppendices && (
         <AppendicesModal

@@ -23,10 +23,13 @@ import { CheckIcon, ChevronDownIcon, PlusIcon, TrashIcon } from '@/shared/ui/ico
 
 export function CicatricesModal({
   personaje,
+  soloLectura = false,
   onClose,
   onCambio,
 }: {
   personaje: PersonajeEspecial
+  /** En el personaje de OTRO: se ven sus cicatrices y nada más. */
+  soloLectura?: boolean
   onClose: () => void
   onCambio: () => void
 }) {
@@ -109,16 +112,18 @@ export function CicatricesModal({
                         }
                       />
                     </span>
-                    <button
-                      type="button"
-                      disabled={ocupado}
-                      onClick={() => setPorQuitar(cicatriz)}
-                      aria-label={`Quitar ${cicatriz.nombre}`}
-                      title="Quitar"
-                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-ink-soft/70 transition-colors hover:bg-danger/10 hover:text-danger disabled:opacity-40"
-                    >
-                      <TrashIcon className="h-3.5 w-3.5" />
-                    </button>
+                    {!soloLectura && (
+                      <button
+                        type="button"
+                        disabled={ocupado}
+                        onClick={() => setPorQuitar(cicatriz)}
+                        aria-label={`Quitar ${cicatriz.nombre}`}
+                        title="Quitar"
+                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-ink-soft/70 transition-colors hover:bg-danger/10 hover:text-danger disabled:opacity-40"
+                      >
+                        <TrashIcon className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                   {abierta === `suyas:${cicatriz.clave}` && <Descripcion texto={cicatriz.descripcion} />}
                 </li>
@@ -127,71 +132,75 @@ export function CicatricesModal({
           )}
         </section>
 
-        <section ref={catalogo} className="pt-1">
-          <button
-            type="button"
-            onClick={alternarCatalogo}
-            aria-expanded={anadiendo}
-            className="flex w-full items-center justify-between gap-2 rounded-sm border border-rule-dark/35 bg-parchment-dark/30 px-2.5 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-parchment-dark"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <PlusIcon className="h-3.5 w-3.5 text-maroon" />
-              Añadir cicatrices
-            </span>
-            <ChevronDownIcon
-              className={clsx('h-3.5 w-3.5 shrink-0 text-ink-soft transition-transform', anadiendo && 'rotate-180')}
-            />
-          </button>
+        {/* El catálogo no se pinta en el personaje de otro: no hay nada que
+            añadirle. */}
+        {!soloLectura && (
+          <section ref={catalogo} className="pt-1">
+            <button
+              type="button"
+              onClick={alternarCatalogo}
+              aria-expanded={anadiendo}
+              className="flex w-full items-center justify-between gap-2 rounded-sm border border-rule-dark/35 bg-parchment-dark/30 px-2.5 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-parchment-dark"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <PlusIcon className="h-3.5 w-3.5 text-maroon" />
+                Añadir cicatrices
+              </span>
+              <ChevronDownIcon
+                className={clsx('h-3.5 w-3.5 shrink-0 text-ink-soft transition-transform', anadiendo && 'rotate-180')}
+              />
+            </button>
 
-          {anadiendo && (
-            <ul className="mt-2 divide-y divide-rule-dark/12">
-              {CATALOGO_DE_CICATRICES.map((cicatriz) => {
-                const yaLaTiene = tiene.has(cicatriz.clave)
-                return (
-                  <li key={cicatriz.clave} className="px-0.5 py-1">
-                    <div className="flex items-center gap-2">
-                      <span className="flex min-w-0 flex-1 items-center gap-1.5">
-                        <span
-                          className={clsx(
-                            'min-w-0 truncate text-xs',
-                            yaLaTiene ? 'font-medium text-maroon' : 'text-ink',
-                          )}
-                        >
-                          {cicatriz.nombre}
-                        </span>
-                        <BotonDeInfo
-                          nombre={cicatriz.nombre}
-                          abierto={abierta === `cat:${cicatriz.clave}`}
-                          onClick={() =>
-                            setAbierta(abierta === `cat:${cicatriz.clave}` ? null : `cat:${cicatriz.clave}`)
-                          }
-                        />
-                      </span>
-                      <span className="flex w-20 shrink-0 justify-end">
-                        {yaLaTiene ? (
-                          <span className="inline-flex items-center gap-1 text-mini font-medium text-maroon">
-                            <CheckIcon className="h-3 w-3" />
-                            Ya adquirida
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled={ocupado}
-                            onClick={() => void anadir(cicatriz)}
-                            className="rounded-sm border border-maroon/45 px-2 py-0.5 text-mini font-semibold text-maroon transition-colors hover:bg-maroon hover:text-parchment disabled:opacity-40"
+            {anadiendo && (
+              <ul className="mt-2 divide-y divide-rule-dark/12">
+                {CATALOGO_DE_CICATRICES.map((cicatriz) => {
+                  const yaLaTiene = tiene.has(cicatriz.clave)
+                  return (
+                    <li key={cicatriz.clave} className="px-0.5 py-1">
+                      <div className="flex items-center gap-2">
+                        <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                          <span
+                            className={clsx(
+                              'min-w-0 truncate text-xs',
+                              yaLaTiene ? 'font-medium text-maroon' : 'text-ink',
+                            )}
                           >
-                            Añadir
-                          </button>
-                        )}
-                      </span>
-                    </div>
-                    {abierta === `cat:${cicatriz.clave}` && <Descripcion texto={cicatriz.descripcion} />}
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </section>
+                            {cicatriz.nombre}
+                          </span>
+                          <BotonDeInfo
+                            nombre={cicatriz.nombre}
+                            abierto={abierta === `cat:${cicatriz.clave}`}
+                            onClick={() =>
+                              setAbierta(abierta === `cat:${cicatriz.clave}` ? null : `cat:${cicatriz.clave}`)
+                            }
+                          />
+                        </span>
+                        <span className="flex w-20 shrink-0 justify-end">
+                          {yaLaTiene ? (
+                            <span className="inline-flex items-center gap-1 text-mini font-medium text-maroon">
+                              <CheckIcon className="h-3 w-3" />
+                              Ya adquirida
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={ocupado}
+                              onClick={() => void anadir(cicatriz)}
+                              className="rounded-sm border border-maroon/45 px-2 py-0.5 text-mini font-semibold text-maroon transition-colors hover:bg-maroon hover:text-parchment disabled:opacity-40"
+                            >
+                              Añadir
+                            </button>
+                          )}
+                        </span>
+                      </div>
+                      {abierta === `cat:${cicatriz.clave}` && <Descripcion texto={cicatriz.descripcion} />}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </section>
+        )}
 
         {error && <p className="rounded-sm bg-danger-dark/10 px-2 py-1 text-mini text-danger">{error}</p>}
       </div>

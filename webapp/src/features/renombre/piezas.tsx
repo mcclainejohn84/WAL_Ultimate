@@ -9,6 +9,7 @@
 // y los tres diálogos abiertos uno detrás de otro dejan de parecer el mismo
 // programa. Aquí hay una sola definición.
 // ============================================================================
+import { useState } from 'react'
 import { clsx } from 'clsx'
 import { InfoIcon } from '@/shared/ui/icons'
 
@@ -47,6 +48,62 @@ export function BotonDeInfo({ nombre, abierto, onClick }: { nombre: string; abie
     >
       <InfoIcon className="h-3.5 w-3.5" />
     </button>
+  )
+}
+
+/**
+ * LO QUE TIENE EL PERSONAJE, para mirarlo y nada más.
+ *
+ * Es lo que se enseña en el personaje de OTRO jugador: su crónica se ve
+ * entera —sus habilidades, sus cicatrices, su magia, con lo que hace cada
+ * cosa— y lo que desaparece es el catálogo de lo que podría comprar y los
+ * botones de adquirir y devolver. Ver no es editar (ver esEditablePor).
+ *
+ * Una sola pieza para los tres diálogos: tres listas calcadas escritas tres
+ * veces es como empezaron a divergir las de arriba.
+ */
+export function LoQueTiene({
+  etiqueta,
+  cosas,
+  vacio,
+}: {
+  etiqueta: string
+  cosas: { clave: string; nombre: string; detalle?: string | null; descripcion?: string | null }[]
+  /** Qué poner cuando no tiene ninguna. Sin esto, el grupo no se pinta. */
+  vacio?: string
+}) {
+  const [abierta, setAbierta] = useState<string | null>(null)
+  if (cosas.length === 0 && !vacio) return null
+  return (
+    <div className="mt-2 first:mt-0">
+      <EncabezadoDeGrupo etiqueta={etiqueta} cuantas={cosas.length} />
+      {cosas.length === 0 ? (
+        <p className="rounded-sm border border-dashed border-rule-dark/30 px-3 py-2 text-center text-mini italic text-ink-soft">
+          {vacio}
+        </p>
+      ) : (
+        <ul className="divide-y divide-rule-dark/12">
+          {cosas.map((c) => (
+            <li key={c.clave} className="px-0.5 py-1">
+              <div className="flex items-center gap-2">
+                <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                  <span className="min-w-0 truncate text-xs font-medium text-ink">{c.nombre}</span>
+                  {c.descripcion && (
+                    <BotonDeInfo
+                      nombre={c.nombre}
+                      abierto={abierta === c.clave}
+                      onClick={() => setAbierta(abierta === c.clave ? null : c.clave)}
+                    />
+                  )}
+                </span>
+                {c.detalle && <span className="shrink-0 text-mini text-ink-soft/80">{c.detalle}</span>}
+              </div>
+              {abierta === c.clave && c.descripcion && <Descripcion texto={c.descripcion} />}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
