@@ -60,7 +60,7 @@ import { Modal } from '@/shared/ui/Modal'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
-import { CheckIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
+import { CheckIcon, EyeIcon, PencilIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
 
 type Pestana = 'sendas' | 'habilidades' | 'saberes' | 'pergaminos'
 
@@ -248,6 +248,24 @@ export function MagiaModal({
       title={`Magia · ${personaje.name}`}
       widthClassName="max-w-3xl"
       onClose={cerrar}
+      accionDeCabecera={
+        soloLectura ? undefined : (
+          <button
+            type="button"
+            onClick={() => setEditando(!editando)}
+            aria-pressed={editando}
+            className={clsx(
+              'inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1 text-xs font-medium transition-colors',
+              editando
+                ? 'border-maroon/50 bg-maroon/10 text-maroon hover:bg-maroon/15'
+                : 'border-rule-dark/45 text-ink-soft hover:border-bronze hover:text-ink',
+            )}
+          >
+            {editando ? <EyeIcon className="h-3.5 w-3.5" /> : <PencilIcon className="h-3.5 w-3.5" />}
+            {editando ? 'Ver ficha' : 'Editar'}
+          </button>
+        )
+      }
       footer={
         <Button variant="primary" onClick={cerrar}>
           Cerrar
@@ -282,14 +300,6 @@ export function MagiaModal({
           </dl>
         </div>
 
-        {!soloLectura && (
-          <div className="flex justify-end">
-            <Button variant={editando ? 'ghost' : 'secondary'} onClick={() => setEditando(!editando)}>
-              {editando ? 'Ver la ficha' : 'Editar la magia'}
-            </Button>
-          </div>
-        )}
-
         {/* MIRANDO, SIN PESTAÑAS. Las cuatro listas son el escaparate de lo
             que se puede comprar, con lo que tiene marcado dentro; a quien
             viene a ver qué sabe este mago le sobran las tres cuartas partes.
@@ -307,7 +317,12 @@ export function MagiaModal({
                   return {
                     clave: `senda:${senda.pathId}`,
                     nombre: cual?.name ?? `Senda #${senda.pathId}`,
-                    detalle: `${NOMBRE_DEL_NIVEL[senda.level] ?? `Nivel ${senda.level}`}`,
+                    // El NÚMERO primero: es lo que se busca al mirar una
+                    // senda ("¿de qué nivel la tiene?") y el que se usa en
+                    // la mesa; el nombre del grado va detrás.
+                    detalle: NOMBRE_DEL_NIVEL[senda.level]
+                      ? `Nivel ${senda.level} · ${NOMBRE_DEL_NIVEL[senda.level]}`
+                      : `Nivel ${senda.level}`,
                     descripcion: cual ? MAGIC_GROUP_LABELS[cual.group] : null,
                   }
                 })}

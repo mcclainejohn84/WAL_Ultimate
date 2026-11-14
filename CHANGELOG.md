@@ -13,6 +13,16 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.214 — 14/11/2026 20:23
+
+- En la magia de un personaje, el botón **"Editar"** pasa a la cabecera, arriba
+  a la derecha y en línea con su nombre, y en pequeño. Al editar cambia a
+  "Ver ficha" para volver.
+- Las sendas dicen ahora **el número de nivel y su grado**: "Nivel 2 ·
+  Hechicero de batalla", "Nivel 1 · Iniciado".
+
+---
+
 ## 0.213 — 14/11/2026 20:17
 
 - **Arreglado el "FOREIGN KEY constraint failed" al forjar un objeto.** La

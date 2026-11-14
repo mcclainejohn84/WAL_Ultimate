@@ -9,9 +9,15 @@ interface ModalProps {
   children: ReactNode
   footer?: ReactNode
   widthClassName?: string
+  /**
+   * Una acción pequeña EN LA CABECERA, a la derecha del título y antes del
+   * aspa. Para lo que cambia el modo de todo el diálogo (ver / editar): ahí
+   * se encuentra sin buscarla y no le roba una fila entera al contenido.
+   */
+  accionDeCabecera?: ReactNode
 }
 
-export function Modal({ title, onClose, children, footer, widthClassName = 'max-w-lg' }: ModalProps) {
+export function Modal({ title, onClose, children, footer, widthClassName = 'max-w-lg', accionDeCabecera }: ModalProps) {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -36,8 +42,11 @@ export function Modal({ title, onClose, children, footer, widthClassName = 'max-
       <div
         className={`relative flex max-h-[92svh] w-full flex-col ${widthClassName} rounded-sm border border-rule-dark/40 bg-parchment shadow-2xl`}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-rule-dark/30 px-4 py-3 sm:px-5 sm:py-4">
-          <h2 className="font-display text-lg font-semibold text-ink">{title}</h2>
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-rule-dark/30 px-4 py-3 sm:px-5 sm:py-4">
+          {/* `min-w-0` + `truncate`: un nombre largo se recorta, no empuja el
+              aspa ni la acción fuera de la caja. */}
+          <h2 className="min-w-0 truncate font-display text-lg font-semibold text-ink">{title}</h2>
+          {accionDeCabecera && <div className="ml-auto shrink-0">{accionDeCabecera}</div>}
           <button
             onClick={onClose}
             className="rounded-sm p-1.5 text-ink-soft transition-colors hover:bg-parchment-dark hover:text-ink"
