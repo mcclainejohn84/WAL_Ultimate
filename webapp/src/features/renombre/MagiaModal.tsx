@@ -120,6 +120,20 @@ export function MagiaModal({
     SpecialCharacterRepository.totalExperiencia(personaje.id),
   )
 
+  /**
+   * SE ENTRA A MIRAR, NO A EDITAR.
+   *
+   * La magia de un personaje es lo más ancho que tiene: cuatro listas, con el
+   * catálogo entero dentro y los precios de todo. Abriendo directamente en el
+   * escaparate, lo que uno viene a ver —qué sendas lleva y de qué nivel— se
+   * leía entre lo que podría comprar. Primero la ficha de lo que tiene, de
+   * corrido; editar es un botón.
+   *
+   * En el personaje de otro no hay botón, claro (ver esEditablePor).
+   */
+  const [editando, setEditando] = useState(false)
+  const enLectura = soloLectura || !editando
+
   const [pestana, setPestana] = useState<Pestana>('sendas')
   const [abierta, setAbierta] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
@@ -268,11 +282,19 @@ export function MagiaModal({
           </dl>
         </div>
 
-        {/* EN EL PERSONAJE DE OTRO, SIN PESTAÑAS. Las cuatro listas son el
-            escaparate de lo que se puede comprar, con lo que tiene marcado
-            dentro; a quien solo viene a mirar lo que sabe este mago le sobran
-            las tres cuartas partes. Se le da lo que tiene, de corrido. */}
-        {soloLectura ? (
+        {!soloLectura && (
+          <div className="flex justify-end">
+            <Button variant={editando ? 'ghost' : 'secondary'} onClick={() => setEditando(!editando)}>
+              {editando ? 'Ver la ficha' : 'Editar la magia'}
+            </Button>
+          </div>
+        )}
+
+        {/* MIRANDO, SIN PESTAÑAS. Las cuatro listas son el escaparate de lo
+            que se puede comprar, con lo que tiene marcado dentro; a quien
+            viene a ver qué sabe este mago le sobran las tres cuartas partes.
+            Se le da lo que tiene, de corrido. */}
+        {enLectura ? (
           cargando ? (
             <Spinner />
           ) : (

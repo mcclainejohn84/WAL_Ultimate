@@ -13,6 +13,32 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.212 — 14/11/2026 19:54
+
+- **La magia de un personaje se abre MIRANDO**, no editando: una ficha de
+  corrido con sus sendas y el nivel de cada una, sus habilidades mágicas, sus
+  avanzadas, sus saberes y sus pergaminos. Para cambiar algo, el botón
+  "Editar la magia" lleva a las pestañas de siempre.
+- En Personajes de Renombre, filtro **"Solo los míos"**, con memoria y que se
+  suma al de facciones: los tuyos, y además de esa facción.
+- **Forja de objetos mágicos**, sección nueva. Un objeto se arma en la forja
+  sin coste —nombre, tipo, hasta tres características de su tabla, un sello y
+  su historia— y lo que cuesta es **dárselo a un personaje**: él paga de su
+  experiencia la suma de lo que lleva, y desde ese momento el objeto queda
+  cerrado. Quitárselo le devuelve lo que pagó, así que pasar un objeto de uno
+  a otro sale a cero.
+- Los topes del reglamento se respetan: tres características por objeto (el
+  sello cuenta como una), un objeto de cada tipo por personaje y tantos
+  objetos como diga su rango —uno un campeón veterano, dos un héroe, tres un
+  comandante—. En la lista de a quién dárselo se dice de antemano quién no
+  puede y por qué.
+- Los objetos son de quien los forja: se ven todos y solo los toca su autor,
+  igual que los personajes.
+- La tabla de características y los sellos se editan en **Editor > Objetos
+  mágicos**, como el resto de catálogos.
+
+---
+
 ## 0.211 — 11/11/2026 15:09
 
 - **El botón de "Magia" sale ahora con cualquiera de las dos marcas**: la

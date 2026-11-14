@@ -14,6 +14,7 @@ import { UnitRepository } from '@/data/repositories/unitRepository'
 import { UpgradeRepository, UnitTypeTagRepository } from '@/data/repositories/lookupRepositories'
 import { seedMagicPaths, seedMagicSkills } from '@/data/repositories/magicSeeding'
 import { seedCharacterSkills } from '@/data/repositories/characterSkillRepository'
+import { seedMagicItemTraits } from '@/data/repositories/magicItemRepository'
 import { seedDefaultCompositionRules } from '@/data/repositories/compositionRuleRepository'
 import type { AttributeProfileInput } from '@/domain/types'
 
@@ -547,6 +548,11 @@ export async function runCatalogMaintenance(): Promise<void> {
     await seedMagicSkills()
   } catch (err) {
     console.warn('[WHArmy] No se pudo cargar el catálogo de habilidades mágicas:', err)
+  }
+  try {
+    await seedMagicItemTraits()
+  } catch (err) {
+    console.warn('[WHArmy] No se pudo cargar el catálogo de objetos mágicos:', err)
   }
 
   if (!flagDone(ETIQUETAS_MAGIA_KEY)) {

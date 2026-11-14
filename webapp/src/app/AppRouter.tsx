@@ -6,6 +6,8 @@ import { FactionsListPage } from '@/features/admin/factions/FactionsListPage'
 import { RulesListPage } from '@/features/admin/rules/RulesListPage'
 import { UnitsListPage } from '@/features/admin/units/UnitsListPage'
 import { PersonajesRenombrePage } from '@/features/renombre/PersonajesRenombrePage'
+import { ForjaPage } from '@/features/forja/ForjaPage'
+import { ObjetosMagicosPage } from '@/features/admin/objetos/ObjetosMagicosPage'
 import { UnitDetailPage } from '@/features/admin/units/UnitDetailPage'
 import { MountsListPage } from '@/features/admin/mounts/MountsListPage'
 import { ChariotsListPage } from '@/features/admin/chariots/ChariotsListPage'
@@ -136,6 +138,14 @@ const router = createHashRouter([
         ),
       },
       {
+        path: '/admin/objetos',
+        element: (
+          <AdminOnly>
+            <ObjetosMagicosPage />
+          </AdminOnly>
+        ),
+      },
+      {
         path: '/admin/sendas',
         element: (
           <AdminOnly>
@@ -174,6 +184,12 @@ const router = createHashRouter([
         // de "Editor" y la usa cualquiera (ver PersonajesRenombrePage).
         path: '/renombre',
         element: <PersonajesRenombrePage />,
+      },
+      {
+        // La Forja. Sin AdminOnly, como Personajes de Renombre: la usa
+        // cualquiera para sus objetos (ver ForjaPage).
+        path: '/forja',
+        element: <ForjaPage />,
       },
       // Estuvo en /admin/personajes-especiales mientras vivía dentro de
       // "Editor"; se redirige para no romper enlaces guardados ni el historial.

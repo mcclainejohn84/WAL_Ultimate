@@ -769,6 +769,58 @@ CREATE TABLE magic_skills (
 CREATE INDEX idx_magic_skills_kind ON magic_skills(kind, sort_order);
 
 -- ----------------------------------------------------------------------------
+-- FORJA DE OBJETOS MÁGICOS (ver domain/objetosMagicos.ts)
+--
+-- Tres tablas: el catálogo de características y sellos (editable desde el
+-- Editor, como las habilidades), los objetos forjados, y qué lleva grabado
+-- cada objeto.
+-- ----------------------------------------------------------------------------
+CREATE TABLE magic_item_traits (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    trait_key   TEXT NOT NULL UNIQUE,
+    -- 'arma' | 'armadura' | 'estandarte' | 'amuleto' | 'sello'
+    kind        TEXT NOT NULL,
+    name        TEXT NOT NULL,
+    cost        INTEGER NOT NULL DEFAULT 0,
+    description TEXT NOT NULL DEFAULT '',
+    sort_order  INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_magic_item_traits_kind ON magic_item_traits(kind, sort_order);
+
+CREATE TABLE magic_items (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL,
+    -- De qué tipo es: decide qué características admite y que su portador no
+    -- pueda llevar dos del mismo tipo.
+    kind       TEXT NOT NULL,
+    -- Su historia, con formato (ver shared/richText).
+    background TEXT,
+    -- Quién lo forjó. Como en los personajes: se ve, pero solo lo toca su autor.
+    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    -- A quién se le ha asignado. NULL = sigue en la forja, y solo entonces se
+    -- le pueden cambiar las características.
+    unit_id    INTEGER REFERENCES units(id) ON DELETE SET NULL,
+    -- LO QUE SE PAGÓ AL ASIGNARLO, no lo que costaría hoy. Si mañana se retoca
+    -- el precio de una característica en el catálogo, quitarle el objeto tiene
+    -- que devolver lo que de verdad salió de su experiencia. 0 mientras está
+    -- en la forja.
+    cost       INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX idx_magic_items_unit ON magic_items(unit_id);
+
+CREATE TABLE magic_item_powers (
+    item_id   INTEGER NOT NULL REFERENCES magic_items(id) ON DELETE CASCADE,
+    -- Clave del catálogo (magic_item_traits.trait_key), no el nombre:
+    -- renombrar una característica no puede cambiar lo que lleva un objeto.
+    trait_key TEXT NOT NULL,
+    PRIMARY KEY (item_id, trait_key)
+);
+
+
+-- ----------------------------------------------------------------------------
 CREATE TABLE unit_sheets (
     unit_id            INTEGER PRIMARY KEY REFERENCES units(id) ON DELETE CASCADE,
     -- Las imágenes viven en R2 (ver /image en worker/src/index.ts): aquí solo

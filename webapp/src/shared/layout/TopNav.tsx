@@ -49,6 +49,7 @@ const EDITOR_ITEMS: NavItem[] = [
   { to: '/admin/carros', label: 'Carros' },
   { to: '/admin/sendas', label: 'Sendas de magia y habilidades mágicas', corto: 'Magia' },
   { to: '/admin/habilidades', label: 'Habilidades de personaje', corto: 'Habilidades' },
+  { to: '/admin/objetos', label: 'Objetos mágicos', corto: 'Objetos' },
   { to: '/admin/apendices', label: 'Apéndices y reglas adicionales', corto: 'Apéndices' },
   { to: '/admin/taxonomia', label: 'Categorías y Etiquetas' },
   { to: '/admin/importar', label: 'Importar desde Libro' },
@@ -62,6 +63,7 @@ const EDITOR_ITEMS: NavItem[] = [
 const TOOL_ITEMS: NavItem[] = [
   { to: '/ejercitos', label: 'Ejércitos' },
   { to: '/renombre', label: 'Personajes de Renombre', corto: 'Renombre' },
+  { to: '/forja', label: 'Forja de objetos mágicos', corto: 'Forja' },
   { to: '/batallas', label: 'Batallas' },
   { to: '/mapas', label: 'Mapas' },
 ]

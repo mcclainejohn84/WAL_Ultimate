@@ -22,7 +22,9 @@
 import { useState } from 'react'
 import { SpecialCharacterRepository, type PersonajeEspecial } from '@/data/repositories/specialCharacterRepository'
 import { FactionRepository } from '@/data/repositories/factionRepository'
+import { clsx } from 'clsx'
 import { useAsync } from '@/shared/hooks/useAsync'
+import { usePreferenciaLocal } from '@/shared/hooks/usePreferenciaLocal'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { useSession } from '@/shared/session/useSession'
@@ -70,6 +72,10 @@ export function PersonajesRenombrePage() {
   // filtroDeFacciones). Vacío = todas.
   const { user: usuario } = useSession()
   const [faccionesElegidas, setFaccionesElegidas] = useFiltroDeFacciones(usuario?.id)
+  // SOLO LOS MÍOS: se suma al de facciones, no lo sustituye (los tuyos de los
+  // Hombres Bestia). Con memoria, como el de facciones: quien entra a llevar
+  // los suyos entra siempre a lo mismo.
+  const [soloMios, setSoloMios] = usePreferenciaLocal('renombre_solo_mios', usuario?.id, false)
   const [error, setError] = useState<string | null>(null)
 
   // LA RUEDA, SOLO LA PRIMERA VEZ. Con `if (loading)` a secas, cualquier
@@ -80,7 +86,9 @@ export function PersonajesRenombrePage() {
   // siguen enseñando los de antes y lo nuevo entra cuando llega.
   if (loading && personajes == null) return <Spinner />
 
-  const todos = personajes ?? []
+  const visibles = personajes ?? []
+  const mios = usuario ? visibles.filter((p) => p.userId === usuario.id) : []
+  const todos = soloMios ? mios : visibles
   // El filtro se aplica ANTES de agrupar, así que los grupos, los contadores y
   // el mensaje de "no hay ninguno" salen todos del mismo sitio y no pueden
   // contradecirse (un contador que suma los de todas las facciones sobre una
@@ -123,26 +131,54 @@ export function PersonajesRenombrePage() {
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
-      {faccionesDelFiltro.length > 1 && (
-        <div className="mb-5">
-          <SelectorMultiple
-            className="w-64"
-            label="Facciones"
-            textoDeTodas={`Todas las facciones (${todos.length})`}
-            opciones={faccionesDelFiltro.map((f) => ({
-              id: f.id,
-              nombre: f.name,
-              cuantos: todos.filter((p) => p.factionId === f.id).length,
-            }))}
-            elegidas={faccionesElegidas}
-            onChange={setFaccionesElegidas}
-          />
+      {(faccionesDelFiltro.length > 1 || usuario != null) && (
+        <div className="mb-5 flex flex-wrap items-end gap-3">
+          {faccionesDelFiltro.length > 1 && (
+            <SelectorMultiple
+              className="w-64"
+              label="Facciones"
+              textoDeTodas={`Todas las facciones (${todos.length})`}
+              opciones={faccionesDelFiltro.map((f) => ({
+                id: f.id,
+                nombre: f.name,
+                cuantos: todos.filter((p) => p.factionId === f.id).length,
+              }))}
+              elegidas={faccionesElegidas}
+              onChange={setFaccionesElegidas}
+            />
+          )}
+          {/* Se SUMA al de facciones: los tuyos, y además de esta facción. */}
+          {usuario != null && (
+            <label
+              className={clsx(
+                'flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-xs transition-colors',
+                soloMios
+                  ? 'border-bronze bg-bronze/10 text-ink'
+                  : 'border-rule-dark/40 bg-parchment/70 text-ink-soft hover:border-bronze',
+              )}
+            >
+              <input
+                type="checkbox"
+                className="accent-maroon"
+                checked={soloMios}
+                onChange={(e) => setSoloMios(e.target.checked)}
+              />
+              Solo los míos
+              <span className="tabular-nums text-ink-soft/70">({mios.length})</span>
+            </label>
+          )}
         </div>
       )}
 
       {lista.length === 0 ? (
         <EmptyState
-          title={faccionesElegidas.size === 0 ? 'Todavía no hay ninguno' : 'Ninguno en esas facciones'}
+          title={
+            soloMios
+              ? 'No tienes ninguno'
+              : faccionesElegidas.size === 0
+                ? 'Todavía no hay ninguno'
+                : 'Ninguno en esas facciones'
+          }
           description={
             faccionesElegidas.size === 0
               ? 'Elige un personaje de una facción y se copiará entero para darle nombre e historia.'

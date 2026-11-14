@@ -83,6 +83,10 @@ const CATALOG_TABLES = [
   // Editor (ver characterSkillRepository y magicRepository).
   'character_skills',
   'magic_skills',
+  // La forja de objetos mágicos (ver magicItemRepository).
+  'magic_item_traits',
+  'magic_items',
+  'magic_item_powers',
 ] as const
 
 type CatalogSnapshot = Partial<Record<(typeof CATALOG_TABLES)[number], Record<string, unknown>[]>>

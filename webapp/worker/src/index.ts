@@ -147,6 +147,11 @@ const SNAPSHOT_TABLES = [
   'unit_magic_paths',
   'character_skills',
   'magic_skills',
+  // La forja: el catálogo, los objetos y lo que lleva cada uno. Se leen juntos
+  // en su pantalla y en la lámina de cada personaje.
+  'magic_item_traits',
+  'magic_items',
+  'magic_item_powers',
   'category_composition_rules',
   // Apéndices: texto largo con formato, pero se lee siempre junto a la ficha
   // de la unidad, así que viaja con el resto del catálogo.
@@ -1258,6 +1263,37 @@ const MIGRATIONS: string[] = [
   // interruptores crece cada poco (secciones del PDF, uno por tipo de
   // apéndice) y nada los consulta por columna. Sin valor = todo encendido.
   'ALTER TABLE users ADD COLUMN print_options TEXT',
+  // FORJA DE OBJETOS MÁGICOS. El catálogo de características y sellos se edita
+  // desde el Editor, así que vive en una tabla y no en el código (el del
+  // código es la semilla, ver domain/objetosMagicos.ts).
+  `CREATE TABLE IF NOT EXISTS magic_item_traits (
+     id          INTEGER PRIMARY KEY AUTOINCREMENT,
+     trait_key   TEXT NOT NULL UNIQUE,
+     kind        TEXT NOT NULL,
+     name        TEXT NOT NULL,
+     cost        INTEGER NOT NULL DEFAULT 0,
+     description TEXT NOT NULL DEFAULT '',
+     sort_order  INTEGER NOT NULL DEFAULT 0
+   )`,
+  'CREATE INDEX IF NOT EXISTS idx_magic_item_traits_kind ON magic_item_traits(kind, sort_order)',
+  // `cost` guarda lo que se PAGÓ al asignarlo, no lo que costaría hoy: quitarlo
+  // devuelve exactamente lo que salió de su experiencia.
+  `CREATE TABLE IF NOT EXISTS magic_items (
+     id         INTEGER PRIMARY KEY AUTOINCREMENT,
+     name       TEXT NOT NULL,
+     kind       TEXT NOT NULL,
+     background TEXT,
+     user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+     unit_id    INTEGER REFERENCES units(id) ON DELETE SET NULL,
+     cost       INTEGER NOT NULL DEFAULT 0,
+     created_at TEXT NOT NULL
+   )`,
+  'CREATE INDEX IF NOT EXISTS idx_magic_items_unit ON magic_items(unit_id)',
+  `CREATE TABLE IF NOT EXISTS magic_item_powers (
+     item_id   INTEGER NOT NULL REFERENCES magic_items(id) ON DELETE CASCADE,
+     trait_key TEXT NOT NULL,
+     PRIMARY KEY (item_id, trait_key)
+   )`,
   // ------------------------------------------------------------------
   // EL AUTOR DE LOS PERSONAJES DE RENOMBRE ANTIGUOS.
   //
