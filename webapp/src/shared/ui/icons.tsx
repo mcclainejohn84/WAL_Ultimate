@@ -669,6 +669,27 @@ export function InfoIcon({ className = 'h-4 w-4' }: { className?: string }) {
  * interruptor de "este personaje cuesta puntos o no" usaba un ojo, y el ojo en
  * este programa significa otra cosa: que algo se ve o no se ve.
  */
+/**
+ * Un YUNQUE, para la Forja de objetos mágicos. Dibujado a mano como el resto
+ * (ver la cabecera de este archivo): el cuerpo con su cuerno a la izquierda,
+ * el talle estrecho y la base ancha, que es lo que hace que se lea como un
+ * yunque y no como una mesa.
+ */
+export function AnvilIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinejoin="round"
+    >
+      <path d="M3 8h11l5 2.5-5 2.5h-2.6l1.1 3h2.5l1.5 4H6l1.5-4H10l1.1-3H6.5A3.5 3.5 0 0 1 3 10.5V8Z" />
+    </svg>
+  )
+}
+
 export function MonedaIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (
     <svg

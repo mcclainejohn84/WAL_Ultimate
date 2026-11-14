@@ -1283,7 +1283,9 @@ const MIGRATIONS: string[] = [
      name       TEXT NOT NULL,
      kind       TEXT NOT NULL,
      background TEXT,
-     user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+     -- Sin clave ajena a users: magic_items es de catálogo y la copia local
+     -- del navegador no tiene esa tabla (ver db/schema.sql).
+     user_id    INTEGER,
      unit_id    INTEGER REFERENCES units(id) ON DELETE SET NULL,
      cost       INTEGER NOT NULL DEFAULT 0,
      created_at TEXT NOT NULL

@@ -46,7 +46,9 @@ import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { RichText, RichTextEditor } from '@/shared/ui/RichTextEditor'
 import { tieneTexto } from '@/shared/richText'
 import { EncabezadoDeGrupo } from '@/features/renombre/piezas'
-import { LockIcon, PencilIcon, PlusIcon, SwapIcon, TrashIcon } from '@/shared/ui/icons'
+import { FiltroSegmentado } from '@/shared/ui/FiltroSegmentado'
+import { Link } from 'react-router-dom'
+import { ArrowLeftIcon, LockIcon, PencilIcon, PlusIcon, SwapIcon, TrashIcon } from '@/shared/ui/icons'
 
 export function ForjaPage() {
   const { user: usuario } = useSession()
@@ -83,6 +85,16 @@ export function ForjaPage() {
 
   return (
     <div>
+      {/* La Forja ya no está en el menú: se entra desde Personajes de
+          Renombre, así que el camino de vuelta tiene que estar a la vista. */}
+      <Link
+        to="/renombre"
+        className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
+      >
+        <ArrowLeftIcon className="h-4 w-4" />
+        Personajes de Renombre
+      </Link>
+
       <PageHeader
         title="Forja de objetos mágicos"
         actions={
@@ -96,23 +108,17 @@ export function ForjaPage() {
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
       {usuario != null && todos.length > 0 && (
-        <label
-          className={clsx(
-            'mb-5 inline-flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-xs transition-colors',
-            soloMios
-              ? 'border-bronze bg-bronze/10 text-ink'
-              : 'border-rule-dark/40 bg-parchment/70 text-ink-soft hover:border-bronze',
-          )}
-        >
-          <input
-            type="checkbox"
-            className="accent-maroon"
-            checked={soloMios}
-            onChange={(e) => setSoloMios(e.target.checked)}
+        <div className="mb-5 flex flex-wrap items-end gap-x-3 gap-y-2">
+          <FiltroSegmentado
+            label="Autor"
+            valor={soloMios ? 'mios' : 'todos'}
+            onChange={(valor) => setSoloMios(valor === 'mios')}
+            opciones={[
+              { valor: 'todos', etiqueta: 'Todos', cuantos: todos.length },
+              { valor: 'mios', etiqueta: 'Mis objetos', cuantos: todos.filter(esMio).length },
+            ]}
           />
-          Solo los míos
-          <span className="tabular-nums text-ink-soft/70">({todos.filter(esMio).length})</span>
-        </label>
+        </div>
       )}
 
       {todos.length === 0 ? (

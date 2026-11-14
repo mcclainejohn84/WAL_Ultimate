@@ -13,6 +13,24 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.213 — 14/11/2026 20:17
+
+- **Arreglado el "FOREIGN KEY constraint failed" al forjar un objeto.** La
+  tabla de objetos apuntaba a la de usuarios, y la copia del catálogo que
+  monta el navegador no tiene usuarios: el primer objeto reventaba al
+  guardarse. Es la misma trampa en la que ya se cayó con los personajes, así
+  que ahora hay una prueba que impide que cualquier tabla del catálogo vuelva
+  a apuntar fuera de él.
+- **La Forja se entra desde Personajes de Renombre**, con el botón "Forja de
+  objetos" a la izquierda de "Nuevo personaje", y ya no tiene entrada propia
+  en el menú. Desde la Forja se vuelve con el enlace de arriba.
+- **El filtro de autor, rehecho**: ahora es un selector "Todos · Mis
+  personajes" (en la Forja, "Todos · Mis objetos"), con su rótulo encima y la
+  misma altura que el desplegable de facciones, alineado con él y con el
+  recuento de cada opción.
+
+---
+
 ## 0.212 — 14/11/2026 19:54
 
 - **La magia de un personaje se abre MIRANDO**, no editando: una ficha de

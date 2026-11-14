@@ -62,8 +62,9 @@ const EDITOR_ITEMS: NavItem[] = [
 // unidad —atributos, equipo y coste—, como la de cualquier otra unidad.
 const TOOL_ITEMS: NavItem[] = [
   { to: '/ejercitos', label: 'Ejércitos' },
+  // La Forja NO tiene entrada propia: se entra desde Personajes de Renombre,
+  // que es de quien son los objetos (ver ForjaPage).
   { to: '/renombre', label: 'Personajes de Renombre', corto: 'Renombre' },
-  { to: '/forja', label: 'Forja de objetos mágicos', corto: 'Forja' },
   { to: '/batallas', label: 'Batallas' },
   { to: '/mapas', label: 'Mapas' },
 ]

@@ -198,7 +198,13 @@ CREATE TABLE IF NOT EXISTS magic_items (
     -- Su historia, con formato (ver shared/richText).
     background TEXT,
     -- Quién lo forjó. Como en los personajes: se ve, pero solo lo toca su autor.
-    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    --
+    -- SIN "REFERENCES users(id)", por lo mismo que units.user_id: esta tabla es
+    -- de CATÁLOGO y viaja en el snapshot, y la copia local del navegador tiene
+    -- `users` vacía. Con la clave ajena puesta, forjar el primer objeto
+    -- reventaba con "FOREIGN KEY constraint failed" en cuanto se escribía en la
+    -- copia local.
+    user_id    INTEGER,
     -- A quién se le ha asignado. NULL = sigue en la forja, y solo entonces se
     -- le pueden cambiar las características.
     unit_id    INTEGER REFERENCES units(id) ON DELETE SET NULL,

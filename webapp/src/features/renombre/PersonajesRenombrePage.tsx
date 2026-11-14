@@ -22,7 +22,6 @@
 import { useState } from 'react'
 import { SpecialCharacterRepository, type PersonajeEspecial } from '@/data/repositories/specialCharacterRepository'
 import { FactionRepository } from '@/data/repositories/factionRepository'
-import { clsx } from 'clsx'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { usePreferenciaLocal } from '@/shared/hooks/usePreferenciaLocal'
 import { PageHeader } from '@/shared/ui/PageHeader'
@@ -31,12 +30,14 @@ import { useSession } from '@/shared/session/useSession'
 import { useFiltroDeFacciones } from '@/features/renombre/filtroDeFacciones'
 import { Modal } from '@/shared/ui/Modal'
 import { SelectorMultiple } from '@/shared/ui/SelectorMultiple'
+import { FiltroSegmentado } from '@/shared/ui/FiltroSegmentado'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { Select } from '@/shared/ui/Select'
 import { TextField } from '@/shared/ui/TextField'
 import { FactionEmblem } from '@/shared/ui/FactionEmblem'
-import { PlusIcon } from '@/shared/ui/icons'
+import { AnvilIcon, PlusIcon } from '@/shared/ui/icons'
+import { useNavigate } from 'react-router-dom'
 import { PersonajeRenombreCard } from '@/features/renombre/PersonajeRenombreCard'
 import type { Faction } from '@/domain/types'
 import type { UnitSummary } from '@/data/repositories/unitRepository'
@@ -65,6 +66,7 @@ function CabeceraDeFaccion({ faccion, cuantos }: { faccion: Pick<Faction, 'name'
 /** Valor del filtro cuando no filtra nada. Es una cadena porque sale de un <select>. */
 
 export function PersonajesRenombrePage() {
+  const navegar = useNavigate()
   const { data: personajes, loading, reload } = useAsync(() => SpecialCharacterRepository.listAll())
   const { data: facciones } = useAsync(() => FactionRepository.listAll())
   const [creando, setCreando] = useState(false)
@@ -122,20 +124,32 @@ export function PersonajesRenombrePage() {
       <PageHeader
         title="Personajes de Renombre"
         actions={
-          <Button variant="primary" onClick={() => setCreando(true)}>
-            <PlusIcon className="h-4 w-4" />
-            Nuevo personaje
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* La Forja vive DENTRO de esta sección: los objetos son de los
+                personajes, y una entrada propia en el menú la alejaba de lo
+                único a lo que sirve. */}
+            <Button variant="secondary" onClick={() => navegar('/forja')}>
+              <AnvilIcon className="h-4 w-4" />
+              Forja de objetos
+            </Button>
+            <Button variant="primary" onClick={() => setCreando(true)}>
+              <PlusIcon className="h-4 w-4" />
+              Nuevo personaje
+            </Button>
+          </div>
         }
       />
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
+      {/* LA BARRA DE FILTROS: los dos controles se leen como uno, con su
+          rótulo encima y alineados por abajo (ver FiltroSegmentado). El de
+          autor se SUMA al de facciones: los tuyos, y además de esa facción. */}
       {(faccionesDelFiltro.length > 1 || usuario != null) && (
-        <div className="mb-5 flex flex-wrap items-end gap-3">
+        <div className="mb-5 flex flex-wrap items-end gap-x-3 gap-y-2">
           {faccionesDelFiltro.length > 1 && (
             <SelectorMultiple
-              className="w-64"
+              className="w-60"
               label="Facciones"
               textoDeTodas={`Todas las facciones (${todos.length})`}
               opciones={faccionesDelFiltro.map((f) => ({
@@ -147,25 +161,16 @@ export function PersonajesRenombrePage() {
               onChange={setFaccionesElegidas}
             />
           )}
-          {/* Se SUMA al de facciones: los tuyos, y además de esta facción. */}
           {usuario != null && (
-            <label
-              className={clsx(
-                'flex cursor-pointer items-center gap-2 rounded-sm border px-3 py-2 text-xs transition-colors',
-                soloMios
-                  ? 'border-bronze bg-bronze/10 text-ink'
-                  : 'border-rule-dark/40 bg-parchment/70 text-ink-soft hover:border-bronze',
-              )}
-            >
-              <input
-                type="checkbox"
-                className="accent-maroon"
-                checked={soloMios}
-                onChange={(e) => setSoloMios(e.target.checked)}
-              />
-              Solo los míos
-              <span className="tabular-nums text-ink-soft/70">({mios.length})</span>
-            </label>
+            <FiltroSegmentado
+              label="Autor"
+              valor={soloMios ? 'mios' : 'todos'}
+              onChange={(valor) => setSoloMios(valor === 'mios')}
+              opciones={[
+                { valor: 'todos', etiqueta: 'Todos', cuantos: visibles.length },
+                { valor: 'mios', etiqueta: 'Mis personajes', cuantos: mios.length },
+              ]}
+            />
           )}
         </div>
       )}
