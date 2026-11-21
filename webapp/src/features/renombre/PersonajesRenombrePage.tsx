@@ -173,7 +173,7 @@ export function PersonajesRenombrePage() {
                 personajes, y una entrada propia en el menú la alejaba de lo
                 único a lo que sirve. */}
             <Button variant="secondary" onClick={() => navegar('/forja')}>
-              <AnvilIcon className="h-4 w-4" />
+              <AnvilIcon />
               Forja de objetos
             </Button>
             <Button variant="primary" onClick={() => setCreando(true)}>

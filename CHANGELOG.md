@@ -13,6 +13,15 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.219 — 21/11/2026 16:14
+
+- El icono de **Forja de objetos** (tu yunque con martillo y chispa) se veía
+  como una mancha: a ese tamaño el mango del martillo y la chispa
+  desaparecían. Ahora es más grande, ocupa todo su hueco y tiene el contorno
+  algo más grueso. Es el mismo dibujo, pero ahora se distingue.
+
+---
+
 ## 0.218 — 21/11/2026 15:47
 
 - **Campañas**, nueva sección del Editor: se crean, se editan y se borran.

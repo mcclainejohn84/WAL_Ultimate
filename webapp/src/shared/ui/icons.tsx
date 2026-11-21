@@ -676,10 +676,25 @@ export function InfoIcon({ className = 'h-4 w-4' }: { className?: string }) {
  * no redibujado a ojo) y llevado a la cuadrícula de 24 del resto de iconos. Va
  * RELLENO y no a trazo como los demás porque es una silueta: a trazo, el
  * martillo y la chispa se quedan en cuatro rayas que a 16 px no se leen.
+ *
+ * TAMAÑO Y GROSOR, porque a 16 px el dibujo entero se quedaba en una mancha:
+ * el mango del martillo y las puntas de la chispa miden menos de un píxel y
+ * desaparecían. Por eso va a 20 px (lo que mide una línea de texto del botón,
+ * así que no lo hace más alto), con la caja recortada al dibujo en vez de la
+ * cuadrícula de 24 entera, y con un trazo fino del mismo color que engorda
+ * todo el contorno por igual: la silueta es la misma, solo que se lee.
  */
-export function AnvilIcon({ className = 'h-4 w-4' }: { className?: string }) {
+export function AnvilIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+    <svg
+      viewBox="0.5 1.5 23 21"
+      className={className}
+      fill="currentColor"
+      stroke="currentColor"
+      strokeWidth={0.5}
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M21.4 21.3L21.4 20.9L20.8 20.9L20.2 20.9L19.5 20.4C18.6 19.6 17.9 18.6 17.5 17.7C17.4 17.5 17.3 17.3 17.3 17.3C17.3 17.3 18.0 17.3 18.8 17.3L20.3 17.3L20.3 16.6L20.3 15.9L20.6 15.8C21.1 15.6 22.0 15.0 22.6 14.6C23.1 14.2 23.1 14.2 22.3 13.6C21.7 13.3 21.1 12.9 20.6 12.8L20.3 12.7L20.3 12.0L20.3 11.3L14.8 11.3L9.4 11.3L9.4 11.8L9.4 12.3L7.3 12.3L5.2 12.3L5.4 12.5C5.9 13.8 7.4 15.1 8.9 15.6L9.4 15.7L9.4 16.5L9.4 17.3L10.7 17.3C11.5 17.3 12.1 17.3 12.1 17.3C12.1 17.3 12.0 17.6 11.8 17.9C11.4 18.7 10.9 19.3 10.1 20.2L9.4 20.9L8.8 20.9L8.2 20.9L8.2 21.3L8.2 21.7L14.8 21.7L21.4 21.7L21.4 21.3ZM5.7 10.1C8.0 9.1 9.9 8.2 9.9 8.2C9.9 8.3 10.2 8.8 10.6 9.4C10.9 10.0 11.2 10.5 11.3 10.5C11.3 10.5 13.5 9.5 13.5 9.5C13.5 9.5 13.3 8.7 13.1 7.8L12.6 6.2L11.3 5.0C10.4 4.1 10.0 3.7 9.9 3.8C9.8 3.8 9.5 3.9 9.1 4.1L8.5 4.4L8.9 5.6L9.3 6.9L9.1 7.0C8.6 7.2 1.0 10.6 1.0 10.7C1.0 10.7 1.6 11.9 1.6 11.9C1.6 11.9 3.5 11.1 5.7 10.1ZM15.5 9.8C16.3 9.4 16.9 9.1 17.0 9.1C17.0 9.1 17.0 9.4 17.0 9.8C17.0 10.3 17.1 10.4 17.1 10.4C17.2 10.4 18.5 9.9 20.0 9.2L22.8 8.1L22.4 8.1C22.1 8.1 21.4 8.0 20.8 8.0C20.2 8.0 19.6 8.0 19.6 8.0C19.6 8.0 20.1 7.3 20.7 6.4C21.3 5.6 21.8 4.9 21.7 4.9C21.7 4.9 21.0 5.2 20.2 5.7C19.3 6.1 18.6 6.5 18.5 6.5C18.5 6.6 18.5 6.2 18.9 4.5C19.2 3.4 19.4 2.4 19.4 2.3C19.5 2.1 19.2 2.6 17.5 5.2C16.6 6.6 15.9 7.8 15.9 7.8C15.8 7.7 15.8 7.4 15.7 7.1C15.6 6.7 15.5 6.4 15.5 6.4C15.4 6.4 14.1 10.4 14.1 10.4C14.1 10.4 14.8 10.1 15.5 9.8Z" />
     </svg>
   )
