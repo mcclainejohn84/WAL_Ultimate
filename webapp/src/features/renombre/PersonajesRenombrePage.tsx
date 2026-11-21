@@ -39,6 +39,7 @@ import { FactionEmblem } from '@/shared/ui/FactionEmblem'
 import { AnvilIcon, PlusIcon } from '@/shared/ui/icons'
 import { useNavigate } from 'react-router-dom'
 import { PersonajeRenombreCard } from '@/features/renombre/PersonajeRenombreCard'
+import { GaleriaDeRenombre } from '@/features/renombre/avanzada/GaleriaDeRenombre'
 import { MagicItemRepository, type ObjetoMagico } from '@/data/repositories/magicItemRepository'
 import type { Faction } from '@/domain/types'
 import type { UnitSummary } from '@/data/repositories/unitRepository'
@@ -94,6 +95,10 @@ export function PersonajesRenombrePage() {
   // Hombres Bestia). Con memoria, como el de facciones: quien entra a llevar
   // los suyos entra siempre a lo mismo.
   const [soloMios, setSoloMios] = usePreferenciaLocal('renombre_solo_mios', usuario?.id, false)
+  // LA VISTA: la avanzada (galería de retratos, y cada personaje en su ficha,
+  // ver avanzada/) o la clásica (las láminas de siempre, donde se edita en el
+  // sitio). Con memoria por usuario; de entrada, la avanzada.
+  const [vistaAvanzada, setVistaAvanzada] = usePreferenciaLocal('renombre_vista_avanzada', usuario?.id, true)
   const [error, setError] = useState<string | null>(null)
 
   // LA RUEDA, SOLO LA PRIMERA VEZ. Con `if (loading)` a secas, cualquier
@@ -161,7 +166,7 @@ export function PersonajesRenombrePage() {
       {/* LA BARRA DE FILTROS: los dos controles se leen como uno, con su
           rótulo encima y alineados por abajo (ver FiltroSegmentado). El de
           autor se SUMA al de facciones: los tuyos, y además de esa facción. */}
-      {(faccionesDelFiltro.length > 1 || usuario != null) && (
+      {(faccionesDelFiltro.length > 1 || usuario != null || visibles.length > 0) && (
         <div className="mb-5 flex flex-wrap items-end gap-x-3 gap-y-2">
           {faccionesDelFiltro.length > 1 && (
             <SelectorMultiple
@@ -188,6 +193,17 @@ export function PersonajesRenombrePage() {
               ]}
             />
           )}
+          {/* El cambio de vista va aparte, a la derecha: no filtra, cambia cómo se mira. */}
+          <FiltroSegmentado
+            className="ml-auto"
+            label="Vista"
+            valor={vistaAvanzada ? 'avanzada' : 'clasica'}
+            onChange={(valor) => setVistaAvanzada(valor === 'avanzada')}
+            opciones={[
+              { valor: 'clasica', etiqueta: 'Clásica' },
+              { valor: 'avanzada', etiqueta: 'Avanzada' },
+            ]}
+          />
         </div>
       )}
 
@@ -218,6 +234,8 @@ export function PersonajesRenombrePage() {
             )
           }
         />
+      ) : vistaAvanzada ? (
+        <GaleriaDeRenombre personajes={lista} facciones={facciones ?? []} />
       ) : (
         <div className="space-y-8">
           {ordenadas.map((faccion) => (

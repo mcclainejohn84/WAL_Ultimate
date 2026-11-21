@@ -13,6 +13,28 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.216 — 21/11/2026 12:24
+
+- **Personajes de Renombre estrena una vista avanzada**, y es la que sale de
+  entrada. La de siempre sigue disponible como **vista clásica**, exactamente
+  igual. Se cambia con el selector "Vista" de la barra de filtros, y cada
+  usuario conserva la última que eligió. Los filtros de facción y de autor
+  valen para las dos.
+- La vista avanzada es una **galería de retratos**: nombre, emblema y nombre
+  de la facción y, si es de otro jugador, el candado. Los ocultos llevan el
+  marco discontinuo, y los que no tienen retrato enseñan el emblema de su
+  facción con su inicial.
+- Al pulsar un personaje se abre **su ficha, en su propia página** (el botón
+  "atrás" vuelve a la galería): retrato, coste, experiencia, trasfondo,
+  perfil con monturas, equipo y opciones, reglas especiales, habilidades,
+  cicatrices, magia y objetos mágicos, todo a la vista y solo para leer.
+  Desde su cabecera se abren las mismas ventanas de siempre: +Experiencia,
+  Habilidades, Cicatrices, Magia, Retrato y trasfondo, Ocultar, Borrar y la
+  Ficha de unidad. En los personajes de otro jugador se ve todo, pero no se
+  puede cambiar nada.
+
+---
+
 ## 0.215 — 21/11/2026 11:54
 
 - **El candado va solo**, sin "De otro jugador" al lado: el icono se entiende.

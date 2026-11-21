@@ -1,9 +1,13 @@
 import { clsx } from 'clsx'
 import type { Faction } from '@/domain/types'
 
-type Size = 'sm' | 'md' | 'lg'
+type Size = 'xs' | 'sm' | 'md' | 'lg'
 
 const SIZES: Record<Size, string> = {
+  // Para ir al lado de un nombre en una línea de texto (la cuadrícula de
+  // Personajes de Renombre): a ese tamaño la ilustración es una mancha de
+  // color, que es justo lo que hace falta para reconocer la facción.
+  xs: 'h-5 w-5',
   sm: 'h-10 w-10',
   md: 'h-12 w-12',
   lg: 'h-24 w-24',

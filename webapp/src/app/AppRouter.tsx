@@ -6,6 +6,7 @@ import { FactionsListPage } from '@/features/admin/factions/FactionsListPage'
 import { RulesListPage } from '@/features/admin/rules/RulesListPage'
 import { UnitsListPage } from '@/features/admin/units/UnitsListPage'
 import { PersonajesRenombrePage } from '@/features/renombre/PersonajesRenombrePage'
+import { FichaDeRenombrePage } from '@/features/renombre/avanzada/FichaDeRenombrePage'
 import { ForjaPage } from '@/features/forja/ForjaPage'
 import { ObjetosMagicosPage } from '@/features/admin/objetos/ObjetosMagicosPage'
 import { UnitDetailPage } from '@/features/admin/units/UnitDetailPage'
@@ -184,6 +185,12 @@ const router = createHashRouter([
         // de "Editor" y la usa cualquiera (ver PersonajesRenombrePage).
         path: '/renombre',
         element: <PersonajesRenombrePage />,
+      },
+      {
+        // La ficha de un personaje en la vista avanzada: su propia dirección,
+        // para que "atrás" vuelva a la galería y se pueda enlazar.
+        path: '/renombre/:id',
+        element: <FichaDeRenombrePage />,
       },
       {
         // La Forja. Sin AdminOnly, como Personajes de Renombre: la usa

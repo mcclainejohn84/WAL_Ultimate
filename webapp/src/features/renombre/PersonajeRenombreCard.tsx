@@ -650,7 +650,7 @@ export function PersonajeRenombreCard({
 // Retrato y trasfondo
 // ---------------------------------------------------------------------------
 
-function EditarPersonajeModal({
+export function EditarPersonajeModal({
   personaje,
   onClose,
   onGuardado,
@@ -894,7 +894,7 @@ function fechaCorta(iso: string): string {
   return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-function ExperienciaModal({
+export function ExperienciaModal({
   personaje,
   soloLectura = false,
   onClose,
