@@ -7,6 +7,7 @@ import { RulesListPage } from '@/features/admin/rules/RulesListPage'
 import { UnitsListPage } from '@/features/admin/units/UnitsListPage'
 import { PersonajesRenombrePage } from '@/features/renombre/PersonajesRenombrePage'
 import { FichaDeRenombrePage } from '@/features/renombre/avanzada/FichaDeRenombrePage'
+import { CampanasPage } from '@/features/admin/campaigns/CampanasPage'
 import { ForjaPage } from '@/features/forja/ForjaPage'
 import { ObjetosMagicosPage } from '@/features/admin/objetos/ObjetosMagicosPage'
 import { UnitDetailPage } from '@/features/admin/units/UnitDetailPage'
@@ -119,6 +120,14 @@ const router = createHashRouter([
         element: (
           <AdminOnly>
             <TaxonomyPage />
+          </AdminOnly>
+        ),
+      },
+      {
+        path: '/admin/campanas',
+        element: (
+          <AdminOnly>
+            <CampanasPage />
           </AdminOnly>
         ),
       },

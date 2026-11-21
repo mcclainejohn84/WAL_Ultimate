@@ -27,7 +27,9 @@ import { usePreferenciaLocal } from '@/shared/hooks/usePreferenciaLocal'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { useSession } from '@/shared/session/useSession'
-import { useFiltroDeFacciones } from '@/features/renombre/filtroDeFacciones'
+import { useFiltroDeCampanas, useFiltroDeFacciones } from '@/features/renombre/filtroDeFacciones'
+import { SIN_CAMPANA, eleccionVigente, pasaElFiltroDeCampanas } from '@/domain/campanas'
+import { CampaignRepository } from '@/data/repositories/campaignRepository'
 import { Modal } from '@/shared/ui/Modal'
 import { SelectorMultiple } from '@/shared/ui/SelectorMultiple'
 import { FiltroSegmentado } from '@/shared/ui/FiltroSegmentado'
@@ -81,9 +83,15 @@ export function PersonajesRenombrePage() {
     else objetosDe.set(objeto.unitId, [objeto])
   }
   /** Desvincular un objeto cambia el objeto Y la experiencia del personaje. */
+  // LAS CAMPAÑAS y en cuáles sale cada personaje (las dos de catálogo: lectura local).
+  const { data: campanas, reload: recargarCampanas } = useAsync(async () => ({
+    lista: await CampaignRepository.listAll(),
+    porPersonaje: await CampaignRepository.campanasPorPersonaje(),
+  }))
   function recargarTodo() {
     reload()
     recargarObjetos()
+    recargarCampanas()
   }
   const { data: facciones } = useAsync(() => FactionRepository.listAll())
   const [creando, setCreando] = useState(false)
@@ -91,6 +99,8 @@ export function PersonajesRenombrePage() {
   // filtroDeFacciones). Vacío = todas.
   const { user: usuario } = useSession()
   const [faccionesElegidas, setFaccionesElegidas] = useFiltroDeFacciones(usuario?.id)
+  // QUÉ CAMPAÑAS, igual: con memoria y vacío = todas. Se SUMA a los otros dos.
+  const [campanasGuardadas, setCampanasElegidas] = useFiltroDeCampanas(usuario?.id)
   // SOLO LOS MÍOS: se suma al de facciones, no lo sustituye (los tuyos de los
   // Hombres Bestia). Con memoria, como el de facciones: quien entra a llevar
   // los suyos entra siempre a lo mismo.
@@ -111,7 +121,20 @@ export function PersonajesRenombrePage() {
 
   const visibles = personajes ?? []
   const mios = usuario ? visibles.filter((p) => p.userId === usuario.id) : []
-  const todos = soloMios ? mios : visibles
+  const deAutor = soloMios ? mios : visibles
+  // Una campaña borrada que siguiera guardada en el filtro no cuenta: si solo
+  // quedaba esa, se ven todos en vez de una pantalla vacía sin motivo.
+  const listaDeCampanas = campanas?.lista ?? []
+  const campanasElegidas = eleccionVigente(
+    campanasGuardadas,
+    listaDeCampanas.map((c) => c.id),
+  )
+  const campanasDe = (p: PersonajeEspecial) => campanas?.porPersonaje.get(p.id) ?? []
+  const todos =
+    listaDeCampanas.length === 0
+      ? deAutor
+      : deAutor.filter((p) => pasaElFiltroDeCampanas(campanasDe(p), campanasElegidas))
+  const filtraCampana = campanasElegidas.size > 0 && listaDeCampanas.length > 0
   // El filtro se aplica ANTES de agrupar, así que los grupos, los contadores y
   // el mensaje de "no hay ninguno" salen todos del mismo sitio y no pueden
   // contradecirse (un contador que suma los de todas las facciones sobre una
@@ -182,6 +205,27 @@ export function PersonajesRenombrePage() {
               onChange={setFaccionesElegidas}
             />
           )}
+          {listaDeCampanas.length > 0 && (
+            <SelectorMultiple
+              className="w-56"
+              label="Campañas"
+              textoDeTodas="Todas las campañas"
+              opciones={[
+                ...listaDeCampanas.map((c) => ({
+                  id: c.id,
+                  nombre: c.nombre,
+                  cuantos: deAutor.filter((p) => campanasDe(p).includes(c.id)).length,
+                })),
+                {
+                  id: SIN_CAMPANA,
+                  nombre: 'Sin campaña',
+                  cuantos: deAutor.filter((p) => campanasDe(p).length === 0).length,
+                },
+              ]}
+              elegidas={campanasElegidas}
+              onChange={setCampanasElegidas}
+            />
+          )}
           {usuario != null && (
             <FiltroSegmentado
               label="Autor"
@@ -210,19 +254,27 @@ export function PersonajesRenombrePage() {
       {lista.length === 0 ? (
         <EmptyState
           title={
-            soloMios
-              ? 'No tienes ninguno'
-              : faccionesElegidas.size === 0
-                ? 'Todavía no hay ninguno'
-                : 'Ninguno en esas facciones'
+            filtraCampana
+              ? 'Ninguno en esas campañas'
+              : soloMios
+                ? 'No tienes ninguno'
+                : faccionesElegidas.size === 0
+                  ? 'Todavía no hay ninguno'
+                  : 'Ninguno en esas facciones'
           }
           description={
-            faccionesElegidas.size === 0
-              ? 'Elige un personaje de una facción y se copiará entero para darle nombre e historia.'
-              : 'Prueba con otra facción, o quita el filtro para verlos todos.'
+            filtraCampana
+              ? undefined
+              : faccionesElegidas.size === 0
+                ? 'Elige un personaje de una facción y se copiará entero para darle nombre e historia.'
+                : 'Prueba con otra facción, o quita el filtro para verlos todos.'
           }
           action={
-            faccionesElegidas.size === 0 ? (
+            filtraCampana ? (
+              <Button variant="secondary" onClick={() => setCampanasElegidas(new Set())}>
+                Ver todas las campañas
+              </Button>
+            ) : faccionesElegidas.size === 0 ? (
               <Button variant="primary" onClick={() => setCreando(true)}>
                 <PlusIcon className="h-4 w-4" />
                 Nuevo personaje

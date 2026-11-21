@@ -87,6 +87,9 @@ const CATALOG_TABLES = [
   'magic_item_traits',
   'magic_items',
   'magic_item_powers',
+  // Las campañas y quién sale en cada una (ver campaignRepository).
+  'campaigns',
+  'unit_campaigns',
 ] as const
 
 type CatalogSnapshot = Partial<Record<(typeof CATALOG_TABLES)[number], Record<string, unknown>[]>>

@@ -40,6 +40,8 @@ import {
   type EncuadreRetrato,
 } from '@/shared/image'
 import { MarcoDeEncuadre } from '@/features/renombre/MarcoDeEncuadre'
+import { SelectorDeCampanas } from '@/features/renombre/CampanasDelPersonaje'
+import { CampaignRepository } from '@/data/repositories/campaignRepository'
 import { aTextoPlano, sanearHtml, tieneTexto } from '@/shared/richText'
 import { UnitRepository } from '@/data/repositories/unitRepository'
 import { runMigrations } from '@/data/sqlite/client'
@@ -660,6 +662,14 @@ export function EditarPersonajeModal({
   onGuardado: () => void
 }) {
   const [trasfondo, setTrasfondo] = useState(personaje.background ?? '')
+  // SUS CAMPAÑAS. `null` mientras no se toque: así guardar sin haberlas
+  // cambiado no escribe nada (y no pisa lo que otro haya cambiado entretanto).
+  const { data: campanas } = useAsync(() => CampaignRepository.listAll())
+  const { data: lasSuyas } = useAsync(
+    async () => (await CampaignRepository.campanasPorPersonaje()).get(personaje.id) ?? [],
+    [personaje.id],
+  )
+  const [campanasElegidas, setCampanasElegidas] = useState<Set<number> | null>(null)
   /**
    * La foto con la que se está trabajando: sus bytes, una URL para verla y sus
    * medidas (que hacen falta para saber cuánto ocupa dentro del cuadro). Sale de
@@ -783,6 +793,7 @@ export function EditarPersonajeModal({
       // lista cerrada de etiquetas, no por la confianza.
       const limpio = sanearHtml(trasfondo)
       await SpecialCharacterRepository.setBackground(personaje.id, tieneTexto(limpio) ? limpio : '')
+      if (campanasElegidas) await CampaignRepository.setCampanasDe(personaje.id, [...campanasElegidas])
       onGuardado()
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -867,6 +878,18 @@ export function EditarPersonajeModal({
             )}
           </div>
         </div>
+
+        {(campanas?.length ?? 0) > 0 && (
+          <div>
+            <span className="mb-1.5 block text-xs font-medium text-ink-soft">Campañas</span>
+            <SelectorDeCampanas
+              campanas={campanas ?? []}
+              elegidas={campanasElegidas ?? new Set(lasSuyas ?? [])}
+              onChange={setCampanasElegidas}
+              disabled={guardando || lasSuyas == null}
+            />
+          </div>
+        )}
 
         <div>
           <span className="mb-1 block text-xs font-medium text-ink-soft">Trasfondo (opcional)</span>

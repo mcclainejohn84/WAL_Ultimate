@@ -152,6 +152,9 @@ const SNAPSHOT_TABLES = [
   'magic_item_traits',
   'magic_items',
   'magic_item_powers',
+  // Las campañas y quién sale en cada una: se leen al filtrar los personajes.
+  'campaigns',
+  'unit_campaigns',
   'category_composition_rules',
   // Apéndices: texto largo con formato, pero se lee siempre junto a la ficha
   // de la unidad, así que viaja con el resto del catálogo.
@@ -1468,6 +1471,21 @@ const MIGRATIONS: string[] = [
      user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
      PRIMARY KEY (unit_id, skill_key)
    )`,
+  // CAMPAÑAS (ver db/schema.sql). Ninguna clave ajena sale del catálogo.
+  `CREATE TABLE IF NOT EXISTS campaigns (
+     id         INTEGER PRIMARY KEY AUTOINCREMENT,
+     name       TEXT NOT NULL,
+     history    TEXT,
+     image_key  TEXT,
+     map_key    TEXT,
+     created_at TEXT NOT NULL
+   )`,
+  `CREATE TABLE IF NOT EXISTS unit_campaigns (
+     unit_id     INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+     campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+     PRIMARY KEY (unit_id, campaign_id)
+   )`,
+  'CREATE INDEX IF NOT EXISTS idx_unit_campaigns_campaign ON unit_campaigns(campaign_id)',
 ]
 
 /**

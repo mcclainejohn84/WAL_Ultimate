@@ -13,6 +13,26 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.218 — 21/11/2026 15:47
+
+- **Campañas**, nueva sección del Editor: se crean, se editan y se borran.
+  Cada campaña tiene nombre, historia (con formato), una imagen y un mapa,
+  los dos opcionales; el mapa se puede abrir a tamaño completo. En la lista,
+  cada campaña enseña su imagen (o su mapa), los retratos de los personajes
+  que salen en ella y el principio de su historia.
+- **Un personaje de renombre puede estar en ninguna, una o varias campañas.**
+  Se eligen en su ventana de "Retrato y trasfondo" (en las dos vistas), y
+  solo puede cambiarlas su autor. En la ficha de la vista avanzada salen
+  debajo de la facción.
+- **Filtro por campañas** en Personajes de Renombre, en la vista clásica y en
+  la avanzada, con memoria como el de facciones. Se pueden marcar varias, y
+  "Sin campaña" enseña los que no están en ninguna. Se suma a los filtros de
+  facción y de autor.
+- Borrar una campaña no borra a sus personajes: solo dejan de estar en ella.
+- Hace falta desplegar el Worker: crea las tablas de campañas.
+
+---
+
 ## 0.217 — 21/11/2026 14:18
 
 - **Un solo apéndice por pieza de equipo, cueste lo que cueste.** En el

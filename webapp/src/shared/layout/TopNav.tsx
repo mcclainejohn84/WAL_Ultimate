@@ -51,6 +51,7 @@ const EDITOR_ITEMS: NavItem[] = [
   { to: '/admin/habilidades', label: 'Habilidades de personaje', corto: 'Habilidades' },
   { to: '/admin/objetos', label: 'Objetos mágicos', corto: 'Objetos' },
   { to: '/admin/apendices', label: 'Apéndices y reglas adicionales', corto: 'Apéndices' },
+  { to: '/admin/campanas', label: 'Campañas' },
   { to: '/admin/taxonomia', label: 'Categorías y Etiquetas' },
   { to: '/admin/importar', label: 'Importar desde Libro' },
   { to: '/admin/log', label: 'Log' },

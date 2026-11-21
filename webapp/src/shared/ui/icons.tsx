@@ -733,3 +733,20 @@ export function LayersIcon({ className = 'h-4 w-4' }: { className?: string }) {
     </svg>
   )
 }
+
+/** Mapa plegado en tres, para el mapa de una campaña. */
+export function MapaIcon({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M2.5 5 7.5 3l5 2 5-2v12l-5 2-5-2-5 2V5Z" strokeLinejoin="round" />
+      <path d="M7.5 3v12M12.5 5v12" />
+    </svg>
+  )
+}

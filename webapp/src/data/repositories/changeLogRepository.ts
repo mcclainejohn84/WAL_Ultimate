@@ -43,6 +43,7 @@ export type ChangeLogEntity =
   // en la misma lista que el catálogo tapaba lo que se va a auditar. En el
   // Log tienen su pestaña.
   | 'personaje'
+  | 'campana'
 export type ChangeLogAction = 'crear' | 'editar' | 'borrar'
 
 export interface ChangeLogEntry {
@@ -66,6 +67,7 @@ export const ENTITY_LABELS: Record<ChangeLogEntity, string> = {
   carro: 'Carro',
   usuario: 'Usuario',
   personaje: 'Personaje de renombre',
+  campana: 'Campaña',
 }
 
 export const ACTION_LABELS: Record<ChangeLogAction, string> = {

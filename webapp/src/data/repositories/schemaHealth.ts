@@ -77,6 +77,7 @@ const CHECKS: SchemaCheck[] = [
   { label: 'Apéndices dentro de la ficha', probe: 'SELECT in_sheet FROM appendices LIMIT 1' },
   { label: 'Opciones de impresión', probe: 'SELECT print_options FROM users LIMIT 1' },
   { label: 'Forja de objetos mágicos', probe: 'SELECT id FROM magic_items LIMIT 1' },
+  { label: 'Campañas', probe: 'SELECT campaign_id FROM unit_campaigns LIMIT 1' },
   { label: 'Mapas', probe: 'SELECT width_cm FROM battle_maps LIMIT 1' },
   { label: 'Mapas ocultos', probe: 'SELECT hidden FROM battle_maps LIMIT 1' },
   { label: 'Textura del mapa', probe: 'SELECT texture FROM battle_maps LIMIT 1' },

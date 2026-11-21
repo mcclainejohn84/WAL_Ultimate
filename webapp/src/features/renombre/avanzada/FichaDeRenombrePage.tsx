@@ -55,6 +55,8 @@ import { CicatricesModal } from '@/features/renombre/CicatricesModal'
 import { MagiaModal } from '@/features/renombre/MagiaModal'
 import { BotonDeInfo, LoQueTiene } from '@/features/renombre/piezas'
 import { useAccionesDePersonaje } from '@/features/renombre/avanzada/acciones'
+import { SellosDeCampana } from '@/features/renombre/CampanasDelPersonaje'
+import { CampaignRepository, type Campana } from '@/data/repositories/campaignRepository'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
 import { sanearHtml, tieneTexto } from '@/shared/richText'
@@ -85,6 +87,7 @@ interface Expediente {
   pergaminos: { id: number; nombre: string; detalle: string; reglas: string | null }[]
   objetos: ObjetoMagico[]
   faccion: { name: string; emblemUrl: string | null } | null
+  campanas: Campana[]
 }
 
 async function cargarExpediente(id: number): Promise<Expediente | null> {
@@ -104,6 +107,11 @@ async function cargarExpediente(id: number): Promise<Expediente | null> {
       MagicItemRepository.listAll().catch(() => [] as ObjetoMagico[]),
       FactionRepository.listAll().catch(() => []),
     ])
+  const [todasLasCampanas, porPersonaje] = await Promise.all([
+    CampaignRepository.listAll(),
+    CampaignRepository.campanasPorPersonaje(),
+  ])
+  const susCampanas = new Set(porPersonaje.get(id) ?? [])
 
   const ficha = fichaDeRenombre(claves, cicatrices, { habilidades: catHabilidades, magia: catMagia })
   const sendaPorId = new Map(catSendas.map((s) => [s.id, s]))
@@ -133,6 +141,7 @@ async function cargarExpediente(id: number): Promise<Expediente | null> {
         reglas: hechizo.rules ?? null,
       })),
     objetos: objetos.filter((o) => o.unitId === id),
+    campanas: todasLasCampanas.filter((c) => susCampanas.has(c.id)),
     faccion: faccion ? { name: faccion.name, emblemUrl: faccion.emblemUrl } : null,
   }
 }
@@ -170,7 +179,7 @@ export function FichaDeRenombrePage() {
     )
   }
 
-  const { personaje, unidad, ficha, sendas, pergaminos, objetos, faccion } = data
+  const { personaje, unidad, ficha, sendas, pergaminos, objetos, faccion, campanas } = data
   const puedeEditar = esEditablePor(personaje, user?.id)
   const esMago = esHechicero(personaje) || sendas.length > 0
   const subtitulo = [unidad?.category?.name, unidad?.typeTag?.name].filter(Boolean).join(' · ')
@@ -223,6 +232,11 @@ export function FichaDeRenombrePage() {
                 {faccion?.name ?? personaje.factionName}
               </span>
             </p>
+            {campanas.length > 0 && (
+              <div className="mt-2.5">
+                <SellosDeCampana campanas={campanas} />
+              </div>
+            )}
 
             {/* LOS DATOS DE UN VISTAZO: coste, experiencia y estado. */}
             <dl className="mt-4 grid grid-cols-[auto_1fr] items-end gap-x-6 gap-y-3 border-t border-rule-dark/25 pt-3 sm:grid-cols-[auto_minmax(0,16rem)_auto]">

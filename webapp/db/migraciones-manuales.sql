@@ -225,3 +225,28 @@ CREATE TABLE IF NOT EXISTS magic_item_powers (
     trait_key TEXT NOT NULL,
     PRIMARY KEY (item_id, trait_key)
 );
+
+-- ----------------------------------------------------------------------------
+-- CAMPAÑAS. Se crean en el Editor y agrupan Personajes de Renombre: un
+-- personaje puede estar en ninguna, en una o en varias. Son de catálogo
+-- (viajan en el snapshot) porque se leen al filtrar la pantalla de personajes.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS campaigns (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL,
+    -- La historia de la campaña, con formato (ver shared/richText).
+    history    TEXT,
+    -- Las dos imágenes viven en R2, como los retratos: aquí solo la CLAVE.
+    image_key  TEXT,
+    map_key    TEXT,
+    created_at TEXT NOT NULL
+);
+
+-- En qué campañas sale cada personaje de renombre: ninguna, una o varias.
+CREATE TABLE IF NOT EXISTS unit_campaigns (
+    unit_id     INTEGER NOT NULL REFERENCES units(id) ON DELETE CASCADE,
+    campaign_id INTEGER NOT NULL REFERENCES campaigns(id) ON DELETE CASCADE,
+    PRIMARY KEY (unit_id, campaign_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_unit_campaigns_campaign ON unit_campaigns(campaign_id);
