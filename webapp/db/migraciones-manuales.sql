@@ -250,3 +250,9 @@ CREATE TABLE IF NOT EXISTS unit_campaigns (
 );
 
 CREATE INDEX IF NOT EXISTS idx_unit_campaigns_campaign ON unit_campaigns(campaign_id);
+
+-- ----------------------------------------------------------------------------
+-- EJÉRCITOS COMPARTIDOS CON EDICIÓN y quién tocó cada lista por última vez.
+-- ----------------------------------------------------------------------------
+ALTER TABLE army_list_shares ADD COLUMN can_edit INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE army_lists ADD COLUMN updated_by INTEGER;

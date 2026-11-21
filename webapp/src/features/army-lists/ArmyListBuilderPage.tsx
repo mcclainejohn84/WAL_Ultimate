@@ -68,6 +68,9 @@ import { categoryShieldMetal } from '@/features/army-lists/categoryShield'
 import { AliasModal } from '@/features/army-lists/AliasModal'
 import { SORT_LABELS, sortEntries, type SortCriterion } from '@/features/army-lists/sorting'
 import { UnsavedChangesDialog } from '@/shared/ui/UnsavedChangesDialog'
+import { CambiosDeOtroDialog, type CambiosDeOtro } from '@/features/army-lists/CambiosDeOtroDialog'
+import { alGuardar, alVigilar, laHaGuardadoOtro } from '@/domain/edicionCompartida'
+import { useNombresDeUsuario } from '@/shared/hooks/useNombresDeUsuario'
 
 const SIN_CATEGORIA_KEY = 'Sin categoría'
 
@@ -466,7 +469,12 @@ export function ArmyListBuilderPage() {
   const listId = Number(id)
   const navigate = useNavigate()
 
-  const { data: list, loading, error } = useAsync(() => ArmyListRepository.getDetailById(listId), [listId])
+  const {
+    data: list,
+    loading,
+    error,
+    reload: recargarLista,
+  } = useAsync(() => ArmyListRepository.getDetailById(listId), [listId])
   // A diferencia de la ficha de unidad (donde monturas/carros sí quedan
   // restringidos a la facción propia), el constructor de listas permite
   // combinar unidades de cualquier facción en una misma lista: se cargan
@@ -506,6 +514,21 @@ export function ArmyListBuilderPage() {
   const [dirty, setDirty] = useState(false)
   const [savingList, setSavingList] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  /**
+   * LO ÚLTIMO QUE SE VIO GUARDADO: el `updated_at` de la lista al cargarla o al
+   * guardarla desde aquí. Si al ir a guardar la base dice otra cosa, alguien
+   * (con quien está compartida con edición) la ha guardado entre medias.
+   */
+  const [vistoGuardado, setVistoGuardado] = useState<string | null>(null)
+  /** Guardar se ha parado porque otro la cambió: el diálogo que pregunta qué hacer. */
+  const [conflicto, setConflicto] = useState<CambiosDeOtro | null>(null)
+  /**
+   * Otro la ha guardado mientras la tenías abierta, y como tienes cambios sin
+   * guardar no se ha recargado sola: el aviso de arriba, con su botón.
+   */
+  const [cambiosAjenos, setCambiosAjenos] = useState<{ editor: string | null } | null>(null)
+  /** Recién recargada con los cambios de otro (sin pisar nada tuyo): el aviso breve. */
+  const [actualizadaPor, setActualizadaPor] = useState<{ editor: string | null } | null>(null)
   // Ids provisionales (negativos) para las entradas nuevas aún sin guardar: solo
   // sirven como clave de React y para arrastrar/editar/quitar; nunca llegan a la
   // BBDD (replaceAllEntries asigna ids reales). Ver ArmyListRepository.
@@ -618,6 +641,7 @@ export function ArmyListBuilderPage() {
     setEmblemFactionId(list.emblemFactionId)
     setEmblemKey(list.emblemKey)
     setCerrada(list.ready)
+    setVistoGuardado(list.updatedAt)
     setReconcileNotes(notes)
     setNeedsReviewIds(new Set(notes.filter((n) => n.conflicts.length > 0).map((n) => n.entryId)))
     // Si algo ha cambiado, el borrador ya no coincide con lo guardado: se
@@ -656,11 +680,26 @@ export function ArmyListBuilderPage() {
     () =>
       esDeOtro && list && user
         ? ArmyListRepository.getShareAccess(list.id, user.id)
-        : Promise.resolve({ compartida: false, conDespliegue: false }),
+        : Promise.resolve({ compartida: false, conDespliegue: false, puedeEditar: false }),
     [esDeOtro, list?.id, user?.id],
   )
-  /** Compartida contigo: se mira y se exporta, no se toca. */
+  /** Compartida contigo: la ves y la exportas; si además es CON EDICIÓN, la cambias. */
   const compartidaConmigo = esDeOtro && acceso?.compartida === true
+  /** Te la compartieron con edición: es la misma lista que la de su dueño, no una copia. */
+  const editoraInvitada = compartidaConmigo && acceso?.puedeEditar === true
+  /** La puedes cambiar (y cerrar y reabrir): tuya, o compartida contigo con edición. */
+  const puedoEditar = !esDeOtro || editoraInvitada
+  const nombres = useNombresDeUsuario()
+  /**
+   * SI LA EDITA MÁS DE UNO: tuya y compartida con edición a alguien, o de otro
+   * y compartida contigo con edición. Solo entonces se vigila si alguien la
+   * cambia mientras la tienes abierta.
+   */
+  const { data: compartidaConEdicion } = useAsync(
+    async () => (list && !esDeOtro ? (await ArmyListRepository.getShares(list.id)).some((c) => c.canEdit) : false),
+    [list?.id, esDeOtro],
+  )
+  const colaborativa = editoraInvitada || compartidaConEdicion === true
   /**
    * LISTA CERRADA (ver ArmyList.ready). Se guarda en estado local además de leerse
    * de la lista para que al reabrirla desde aquí la pantalla se desbloquee en el
@@ -674,7 +713,73 @@ export function ArmyListBuilderPage() {
    * cosa de `compartidaConmigo`—, porque una lista de otro cerrada mezclaría las
    * dos cosas y te abriría la puerta.
    */
-  const soloLectura = compartidaConmigo || cerrada
+  const soloLectura = (compartidaConmigo && !editoraInvitada) || cerrada
+
+  /** Vuelve a cargar la lista tal como está guardada, descartando el borrador. */
+  function cargarLaGuardada() {
+    reconciledListId.current = null
+    setDirty(false)
+    setConflicto(null)
+    setCambiosAjenos(null)
+    recargarLista()
+  }
+
+  /**
+   * VIGILAR LOS CAMBIOS DE OTRO en una lista que editan varios: al volver a la
+   * pestaña y, mientras está a la vista, cada poco. Si no tienes nada a medias
+   * se recarga sola (y se dice quién la cambió); si lo tienes, no se toca nada
+   * y sale un aviso para que decidas tú.
+   */
+  const vigilancia = useRef({ dirty, vistoGuardado, cerrada, guardando: savingList, editandoEntrada: false })
+  vigilancia.current = {
+    dirty,
+    vistoGuardado,
+    cerrada,
+    guardando: savingList,
+    editandoEntrada: selectedUnit != null || draft.editingEntryId != null,
+  }
+  useEffect(() => {
+    if (!list || !colaborativa || !user) return
+    let cancelado = false
+    async function mirar() {
+      const v = vigilancia.current
+      if (document.visibilityState !== 'visible' || v.guardando || v.vistoGuardado == null) return
+      const estado = await ArmyListRepository.getEstado(list!.id).catch(() => null)
+      if (cancelado || !estado) return
+      const accion = alVigilar(
+        estado,
+        { guardado: v.vistoGuardado, cerrada: v.cerrada, aMedias: v.dirty || v.editandoEntrada },
+        user!.id,
+      )
+      if (accion === 'nada') return
+      if (accion === 'avisar') {
+        setCambiosAjenos({ editor: estado.editorName })
+        return
+      }
+      if (laHaGuardadoOtro(estado, v.vistoGuardado, user!.id)) setActualizadaPor({ editor: estado.editorName })
+      reconciledListId.current = null
+      recargarLista()
+    }
+    const intervalo = window.setInterval(() => void mirar(), 20000)
+    const alVolver = () => void mirar()
+    document.addEventListener('visibilitychange', alVolver)
+    window.addEventListener('focus', alVolver)
+    return () => {
+      cancelado = true
+      window.clearInterval(intervalo)
+      document.removeEventListener('visibilitychange', alVolver)
+      window.removeEventListener('focus', alVolver)
+    }
+    // `recargarLista` cambia en cada render y no hace falta: se lee la última.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list?.id, colaborativa, user?.id])
+
+  // El aviso de "actualizada con los cambios de X" se va solo.
+  useEffect(() => {
+    if (!actualizadaPor) return
+    const t = window.setTimeout(() => setActualizadaPor(null), 6000)
+    return () => window.clearTimeout(t)
+  }, [actualizadaPor])
 
   async function reabrirLista() {
     if (!list) return
@@ -1127,11 +1232,20 @@ export function ArmyListBuilderPage() {
   }
 
   /** Persiste TODO el borrador de una vez (botón "Guardar ejército"). Devuelve true si se guardó bien. */
-  async function handleSaveList(): Promise<boolean> {
+  async function handleSaveList(forzar = false): Promise<boolean> {
     if (!list) return false
     setSavingList(true)
     setSaveError(null)
     try {
+      // ANTES DE PISAR NADA: ¿la ha guardado otro desde que la cargaste? Si
+      // es así, se pregunta (ver CambiosDeOtroDialog). Si la ha cerrado, no se
+      // guarda: una lista completada no se cambia.
+      const estado = forzar ? null : await ArmyListRepository.getEstado(list.id).catch(() => null)
+      const decision = alGuardar(estado, vistoGuardado, cerrada, user?.id ?? null)
+      if (decision !== 'guardar') {
+        setConflicto({ tipo: decision, editor: estado?.editorName ?? null })
+        return false
+      }
       const inputs: ArmyListEntryInput[] = currentEntries.map((e) => ({
         unitId: e.unit.id,
         quantity: e.quantity,
@@ -1149,8 +1263,10 @@ export function ArmyListBuilderPage() {
         upgradeIds: e.upgradeIds,
         hidden: e.hidden,
       }))
-      await ArmyListRepository.replaceAllEntries(list.id, inputs)
+      setVistoGuardado(await ArmyListRepository.replaceAllEntries(list.id, inputs))
       setDirty(false)
+      setConflicto(null)
+      setCambiosAjenos(null)
       return true
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : String(err))
@@ -1648,7 +1764,7 @@ export function ArmyListBuilderPage() {
             {/* Compartida contigo: se puede mirar y exportar, nada más. El
                 candado va en la cabecera, junto a los botones que SÍ funcionan,
                 para que se entienda antes de intentar cambiar algo. */}
-            {compartidaConmigo && (
+            {compartidaConmigo && !editoraInvitada && (
               <span
                 className="flex items-center gap-1.5 rounded-sm border border-rule-dark/40 px-2 py-1 text-xs font-medium text-ink-soft"
                 title="Este ejército es de otro usuario y te lo ha compartido: puedes verlo y exportarlo, pero no editarlo"
@@ -1660,7 +1776,18 @@ export function ArmyListBuilderPage() {
             {/* Completada por ti: el candado trae SU PROPIA salida. Sin ella
                 habría que volver al listado a buscar el sello, y el bloqueo
                 pasaría de pestillo a castigo. */}
-            {cerrada && !compartidaConmigo && (
+            {/* Compartida contigo CON EDICIÓN: es la lista de su dueño, no una
+                copia, y eso conviene tenerlo a la vista mientras se cambia. */}
+            {editoraInvitada && list.userId != null && (
+              <span
+                className="flex items-center gap-1.5 rounded-sm border border-bronze/45 bg-bronze/10 px-2 py-1 text-xs font-medium text-ink"
+                title="Te la han compartido con edición: lo que cambies lo verá también su dueño"
+              >
+                <PencilIcon className="h-3.5 w-3.5 text-bronze" />
+                {nombres.has(list.userId) ? `De ${nombres.get(list.userId)}` : 'Compartida'}
+              </span>
+            )}
+            {cerrada && puedoEditar && (
               <span className="flex items-center gap-2 rounded-sm border border-maroon/45 bg-maroon/10 px-2 py-1 text-xs font-medium text-ink">
                 <LockIcon className="h-3.5 w-3.5 text-maroon" />
                 Lista completada
@@ -1699,7 +1826,7 @@ export function ArmyListBuilderPage() {
               {exportingSheets ? 'Generando…' : '📄 Exportar Hojas de unidad'}
             </Button>
             {!soloLectura && (
-              <Button variant="primary" onClick={handleSaveList} disabled={!dirty || savingList}>
+              <Button variant="primary" onClick={() => void handleSaveList()} disabled={!dirty || savingList}>
                 {savingList ? 'Guardando…' : 'Guardar ejército'}
               </Button>
             )}
@@ -1753,6 +1880,44 @@ export function ArmyListBuilderPage() {
           </span>
         )}
       </div>
+
+      {/* OTRO LA HA CAMBIADO y tú tienes cosas a medias: no se recarga sola. */}
+      {cambiosAjenos && (
+        <div
+          role="status"
+          className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-sm border border-bronze/50 bg-bronze/10 px-4 py-2.5"
+        >
+          <PencilIcon className="h-4 w-4 shrink-0 text-bronze" />
+          <p className="min-w-0 flex-1 text-sm text-ink">
+            <b className="font-semibold">{cambiosAjenos.editor ?? 'Otro jugador'}</b> ha guardado cambios en este
+            ejército.
+          </p>
+          <span className="flex items-center gap-1">
+            <Button variant="ghost" onClick={() => setCambiosAjenos(null)}>
+              Seguir con lo mío
+            </Button>
+            <Button variant="secondary" onClick={cargarLaGuardada}>
+              Cargar sus cambios
+            </Button>
+          </span>
+        </div>
+      )}
+      {actualizadaPor && !cambiosAjenos && (
+        <p role="status" className="mb-4 flex items-center gap-2 text-xs text-ink-soft">
+          <CheckIcon className="h-3.5 w-3.5 text-success" />
+          {/* En un <span>: suelto, cada trozo de texto sería un hijo del flex y
+              el `gap` los separaría a golpes. */}
+          <span>
+            {actualizadaPor.editor ? (
+              <>
+                Actualizada con los cambios de <b className="font-semibold text-ink">{actualizadaPor.editor}</b>.
+              </>
+            ) : (
+              'Actualizada con los últimos cambios.'
+            )}
+          </span>
+        </p>
+      )}
 
       {saveError && (
         <div className="mb-4 rounded-sm border border-danger-dark/40 bg-danger-dark/10 px-4 py-3">
@@ -2599,6 +2764,9 @@ export function ArmyListBuilderPage() {
             setEmblemFactionId(values.emblemFactionId)
             setEmblemKey(values.emblemKey)
             setEditingSettings(false)
+            // Esos cambios los acabas de guardar TÚ: lo que hay ahora en la base
+            // es lo último visto, y guardar después no debe tomarlo por de otro.
+            void ArmyListRepository.getEstado(list.id).then((e) => e && setVistoGuardado(e.updatedAt))
           }}
         />
       )}
@@ -2636,6 +2804,16 @@ export function ArmyListBuilderPage() {
           confirmLabel="Quitar todas"
           onCancel={() => setConfirmClear(false)}
           onConfirm={handleClearEntries}
+        />
+      )}
+
+      {conflicto && (
+        <CambiosDeOtroDialog
+          conflicto={conflicto}
+          ocupado={savingList}
+          onCancelar={() => setConflicto(null)}
+          onCargarLosSuyos={cargarLaGuardada}
+          onGuardarLosMios={() => void handleSaveList(true)}
         />
       )}
 

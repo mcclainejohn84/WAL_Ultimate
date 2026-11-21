@@ -1,17 +1,21 @@
 // ============================================================================
 // "Compartir" un ejército con otros usuarios.
 //
-// Compartir da acceso de SOLO LECTURA: el destinatario ve la lista en su
-// sección de Ejércitos, la puede abrir y exportar, pero no tocar. Un ejército
-// tiene un dueño y uno solo (army_lists.user_id) — si dos personas pudieran
-// editar la misma lista, el borrador local de cada una pisaría el de la otra
-// al guardar, sin forma de saber cuál era la buena.
+// TRES NIVELES POR PERSONA, en un solo control: no compartida, VER o EDITAR.
+//  - Ver: la lista aparece en su sección de Ejércitos, la abre y la exporta,
+//    pero no la toca.
+//  - Editar: la MISMA lista, no una copia. Lo que cambie él lo ves tú y al
+//    revés, y puede darla por completada o reabrirla. Lo que no puede es
+//    compartirla ni borrarla: eso sigue siendo del dueño.
+// Que dos editen la misma lista no pisa a nadie a ciegas: el constructor
+// comprueba antes de guardar si otro la ha guardado entretanto y pregunta (ver
+// ArmyListBuilderPage, "cambios de otro").
 //
 // EL DESPLIEGUE VA APARTE, y por persona. Enseñarle el ejército a un rival
 // para que lo revise antes de la partida no debería enseñarle dónde vas a
-// colocar; a un compañero de equipo sí. Por eso son dos casillas y no una, y
-// la del despliegue nace APAGADA: lo que se comparte sin querer no se puede
-// des-ver.
+// colocar; a un compañero de equipo sí. La casilla nace APAGADA —lo que se
+// comparte sin querer no se puede des-ver— y con edición, quien lo ve también
+// lo puede mover.
 //
 // Solo lo abre el dueño: en una lista compartida contigo este botón no sale.
 // ============================================================================
@@ -23,6 +27,13 @@ import { useAsync } from '@/shared/hooks/useAsync'
 import { Modal } from '@/shared/ui/Modal'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
+
+type Acceso = 'nada' | 'ver' | 'editar'
+const ACCESOS: { valor: Acceso; etiqueta: string }[] = [
+  { valor: 'nada', etiqueta: 'No' },
+  { valor: 'ver', etiqueta: 'Ver' },
+  { valor: 'editar', etiqueta: 'Editar' },
+]
 
 export function ShareArmyListModal({
   armyListId,
@@ -53,14 +64,16 @@ export function ShareArmyListModal({
   // su propia lista de destinatarios solo invita a marcarse por error.
   const destinatarios = (users ?? []).filter((u) => u.id !== ownerId)
 
-  function toggleCompartir(id: number) {
+  /** No compartida, solo ver o editar. */
+  function ponerAcceso(id: number, acceso: Acceso) {
     setSelected((prev) => {
       const next = new Map(prev ?? [])
-      if (next.has(id)) next.delete(id)
+      const actual = next.get(id)
+      if (acceso === 'nada') next.delete(id)
       // Al compartir de nuevo se empieza SIN despliegue, aunque antes lo
       // tuviera: quitar y volver a poner es la forma natural de "empezar de
-      // cero" con alguien.
-      else next.set(id, { userId: id, shareDeployment: false })
+      // cero" con alguien. Pasar de ver a editar (o al revés) lo conserva.
+      else next.set(id, { userId: id, shareDeployment: actual?.shareDeployment ?? false, canEdit: acceso === 'editar' })
       return next
     })
   }
@@ -109,52 +122,67 @@ export function ShareArmyListModal({
       ) : destinatarios.length === 0 ? (
         <p className="text-xs italic text-ink-soft">No hay otros usuarios con los que compartir.</p>
       ) : (
-        <div className="max-h-[50vh] overflow-y-auto pr-1">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="text-ink-soft">
-                <th className="border-b border-rule-dark/30 px-2 py-1 text-left text-xs font-semibold">Usuario</th>
-                <th className="w-24 border-b border-rule-dark/30 px-2 py-1 text-center text-xs font-semibold">
-                  Ejército
-                </th>
-                <th className="w-24 border-b border-rule-dark/30 px-2 py-1 text-center text-xs font-semibold">
+        <ul className="max-h-[55vh] divide-y divide-rule-dark/15 overflow-y-auto pr-1">
+          {destinatarios.map((u) => {
+            const share = selected.get(u.id)
+            const acceso: Acceso = share == null ? 'nada' : share.canEdit ? 'editar' : 'ver'
+            return (
+              <li key={u.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2">
+                {/* En el móvil el nombre va en su propia línea: al lado de los
+                    controles se quedaba en tres letras y unos puntos. */}
+                <span
+                  className={clsx(
+                    'w-full min-w-0 truncate text-sm sm:w-auto sm:flex-1',
+                    share ? 'text-ink' : 'text-ink-soft/70',
+                  )}
+                >
+                  {u.username}
+                </span>
+                <div
+                  role="radiogroup"
+                  aria-label={`Qué puede hacer ${u.username} con el ejército`}
+                  className="flex gap-0.5 rounded-sm border border-rule-dark/50 bg-parchment/70 p-0.5"
+                >
+                  {ACCESOS.map(({ valor, etiqueta }) => (
+                    <button
+                      key={valor}
+                      type="button"
+                      role="radio"
+                      aria-checked={acceso === valor}
+                      onClick={() => ponerAcceso(u.id, valor)}
+                      className={clsx(
+                        'rounded-[2px] px-2.5 py-0.5 text-xs whitespace-nowrap transition-colors',
+                        acceso === valor
+                          ? 'bg-maroon font-semibold text-parchment shadow-sm shadow-black/20'
+                          : 'text-ink-soft hover:text-ink',
+                      )}
+                    >
+                      {etiqueta}
+                    </button>
+                  ))}
+                </div>
+                {/* Sin el ejército no hay despliegue que enseñar, así que la
+                    casilla solo se activa con acceso. */}
+                <label
+                  className={clsx(
+                    'flex w-28 items-center gap-1.5 text-xs',
+                    share ? 'text-ink-soft' : 'text-ink-soft/40',
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="accent-maroon disabled:opacity-40"
+                    disabled={share == null}
+                    checked={share?.shareDeployment ?? false}
+                    onChange={() => toggleDespliegue(u.id)}
+                    aria-label={`Compartir el despliegue con ${u.username}`}
+                  />
                   Despliegue
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-rule-dark/15">
-              {destinatarios.map((u) => {
-                const share = selected.get(u.id)
-                return (
-                  <tr key={u.id} className={clsx(!share && 'opacity-70')}>
-                    <td className="px-2 py-1.5 text-ink">{u.username}</td>
-                    <td className="px-2 py-1.5 text-center">
-                      <input
-                        type="checkbox"
-                        className="accent-maroon"
-                        checked={share != null}
-                        onChange={() => toggleCompartir(u.id)}
-                        aria-label={`Compartir el ejército con ${u.username}`}
-                      />
-                    </td>
-                    {/* Sin el ejército no hay despliegue que enseñar, así que
-                        la segunda casilla solo se activa con la primera. */}
-                    <td className="px-2 py-1.5 text-center">
-                      <input
-                        type="checkbox"
-                        className="accent-maroon disabled:opacity-40"
-                        disabled={share == null}
-                        checked={share?.shareDeployment ?? false}
-                        onChange={() => toggleDespliegue(u.id)}
-                        aria-label={`Compartir el despliegue con ${u.username}`}
-                      />
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+                </label>
+              </li>
+            )
+          })}
+        </ul>
       )}
 
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}

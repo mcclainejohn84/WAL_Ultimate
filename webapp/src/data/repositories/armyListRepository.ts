@@ -20,6 +20,7 @@ import type {
   LadoDeDespliegue,
 } from '@/domain/types'
 import { MESA_ALTO_CM, MESA_ANCHO_CM, type DeploymentPosition } from '@/domain/deployment'
+import { getCurrentUser } from '@/shared/session/useSession'
 
 function mapArmyList(row: Record<string, unknown>): ArmyList {
   return {
@@ -49,6 +50,8 @@ function mapArmyList(row: Record<string, unknown>): ArmyList {
     // Igual que las anteriores: sin columna, null, que es "el de su facción".
     emblemFactionId: (row.emblem_faction_id as number) ?? null,
     emblemKey: (row.emblem_key as string) ?? null,
+    // Sin la columna (Worker sin desplegar), no consta quién la tocó.
+    updatedBy: (row.updated_by as number) ?? null,
   }
 }
 
@@ -89,6 +92,20 @@ export interface ArmyListSummary extends ArmyList {
    * no te han dado y además puede ser mentira.
    */
   deploymentVisible: boolean
+  /**
+   * SI LA PUEDES CAMBIAR. Las tuyas, siempre; una que te han compartido, solo
+   * si te la compartieron CON EDICIÓN (`army_list_shares.can_edit`). Quien
+   * puede editarla puede también darla por completada y reabrirla. Compartirla
+   * y borrarla siguen siendo cosa de su dueño.
+   */
+  canEdit: boolean
+  /**
+   * Quién la tocó por última vez, si no fuiste tú. Solo tiene sentido en las
+   * listas que cambian varios, y es lo que el listado enseña al lado.
+   */
+  editorName: string | null
+  /** En las tuyas: a cuántos se la has compartido CON EDICIÓN. */
+  editoresCount: number
 }
 
 /** Una persona con la que está compartida una lista. */
@@ -96,12 +113,28 @@ export interface ArmyListShare {
   userId: number
   /** Si además de la lista ve el despliegue sobre la mesa. */
   shareDeployment: boolean
+  /** Si la puede cambiar (y marcar como completada). */
+  canEdit: boolean
 }
 
-/** Qué puede ver alguien de una lista que no es suya. */
+/** Qué puede ver —y hacer— alguien de una lista que no es suya. */
 export interface ShareAccess {
   compartida: boolean
   conDespliegue: boolean
+  /** Te la compartieron con edición: la cambias como si fuera tuya. */
+  puedeEditar: boolean
+}
+
+/**
+ * Cómo está una lista AHORA MISMO en la base, para saber si alguien la ha
+ * cambiado mientras uno la tenía abierta (ver ArmyListBuilderPage).
+ */
+export interface EstadoDeLista {
+  updatedAt: string
+  updatedBy: number | null
+  /** Nombre de quien la tocó por última vez; null si no consta. */
+  editorName: string | null
+  ready: boolean
 }
 
 export interface ArmyListCreateInput {
@@ -175,6 +208,22 @@ async function resolveEntry(row: Record<string, unknown>): Promise<ArmyListEntry
 
 async function touchList(armyListId: number): Promise<void> {
   await exec('UPDATE army_lists SET updated_at = ? WHERE id = ?', [new Date().toISOString(), armyListId])
+  await apuntarEditor(armyListId)
+}
+
+/**
+ * Apunta QUIÉN acaba de tocar la lista (ver army_lists.updated_by). Va en una
+ * sentencia aparte y se traga el fallo: con el Worker sin desplegar la columna
+ * no existe, y no saber quién fue no puede impedir guardar el ejército.
+ */
+async function apuntarEditor(armyListId: number): Promise<void> {
+  const yo = getCurrentUser()?.id
+  if (yo == null) return
+  try {
+    await exec('UPDATE army_lists SET updated_by = ? WHERE id = ?', [yo, armyListId])
+  } catch {
+    // Sin columna todavía: no consta.
+  }
 }
 
 async function replaceEntryRelations(
@@ -245,11 +294,25 @@ export const ArmyListRepository = {
                    THEN 1 ELSE 0 END AS ve_despliegue,
               CASE WHEN al.user_id = ?1 THEN 1 ELSE 0 END AS es_mia,
               (SELECT u.username FROM users u WHERE u.id = al.user_id) AS owner_name
+              /*EDICION*/
        FROM army_lists al
        JOIN factions f ON f.id = al.faction_id
        WHERE al.user_id = ?1
           OR EXISTS (SELECT 1 FROM army_list_shares s WHERE s.army_list_id = al.id AND s.user_id = ?1)
        ORDER BY es_mia DESC, al.created_at DESC, al.id DESC`
+
+    // CON EDICIÓN: quién puede cambiarla, quién la tocó por última vez y a
+    // cuántos se la has dado para editar. Son las columnas más nuevas, así que
+    // van en un trozo que se quita si fallan (ver abajo).
+    const columnasDeEdicion = `,
+              CASE WHEN al.user_id = ?1
+                    OR COALESCE((SELECT s4.can_edit FROM army_list_shares s4
+                                  WHERE s4.army_list_id = al.id AND s4.user_id = ?1), 0) <> 0
+                   THEN 1 ELSE 0 END AS puede_editar,
+              CASE WHEN al.updated_by IS NOT NULL AND al.updated_by <> ?1
+                   THEN (SELECT u2.username FROM users u2 WHERE u2.id = al.updated_by) END AS editor_name,
+              (SELECT COUNT(*) FROM army_list_shares s5
+                WHERE s5.army_list_id = al.id AND s5.can_edit <> 0) AS editores`
 
     const mapear = (row: Record<string, unknown>): ArmyListSummary => {
       const mia = (row.es_mia as number) !== 0
@@ -263,11 +326,23 @@ export const ArmyListRepository = {
         // Sin la columna (la consulta de respaldo, que solo trae las tuyas) se
         // ve el despliegue: son todas propias.
         deploymentVisible: mia || ((row.ve_despliegue as number) ?? 1) !== 0,
+        // Sin las columnas de edición, se edita solo lo tuyo: lo de antes.
+        canEdit: mia || ((row.puede_editar as number) ?? 0) !== 0,
+        editorName: (row.editor_name as string) ?? null,
+        editoresCount: (row.editores as number) ?? 0,
       }
     }
 
+    // TRES INTENTOS, de la consulta más nueva a la de siempre: si falta una
+    // columna reciente (Worker sin desplegar), se pierde solo lo nuevo, no las
+    // listas compartidas ni —en el último caso— las tuyas.
     try {
-      return await query(conCompartidas, [userId], mapear)
+      return await query(conCompartidas.replace('/*EDICION*/', columnasDeEdicion), [userId], mapear)
+    } catch {
+      // Sin can_edit / updated_by: como antes de la edición compartida.
+    }
+    try {
+      return await query(conCompartidas.replace('/*EDICION*/', ''), [userId], mapear)
     } catch {
       return await query(
         `SELECT al.*, f.name AS faction_name,
@@ -325,6 +400,9 @@ export const ArmyListRepository = {
           // que tampoco hay nada que enseñar de las ajenas.
           deployedCount: 0,
           deploymentVisible: mia,
+          canEdit: mia,
+          editorName: null,
+          editoresCount: 0,
         }
       },
     )
@@ -334,26 +412,58 @@ export const ArmyListRepository = {
 
   /** Con quién está compartida una lista, y si a cada uno se le enseña el despliegue. */
   async getShares(armyListId: number): Promise<ArmyListShare[]> {
+    const mapear = (r: Record<string, unknown>): ArmyListShare => ({
+      userId: r.user_id as number,
+      shareDeployment: (r.share_deployment as number) !== 0,
+      canEdit: ((r.can_edit as number) ?? 0) !== 0,
+    })
     try {
-      return await query<ArmyListShare>(
-        'SELECT user_id, share_deployment FROM army_list_shares WHERE army_list_id = ?',
+      return await query(
+        'SELECT user_id, share_deployment, can_edit FROM army_list_shares WHERE army_list_id = ?',
         [armyListId],
-        (r) => ({ userId: r.user_id as number, shareDeployment: (r.share_deployment as number) !== 0 }),
+        mapear,
       )
     } catch {
-      return []
+      try {
+        return await query(
+          'SELECT user_id, share_deployment FROM army_list_shares WHERE army_list_id = ?',
+          [armyListId],
+          mapear,
+        )
+      } catch {
+        return []
+      }
     }
   },
 
   /** Sustituye entera la lista de destinatarios. */
   async setShares(armyListId: number, shares: ArmyListShare[]): Promise<void> {
-    await execBatch([
-      { sql: 'DELETE FROM army_list_shares WHERE army_list_id = ?', params: [armyListId] },
-      ...shares.map((share) => ({
-        sql: 'INSERT OR IGNORE INTO army_list_shares (army_list_id, user_id, share_deployment) VALUES (?, ?, ?)',
-        params: [armyListId, share.userId, share.shareDeployment ? 1 : 0],
-      })),
-    ])
+    try {
+      await execBatch([
+        { sql: 'DELETE FROM army_list_shares WHERE army_list_id = ?', params: [armyListId] },
+        ...shares.map((share) => ({
+          sql: `INSERT OR IGNORE INTO army_list_shares (army_list_id, user_id, share_deployment, can_edit)
+                VALUES (?, ?, ?, ?)`,
+          params: [armyListId, share.userId, share.shareDeployment ? 1 : 0, share.canEdit ? 1 : 0],
+        })),
+      ])
+    } catch (err) {
+      // Sin la columna can_edit (Worker sin desplegar) se puede seguir
+      // compartiendo como antes, pero NO con edición: eso no se finge.
+      if (shares.some((s) => s.canEdit)) {
+        throw new Error(
+          'Para compartir con edición hay que desplegar antes el Worker (falta la columna can_edit). ' +
+            (err instanceof Error ? err.message : String(err)),
+        )
+      }
+      await execBatch([
+        { sql: 'DELETE FROM army_list_shares WHERE army_list_id = ?', params: [armyListId] },
+        ...shares.map((share) => ({
+          sql: 'INSERT OR IGNORE INTO army_list_shares (army_list_id, user_id, share_deployment) VALUES (?, ?, ?)',
+          params: [armyListId, share.userId, share.shareDeployment ? 1 : 0],
+        })),
+      ])
+    }
   },
 
   /**
@@ -479,12 +589,26 @@ export const ArmyListRepository = {
    */
   async getShareAccess(armyListId: number, userId: number): Promise<ShareAccess> {
     try {
+      const filas = await query(
+        'SELECT share_deployment, can_edit FROM army_list_shares WHERE army_list_id = ? AND user_id = ?',
+        [armyListId, userId],
+        (r) => ({ despliegue: (r.share_deployment as number) !== 0, editar: (r.can_edit as number) !== 0 }),
+      )
+      return {
+        compartida: filas.length > 0,
+        conDespliegue: filas[0]?.despliegue === true,
+        puedeEditar: filas[0]?.editar === true,
+      }
+    } catch {
+      // Sin can_edit todavía: solo lectura, como siempre.
+    }
+    try {
       const filas = await query<boolean>(
         'SELECT share_deployment FROM army_list_shares WHERE army_list_id = ? AND user_id = ?',
         [armyListId, userId],
         (r) => (r.share_deployment as number) !== 0,
       )
-      return { compartida: filas.length > 0, conDespliegue: filas[0] === true }
+      return { compartida: filas.length > 0, conDespliegue: filas[0] === true, puedeEditar: false }
     } catch {
       try {
         const filas = await query<number>(
@@ -492,10 +616,35 @@ export const ArmyListRepository = {
           [armyListId, userId],
           (r) => r.user_id as number,
         )
-        return { compartida: filas.length > 0, conDespliegue: filas.length > 0 }
+        return { compartida: filas.length > 0, conDespliegue: filas.length > 0, puedeEditar: false }
       } catch {
-        return { compartida: false, conDespliegue: false }
+        return { compartida: false, conDespliegue: false, puedeEditar: false }
       }
+    }
+  },
+
+  /**
+   * CÓMO ESTÁ LA LISTA AHORA en la base: cuándo y quién la tocó por última vez
+   * y si está completada. Es lo que el constructor pregunta antes de guardar y
+   * al volver a la pestaña, para no pisar lo que otro haya guardado entretanto.
+   */
+  async getEstado(armyListId: number): Promise<EstadoDeLista | null> {
+    const mapear = (r: Record<string, unknown>): EstadoDeLista => ({
+      updatedAt: r.updated_at as string,
+      updatedBy: (r.updated_by as number) ?? null,
+      editorName: (r.editor_name as string) ?? null,
+      ready: Boolean(r.ready),
+    })
+    try {
+      return await queryOne(
+        `SELECT al.updated_at, al.updated_by, al.ready,
+                (SELECT u.username FROM users u WHERE u.id = al.updated_by) AS editor_name
+           FROM army_lists al WHERE al.id = ?`,
+        [armyListId],
+        mapear,
+      )
+    } catch {
+      return queryOne('SELECT updated_at, ready FROM army_lists WHERE id = ?', [armyListId], mapear)
     }
   },
 
@@ -513,6 +662,7 @@ export const ArmyListRepository = {
       new Date().toISOString(),
       id,
     ])
+    await apuntarEditor(id)
   },
 
   async setPointsLimit(id: number, pointsLimit: number | null): Promise<void> {
@@ -521,6 +671,7 @@ export const ArmyListRepository = {
       new Date().toISOString(),
       id,
     ])
+    await apuntarEditor(id)
   },
 
   /** Enciende o apaga los Personajes de Renombre en esta lista (ver ArmyList.showSpecialCharacters). */
@@ -530,6 +681,7 @@ export const ArmyListRepository = {
       new Date().toISOString(),
       id,
     ])
+    await apuntarEditor(id)
   },
 
   /**
@@ -859,7 +1011,7 @@ export const ArmyListRepository = {
    * dónde caigan los cortes entre trozos; lo único que debe ir primero es el
    * DELETE (primer trozo) y el UPDATE de `updated_at` al final.
    */
-  async replaceAllEntries(armyListId: number, entries: ArmyListEntryInput[]): Promise<void> {
+  async replaceAllEntries(armyListId: number, entries: ArmyListEntryInput[]): Promise<string> {
     const maxId =
       (await queryOne<number>('SELECT COALESCE(MAX(id), 0) AS m FROM army_list_entries', [], (r) => r.m as number)) ?? 0
 
@@ -920,9 +1072,10 @@ export const ArmyListRepository = {
       }
     })
 
+    const ahora = new Date().toISOString()
     statements.push({
       sql: 'UPDATE army_lists SET updated_at = ? WHERE id = ?',
-      params: [new Date().toISOString(), armyListId],
+      params: [ahora, armyListId],
     })
 
     // Trozos de <=45 sentencias para no superar el límite del Worker (50).
@@ -930,5 +1083,9 @@ export const ArmyListRepository = {
     for (let i = 0; i < statements.length; i += CHUNK) {
       await execBatch(statements.slice(i, i + CHUNK))
     }
+    await apuntarEditor(armyListId)
+    // La marca que queda escrita: el constructor la guarda como "lo último que
+    // vi" para saber, al guardar otra vez, si alguien ha tocado la lista entre medias.
+    return ahora
   },
 }

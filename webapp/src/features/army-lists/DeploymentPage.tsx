@@ -242,10 +242,16 @@ export function DeploymentPage() {
     () =>
       esDeOtro && list && user
         ? ArmyListRepository.getShareAccess(list.id, user.id)
-        : Promise.resolve({ compartida: false, conDespliegue: false }),
+        : Promise.resolve({ compartida: false, conDespliegue: false, puedeEditar: false }),
     [esDeOtro, list?.id, user?.id],
   )
   const compartidaConmigo = esDeOtro && acceso?.compartida === true
+  /**
+   * Compartida contigo CON EDICIÓN (y con el despliegue, que si no ni se entra):
+   * mueves las unidades sobre la mesa igual que su dueño, y la puedes cerrar y
+   * reabrir. Ver ShareArmyListModal.
+   */
+  const editoraInvitada = compartidaConmigo && acceso?.puedeEditar === true
   /**
    * Lista dada por COMPLETADA (ver ArmyList.ready): el despliegue tampoco se
    * toca. Colocar el ejército sobre la mesa es parte de llevar esa lista a la
@@ -261,7 +267,7 @@ export function DeploymentPage() {
    * ENTRAR —eso es cosa de `compartidaConmigo` y `puedeVerlo`—, porque una lista
    * ajena y cerrada mezclaría las dos cosas y te abriría la puerta.
    */
-  const soloLectura = compartidaConmigo || cerrada
+  const soloLectura = (compartidaConmigo && !editoraInvitada) || cerrada
 
   async function reabrirLista() {
     if (!list) return
@@ -865,7 +871,7 @@ export function DeploymentPage() {
           </dl>
 
           <div className="flex shrink-0 items-center gap-3">
-            {compartidaConmigo && (
+            {compartidaConmigo && !editoraInvitada && (
               <span className="flex items-center gap-1.5 rounded-sm border border-rule-dark/40 px-2 py-1 text-xs font-medium text-ink-soft">
                 <LockIcon className="h-3.5 w-3.5" />
                 Solo lectura
@@ -874,7 +880,7 @@ export function DeploymentPage() {
             {/* Completada por ti: el candado trae SU PROPIA salida, igual que en
                 el constructor. Sin ella habría que volver al listado a buscar el
                 sello, y el pestillo pasaría a ser un castigo. */}
-            {cerrada && !compartidaConmigo && (
+            {cerrada && (!compartidaConmigo || editoraInvitada) && (
               <span className="flex items-center gap-2 rounded-sm border border-maroon/45 bg-maroon/10 px-2 py-1 text-xs font-medium text-ink">
                 <LockIcon className="h-3.5 w-3.5 text-maroon" />
                 Lista completada
@@ -1016,7 +1022,7 @@ export function DeploymentPage() {
                         Sigue disponible con la lista COMPLETADA: es justo
                         entonces cuando sirve, porque una lista solo entra en
                         una batalla si está cerrada. */}
-                    {!esDeOtro && (
+                    {(!esDeOtro || editoraInvitada) && (
                       <button
                         type="button"
                         onClick={() => void alternarOculta(entry)}

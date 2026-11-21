@@ -15,7 +15,7 @@ import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
-import { CheckIcon, LayersIcon, LockIcon, PlusIcon, SwordIcon, TrashIcon } from '@/shared/ui/icons'
+import { CheckIcon, LayersIcon, LockIcon, PencilIcon, PlusIcon, SwordIcon, TrashIcon } from '@/shared/ui/icons'
 import { Tooltip } from '@/shared/ui/Tooltip'
 import { FactionEmblem } from '@/shared/ui/FactionEmblem'
 import { urlDelEmblemaDeLista } from '@/domain/armyEmblem'
@@ -249,11 +249,75 @@ export function ArmyListsPage() {
    * Solo al MARCAR. Desmarcar no cierra nada y no necesita permiso de nadie.
    */
   function pedirCompletar(list: ArmyListSummary) {
-    if (list.entryCount > 0 && list.deployedCount < list.entryCount) {
+    // Solo si el despliegue se ve: en una compartida con edición pero sin el
+    // despliegue, el recuento viene a 0 porque no se cuenta, no porque esté vacío.
+    if (list.deploymentVisible && list.entryCount > 0 && list.deployedCount < list.entryCount) {
       setCompletandoSinDesplegar(list)
       return
     }
     void alternarListo(list, true)
+  }
+
+  /**
+   * EL SELLO DE "COMPLETADO", que es además el interruptor. Lo tiene quien
+   * puede cambiar la lista: su dueño y aquellos con quienes la compartió CON
+   * EDICIÓN. En una compartida solo para ver sale como sello quieto (abajo).
+   */
+  function sello(list: ArmyListSummary) {
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={list.ready}
+        disabled={cerrandoId === list.id || (enBatalla?.has(list.id) ?? false)}
+        onClick={() => (list.ready ? void alternarListo(list, false) : pedirCompletar(list))}
+        title={
+          enBatalla?.has(list.id)
+            ? 'Está en una batalla, así que no se puede reabrir: lo que la batalla enseña no puede cambiar. Borra la batalla o cámbiale el ejército.'
+            : list.ready
+              ? 'Completada: la lista y su despliegue se abren en solo lectura. Pulsa para volver a editarlos.'
+              : 'Márcala cuando esté completada: se cerrará a cambios —la lista y su despliegue— hasta que la desmarques.'
+        }
+        className={clsx(
+          // Ancho FIJO: sin fijarlo los sellos quedaban escalonados de
+          // una fila a otra en vez de formar columna, que es justo lo
+          // que se venía a arreglar.
+          'flex w-32 shrink-0 items-center justify-center gap-1.5 rounded-sm px-2 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase transition-colors disabled:opacity-50',
+          enBatalla?.has(list.id)
+            ? 'border border-maroon bg-maroon/20 text-maroon'
+            : list.ready
+              ? 'border border-maroon/45 bg-maroon/10 text-maroon hover:bg-maroon/15'
+              : 'border border-dashed border-rule-dark/35 text-ink-soft/45 hover:border-bronze/60 hover:text-bronze',
+        )}
+      >
+        {/* EL MISMO RÓTULO EN LOS DOS ESTADOS. Un interruptor no se
+          cambia de nombre según esté encendido o apagado: lo que
+          dice es de QUÉ trata, y si está puesto o no lo dicen el
+          sello frente al contorno de trazos, el candado frente al
+          visto, y `aria-checked` para quien no ve ninguno de los
+          dos. */}
+        {/* TRES ESTADOS, no dos. Un ejército metido en una batalla
+            está completado Y ADEMÁS atado: no se puede reabrir
+            mientras la batalla exista, y un sello que decía
+            "Completado" no explicaba por qué el botón no respondía.
+            Ahora lo dice él.
+
+            En los FILTROS sigue contando como completado, porque lo
+            está: separarlo en una pestaña propia obligaría a mirar
+            en dos sitios para ver lo que ya está listo. */}
+        {enBatalla?.has(list.id) ? (
+          <>
+            <SwordIcon className="h-3 w-3" />
+            En batalla
+          </>
+        ) : (
+          <>
+            {list.ready ? <LockIcon className="h-3 w-3" /> : <CheckIcon className="h-3 w-3" />}
+            Completado
+          </>
+        )}
+      </button>
+    )
   }
 
   /**
@@ -380,7 +444,7 @@ export function ArmyListsPage() {
                 // segunda; `sm:flex-nowrap` devuelve la fila única en cuanto hay
                 // sitio, así que en el ordenador no cambia nada.
                 'group flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-3 transition-colors sm:flex-nowrap sm:px-4',
-                list.ready && !list.shared && 'bg-maroon/[0.04]',
+                list.ready && list.canEdit && 'bg-maroon/[0.04]',
               )}
             >
               {/* El emblema de ESTE ejército —el de su facción salvo que se le
@@ -419,6 +483,9 @@ export function ArmyListsPage() {
                       antes había un "Dejar de ver" escrito al final de la fila,
                       y era una palabra de más en un sitio donde ya hay tres.
                       Lo que abre es una pregunta, no un borrado: ver más abajo. */}
+                  {/* Con EDICIÓN el candado pasa a ser una pluma: la lista es de
+                      otro, pero la cambias como si fuera tuya. Pulsarla hace lo
+                      mismo que el candado: preguntar si la dejas de ver. */}
                   {list.shared && (
                     <button
                       type="button"
@@ -427,10 +494,17 @@ export function ArmyListsPage() {
                         setDescompartiendo(list)
                       }}
                       aria-label={`Dejar de ver ${list.name}`}
-                      title="Compartida contigo: solo lectura. Pulsa para dejar de verla."
-                      className="inline-flex text-ink-soft transition-colors hover:text-maroon"
+                      title={
+                        list.canEdit
+                          ? 'Compartida contigo con edición. Pulsa para dejar de verla.'
+                          : 'Compartida contigo: solo lectura. Pulsa para dejar de verla.'
+                      }
+                      className={clsx(
+                        'inline-flex transition-colors hover:text-maroon',
+                        list.canEdit ? 'text-bronze' : 'text-ink-soft',
+                      )}
                     >
-                      <LockIcon className="h-4 w-4" />
+                      {list.canEdit ? <PencilIcon className="h-4 w-4" /> : <LockIcon className="h-4 w-4" />}
                     </button>
                   )}
                 </p>
@@ -438,6 +512,17 @@ export function ArmyListsPage() {
                   {list.factionName} · {list.entryCount} {list.entryCount === 1 ? 'entrada' : 'entradas'}
                   {list.pointsLimit != null && <> · límite {list.pointsLimit} pts</>}
                   {list.shared && list.ownerName && <> · de {list.ownerName}</>}
+                  {!list.shared && list.editoresCount > 0 && (
+                    <>
+                      {' '}
+                      · editable por {list.editoresCount} {list.editoresCount === 1 ? 'jugador' : 'jugadores'} más
+                    </>
+                  )}
+                  {/* Quién la tocó por última vez, si no fuiste tú: en una lista
+                      que cambian varios, es lo primero que se quiere saber. */}
+                  {list.editorName && (list.shared || list.editoresCount > 0) && (
+                    <> · último cambio de {list.editorName}</>
+                  )}
                 </p>
               </div>
               {/* EL SELLO. Va al final de la fila y no pegado al nombre: los
@@ -509,58 +594,7 @@ export function ArmyListsPage() {
                   </div>
 
                   <MarcaDeDespliegue list={list} />
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={list.ready}
-                    disabled={cerrandoId === list.id || (enBatalla?.has(list.id) ?? false)}
-                    onClick={() => (list.ready ? void alternarListo(list, false) : pedirCompletar(list))}
-                    title={
-                      enBatalla?.has(list.id)
-                        ? 'Está en una batalla, así que no se puede reabrir: lo que la batalla enseña no puede cambiar. Borra la batalla o cámbiale el ejército.'
-                        : list.ready
-                          ? 'Completada: la lista y su despliegue se abren en solo lectura. Pulsa para volver a editarlos.'
-                          : 'Márcala cuando esté completada: se cerrará a cambios —la lista y su despliegue— hasta que la desmarques.'
-                    }
-                    className={clsx(
-                      // Ancho FIJO: sin fijarlo los sellos quedaban escalonados de
-                      // una fila a otra en vez de formar columna, que es justo lo
-                      // que se venía a arreglar.
-                      'flex w-32 shrink-0 items-center justify-center gap-1.5 rounded-sm px-2 py-1 text-[10px] font-semibold tracking-[0.16em] uppercase transition-colors disabled:opacity-50',
-                      enBatalla?.has(list.id)
-                        ? 'border border-maroon bg-maroon/20 text-maroon'
-                        : list.ready
-                          ? 'border border-maroon/45 bg-maroon/10 text-maroon hover:bg-maroon/15'
-                          : 'border border-dashed border-rule-dark/35 text-ink-soft/45 hover:border-bronze/60 hover:text-bronze',
-                    )}
-                  >
-                    {/* EL MISMO RÓTULO EN LOS DOS ESTADOS. Un interruptor no se
-                      cambia de nombre según esté encendido o apagado: lo que
-                      dice es de QUÉ trata, y si está puesto o no lo dicen el
-                      sello frente al contorno de trazos, el candado frente al
-                      visto, y `aria-checked` para quien no ve ninguno de los
-                      dos. */}
-                    {/* TRES ESTADOS, no dos. Un ejército metido en una batalla
-                        está completado Y ADEMÁS atado: no se puede reabrir
-                        mientras la batalla exista, y un sello que decía
-                        "Completado" no explicaba por qué el botón no respondía.
-                        Ahora lo dice él.
-
-                        En los FILTROS sigue contando como completado, porque lo
-                        está: separarlo en una pestaña propia obligaría a mirar
-                        en dos sitios para ver lo que ya está listo. */}
-                    {enBatalla?.has(list.id) ? (
-                      <>
-                        <SwordIcon className="h-3 w-3" />
-                        En batalla
-                      </>
-                    ) : (
-                      <>
-                        {list.ready ? <LockIcon className="h-3 w-3" /> : <CheckIcon className="h-3 w-3" />}
-                        Completado
-                      </>
-                    )}
-                  </button>
+                  {sello(list)}
                 </div>
               )}
 
@@ -586,7 +620,18 @@ export function ArmyListsPage() {
                   del despliegue —que necesita unidades Y que te hayan
                   compartido el despliegue— y el sello, que necesita que su
                   dueño la haya dado por completada. */}
-              {list.shared && ((list.entryCount > 0 && list.deploymentVisible) || list.ready) && (
+              {/* COMPARTIDA CONTIGO CON EDICIÓN: el mismo sello que en las tuyas,
+                  y pulsable, porque quien puede cambiar la lista puede también
+                  darla por completada (y reabrirla). Compartir, duplicar y
+                  borrar no salen: siguen siendo de su dueño. */}
+              {list.shared && list.canEdit && (
+                <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:gap-3">
+                  <MarcaDeDespliegue list={list} />
+                  {sello(list)}
+                </div>
+              )}
+
+              {list.shared && !list.canEdit && ((list.entryCount > 0 && list.deploymentVisible) || list.ready) && (
                 <div className="flex w-full items-center justify-end gap-2 sm:w-auto sm:gap-3">
                   <MarcaDeDespliegue list={list} />
                   {list.ready && enBatalla?.has(list.id) && (

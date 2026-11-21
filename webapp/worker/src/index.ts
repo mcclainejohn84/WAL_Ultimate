@@ -1486,6 +1486,11 @@ const MIGRATIONS: string[] = [
      PRIMARY KEY (unit_id, campaign_id)
    )`,
   'CREATE INDEX IF NOT EXISTS idx_unit_campaigns_campaign ON unit_campaigns(campaign_id)',
+  // EJÉRCITOS COMPARTIDOS CON EDICIÓN: el destinatario cambia la misma lista
+  // que el dueño (y la puede dar por completada). `updated_by` dice quién la
+  // tocó por última vez, para avisar al otro en vez de pisarle.
+  'ALTER TABLE army_list_shares ADD COLUMN can_edit INTEGER NOT NULL DEFAULT 0',
+  'ALTER TABLE army_lists ADD COLUMN updated_by INTEGER',
 ]
 
 /**

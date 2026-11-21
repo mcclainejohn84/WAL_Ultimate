@@ -13,6 +13,30 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.220 — 21/11/2026 20:48
+
+- **Compartir ejércitos con edición.** Al compartir, cada persona tiene ahora
+  tres opciones: **No**, **Ver** o **Editar** (más la casilla del despliegue,
+  como antes). Con "Editar" la otra persona cambia la MISMA lista, no una
+  copia: lo que cambie lo ves tú y al revés. Si además le compartes el
+  despliegue, también puede mover las unidades sobre la mesa.
+- **Quien puede editarla también la puede marcar como completada** y
+  reabrirla, desde el listado (el mismo sello que en las tuyas) o desde el
+  constructor y el despliegue. Compartirla, duplicarla y borrarla siguen
+  siendo cosa de su dueño.
+- En el listado, una lista compartida contigo con edición lleva una pluma en
+  vez del candado, y las listas que editan varios dicen quién hizo el último
+  cambio. En las tuyas pone cuántos más pueden editarla.
+- **Nadie pisa los cambios de nadie.** Si otro guarda la lista mientras la
+  tienes abierta, se recarga sola (y lo dice) si no tienes nada a medias; si
+  lo tienes, sale un aviso para que elijas. Y si vas a guardar encima de lo
+  que otro acaba de guardar, se pregunta: cargar lo suyo o guardar lo tuyo.
+  Si la ha dado por completada, no se guarda encima.
+- Hace falta desplegar el Worker (dos columnas nuevas). Sin desplegarlo todo
+  sigue como antes, pero no se puede compartir con edición.
+
+---
+
 ## 0.219 — 21/11/2026 16:14
 
 - El icono de **Forja de objetos** (tu yunque con martillo y chispa) se veía

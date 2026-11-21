@@ -989,7 +989,13 @@ CREATE TABLE army_lists (
     --   · emblem_key: una imagen propia en R2. Manda sobre la anterior.
     --   · las dos a NULL: el de la facción de la lista. El caso normal.
     emblem_faction_id INTEGER REFERENCES factions(id),
-    emblem_key   TEXT
+    emblem_key   TEXT,
+    -- QUIÉN LA TOCÓ POR ÚLTIMA VEZ (con `updated_at`, cuándo). Con los ejércitos
+    -- compartidos con edición, la misma lista la cambian varios: esto es lo que
+    -- permite decir "Fulano la ha cambiado mientras la editabas" en vez de que
+    -- el último en guardar pise al otro sin enterarse. Sin clave ajena a
+    -- propósito: es un apunte, y no tiene que impedir borrar un usuario.
+    updated_by   INTEGER
 );
 
 -- ---------------------------------------------------------------------------
@@ -1180,6 +1186,10 @@ CREATE TABLE army_list_shares (
     -- lista: se le puede enseñar el ejército a un rival sin enseñarle dónde vas
     -- a colocar, y compartírselo entero a un compañero de equipo.
     share_deployment INTEGER NOT NULL DEFAULT 0,
+    -- ¿Puede EDITARLA? Compartir con edición le da la misma lista, no una copia:
+    -- lo que cambie lo ve el dueño, y al revés. Puede también marcarla como
+    -- completada y reabrirla. Compartirla y borrarla siguen siendo del dueño.
+    can_edit INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (army_list_id, user_id)
 );
 

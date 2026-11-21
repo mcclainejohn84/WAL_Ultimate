@@ -490,6 +490,8 @@ export interface ArmyList {
   pointsLimit: number | null
   createdAt: string
   updatedAt: string
+  /** Quién la tocó por última vez (ver army_lists.updated_by); null si no consta. */
+  updatedBy: number | null
   /** Dueño de la lista: los ejércitos son privados de cada usuario. null = sin asignar todavía. */
   userId: number | null
   /** Medidas de la mesa en el Despliegue, en cm. Solo cuentan si no hay mapa cargado. */
