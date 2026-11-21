@@ -13,6 +13,17 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.221 — 21/11/2026 20:56
+
+- El icono de **Forja de objetos** es ahora solo tu yunque, sin el martillo ni
+  la chispa, y más grande: con los tres, al tamaño del botón no se distinguía
+  nada.
+- La galería de Personajes de Renombre (vista avanzada) enseña **5 personajes
+  por fila** en el ordenador, en lugar de 4. En pantallas más estrechas siguen
+  siendo 4, 3 o 2, según el ancho.
+
+---
+
 ## 0.220 — 21/11/2026 20:48
 
 - **Compartir ejércitos con edición.** Al compartir, cada persona tiene ahora
