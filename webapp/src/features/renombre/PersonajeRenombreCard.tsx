@@ -47,6 +47,7 @@ import { mensajeDeMigracionPendiente } from '@/data/repositories/schemaHealth'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
 import { esEditablePor } from '@/domain/personajeRenombre'
+import { CandadoDeAutor } from '@/shared/ui/CandadoDeAutor'
 import { esHechicero } from '@/domain/magic'
 import { Modal } from '@/shared/ui/Modal'
 import { HabilidadesModal } from '@/features/renombre/HabilidadesModal'
@@ -55,13 +56,15 @@ import { MagiaModal } from '@/features/renombre/MagiaModal'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { TextField } from '@/shared/ui/TextField'
-import { RichTextEditor } from '@/shared/ui/RichTextEditor'
+import { RichText, RichTextEditor } from '@/shared/ui/RichTextEditor'
+import { MagicItemRepository, type ObjetoMagico } from '@/data/repositories/magicItemRepository'
+import { ETIQUETAS_DE_OBJETO } from '@/domain/objetosMagicos'
+import { BotonDeInfo, EncabezadoDeGrupo } from '@/features/renombre/piezas'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import {
   EyeIcon,
   EyeOffIcon,
   ImageIcon,
-  LockIcon,
   MonedaIcon,
   PencilIcon,
   PlusIcon,
@@ -187,7 +190,16 @@ const ACCION_DE_LAMINA =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-bronze/40 focus-visible:ring-offset-1 ' +
   'focus-visible:ring-offset-parchment'
 
-export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: PersonajeEspecial; onCambio: () => void }) {
+export function PersonajeRenombreCard({
+  personaje,
+  objetos = [],
+  onCambio,
+}: {
+  personaje: PersonajeEspecial
+  /** Los objetos mágicos que lleva (ver ForjaPage). Se ven aquí; se cambian en la Forja. */
+  objetos?: ObjetoMagico[]
+  onCambio: () => void
+}) {
   const { user, actingAsAdmin } = useSession()
   const [editando, setEditando] = useState(false)
   const [sumando, setSumando] = useState(false)
@@ -425,6 +437,16 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
         </div>
       </div>
 
+      {objetos.length > 0 && (
+        <ObjetosDelPersonaje
+          personaje={personaje}
+          objetos={objetos}
+          puedeDesvincular={puedeEditar}
+          onCambio={onCambio}
+          onError={setErrorAccion}
+        />
+      )}
+
       {errorAccion && (
         <p className="mx-3 mb-3 rounded-sm border border-danger/40 bg-danger/10 px-3 py-2 text-mini text-danger sm:mx-4">
           {errorAccion}
@@ -490,10 +512,7 @@ export function PersonajeRenombreCard({ personaje, onCambio }: { personaje: Pers
             Retrato y trasfondo
           </button>
         ) : (
-          <span className={clsx(ACCION_DE_LAMINA, 'text-ink-soft/60')} title="Es de otro jugador">
-            <LockIcon className="h-3.5 w-3.5" />
-            De otro jugador
-          </span>
+          <CandadoDeAutor autorId={personaje.userId} className={ACCION_DE_LAMINA} />
         )}
 
         <div className="ml-auto flex items-center gap-1.5">
@@ -997,5 +1016,124 @@ function ExperienciaModal({
         )}
       </div>
     </Modal>
+  )
+}
+
+/**
+ * LOS OBJETOS MÁGICOS QUE LLEVA, a la vista y sin poder tocarlos.
+ *
+ * Un objeto asignado está CERRADO (ver magicItemRepository): aquí se lee qué
+ * es, qué lleva grabado y su historia, y lo único que se puede hacer es
+ * DESVINCULARLO, que lo devuelve a la Forja y le reembolsa al personaje lo que
+ * pagó. Cambiarle algo se hace allí, con el objeto ya suelto.
+ *
+ * Va a todo lo ancho de la lámina, entre el texto y la barra de acciones,
+ * como una franja más: es parte del personaje, no un añadido de la ficha.
+ */
+function ObjetosDelPersonaje({
+  personaje,
+  objetos,
+  puedeDesvincular,
+  onCambio,
+  onError,
+}: {
+  personaje: PersonajeEspecial
+  objetos: ObjetoMagico[]
+  puedeDesvincular: boolean
+  onCambio: () => void
+  onError: (mensaje: string | null) => void
+}) {
+  const [abierto, setAbierto] = useState<number | null>(null)
+  const [porDesvincular, setPorDesvincular] = useState<ObjetoMagico | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+
+  async function desvincular(objeto: ObjetoMagico) {
+    setOcupado(true)
+    onError(null)
+    try {
+      await MagicItemRepository.desasignar(objeto.id)
+      onCambio()
+    } catch (err) {
+      onError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setOcupado(false)
+      setPorDesvincular(null)
+    }
+  }
+
+  return (
+    <section className="border-t border-rule-dark/25 px-3 pt-2 pb-2.5 sm:px-4">
+      <EncabezadoDeGrupo etiqueta="Objetos mágicos" cuantas={objetos.length} />
+      <ul className="divide-y divide-rule-dark/12">
+        {objetos.map((objeto) => {
+          const esteAbierto = abierto === objeto.id
+          const conHistoria = tieneTexto(objeto.trasfondo)
+          const conDetalle = conHistoria || objeto.caracteristicas.some((c) => c.descripcion)
+          return (
+            <li key={objeto.id} className="py-1.5">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="text-micro font-semibold tracking-[0.16em] text-bronze uppercase">
+                  {ETIQUETAS_DE_OBJETO[objeto.tipo]}
+                </span>
+                <span className="font-display text-sm font-semibold text-ink">{objeto.nombre}</span>
+                {conDetalle && (
+                  <BotonDeInfo
+                    nombre={objeto.nombre}
+                    abierto={esteAbierto}
+                    onClick={() => setAbierto(esteAbierto ? null : objeto.id)}
+                  />
+                )}
+                <span className="ml-auto flex shrink-0 items-baseline gap-3">
+                  <span className="text-mini text-ink-soft/80 tabular-nums">{objeto.costePagado} exp.</span>
+                  {puedeDesvincular && (
+                    <button
+                      type="button"
+                      disabled={ocupado}
+                      onClick={() => setPorDesvincular(objeto)}
+                      className="text-mini font-medium text-ink-soft underline decoration-rule-dark/40 underline-offset-2 transition-colors hover:text-maroon hover:decoration-maroon/40 disabled:opacity-40"
+                    >
+                      Desvincular
+                    </button>
+                  )}
+                </span>
+              </div>
+              {objeto.caracteristicas.length > 0 && (
+                <p className="mt-0.5 text-xs text-ink-soft">
+                  {objeto.caracteristicas
+                    .map((c) => (c.tipo === 'sello' ? `Sello ${c.nombre.toLowerCase()}` : c.nombre))
+                    .join(' · ')}
+                </p>
+              )}
+              {esteAbierto && (
+                <div className="mt-1.5 space-y-1.5">
+                  {objeto.caracteristicas
+                    .filter((c) => c.descripcion)
+                    .map((c) => (
+                      <p
+                        key={c.clave}
+                        className="border-l-2 border-bronze/40 bg-parchment-dark/20 px-2 py-1 text-mini leading-relaxed text-ink-soft"
+                      >
+                        <b className="font-semibold text-ink">{c.nombre}.</b> {c.descripcion}
+                      </p>
+                    ))}
+                  {conHistoria && <RichText html={objeto.trasfondo} className="text-xs leading-relaxed text-ink" />}
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+
+      {porDesvincular && (
+        <ConfirmDialog
+          title="Desvincular el objeto"
+          message={`¿Seguro que desvinculas "${porDesvincular.nombre}" de ${personaje.name}? Volverá a la Forja y se le devolverán ${porDesvincular.costePagado} puntos de experiencia.`}
+          confirmLabel="Sí, desvincularlo"
+          cancelLabel="No"
+          onConfirm={() => void desvincular(porDesvincular)}
+          onCancel={() => setPorDesvincular(null)}
+        />
+      )}
+    </section>
   )
 }

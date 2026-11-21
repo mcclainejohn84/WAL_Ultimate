@@ -39,6 +39,7 @@ import { FactionEmblem } from '@/shared/ui/FactionEmblem'
 import { AnvilIcon, PlusIcon } from '@/shared/ui/icons'
 import { useNavigate } from 'react-router-dom'
 import { PersonajeRenombreCard } from '@/features/renombre/PersonajeRenombreCard'
+import { MagicItemRepository, type ObjetoMagico } from '@/data/repositories/magicItemRepository'
 import type { Faction } from '@/domain/types'
 import type { UnitSummary } from '@/data/repositories/unitRepository'
 
@@ -68,6 +69,21 @@ function CabeceraDeFaccion({ faccion, cuantos }: { faccion: Pick<Faction, 'name'
 export function PersonajesRenombrePage() {
   const navegar = useNavigate()
   const { data: personajes, loading, reload } = useAsync(() => SpecialCharacterRepository.listAll())
+  // Los objetos mágicos de TODOS de una vez (son de catálogo: lectura local,
+  // sin red) y repartidos por portador, para que cada lámina enseñe los suyos.
+  const { data: objetos, reload: recargarObjetos } = useAsync(() => MagicItemRepository.listAll())
+  const objetosDe = new Map<number, ObjetoMagico[]>()
+  for (const objeto of objetos ?? []) {
+    if (objeto.unitId == null) continue
+    const ya = objetosDe.get(objeto.unitId)
+    if (ya) ya.push(objeto)
+    else objetosDe.set(objeto.unitId, [objeto])
+  }
+  /** Desvincular un objeto cambia el objeto Y la experiencia del personaje. */
+  function recargarTodo() {
+    reload()
+    recargarObjetos()
+  }
   const { data: facciones } = useAsync(() => FactionRepository.listAll())
   const [creando, setCreando] = useState(false)
   // QUÉ FACCIONES se están mirando, y se acuerda de una visita a otra (ver
@@ -214,7 +230,7 @@ export function PersonajesRenombrePage() {
               <ul className="space-y-4">
                 {(porFaccion.get(faccion.id) ?? []).map((p) => (
                   <li key={p.id}>
-                    <PersonajeRenombreCard personaje={p} onCambio={reload} />
+                    <PersonajeRenombreCard personaje={p} objetos={objetosDe.get(p.id) ?? []} onCambio={recargarTodo} />
                   </li>
                 ))}
               </ul>
@@ -234,7 +250,7 @@ export function PersonajesRenombrePage() {
               <ul className="space-y-4">
                 {huerfanos.map((p) => (
                   <li key={p.id}>
-                    <PersonajeRenombreCard personaje={p} onCambio={reload} />
+                    <PersonajeRenombreCard personaje={p} objetos={objetosDe.get(p.id) ?? []} onCambio={recargarTodo} />
                   </li>
                 ))}
               </ul>

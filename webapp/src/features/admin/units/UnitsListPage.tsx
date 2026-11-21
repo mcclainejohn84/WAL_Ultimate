@@ -17,9 +17,10 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Badge } from '@/shared/ui/Badge'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
-import { ChevronRightIcon, CopyIcon, DragHandleIcon, LockIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
+import { ChevronRightIcon, CopyIcon, DragHandleIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
 import { useSession } from '@/shared/session/useSession'
 import { esEditablePor } from '@/domain/personajeRenombre'
+import { CandadoDeAutor } from '@/shared/ui/CandadoDeAutor'
 
 const SIN_CATEGORIA_KEY = 'Sin categoría'
 
@@ -285,9 +286,7 @@ export function UnitsListPage() {
                           tampoco se desactiva, ni se copia, ni se borra desde
                           aquí (ver esEditablePor). */}
                       {!esEditablePor(unit, usuario?.id) ? (
-                        <span className="shrink-0 p-1.5 text-ink-soft/60" title="De otro jugador">
-                          <LockIcon className="h-4 w-4" />
-                        </span>
+                        <CandadoDeAutor autorId={unit.userId} className="shrink-0 p-1.5" iconClassName="h-4 w-4" />
                       ) : (
                         <>
                           <button

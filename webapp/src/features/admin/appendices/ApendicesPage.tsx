@@ -30,7 +30,8 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Select } from '@/shared/ui/Select'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
-import { LockIcon, PencilIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
+import { PencilIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
+import { CandadoDeAutor } from '@/shared/ui/CandadoDeAutor'
 import { EditorDeApendice } from '@/features/admin/appendices/EditorDeApendice'
 import type { ApendiceDueno, UnitAppendix } from '@/domain/types'
 
@@ -203,9 +204,7 @@ export function ApendicesPage() {
                         toca, tampoco por aquí (ver listarDuenos). */}
                     <div className="flex shrink-0 items-center gap-1 pt-0.5">
                       {grupo.dueno?.editable === false ? (
-                        <span className="p-1.5 text-ink-soft/60" title="De otro jugador">
-                          <LockIcon className="h-4 w-4" />
-                        </span>
+                        <CandadoDeAutor autorId={grupo.dueno?.autorId} className="p-1.5" iconClassName="h-4 w-4" />
                       ) : (
                         <>
                           <button

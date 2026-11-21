@@ -47,8 +47,9 @@ import { RichText, RichTextEditor } from '@/shared/ui/RichTextEditor'
 import { tieneTexto } from '@/shared/richText'
 import { EncabezadoDeGrupo } from '@/features/renombre/piezas'
 import { FiltroSegmentado } from '@/shared/ui/FiltroSegmentado'
+import { CandadoDeAutor } from '@/shared/ui/CandadoDeAutor'
 import { Link } from 'react-router-dom'
-import { ArrowLeftIcon, LockIcon, PencilIcon, PlusIcon, SwapIcon, TrashIcon } from '@/shared/ui/icons'
+import { ArrowLeftIcon, PencilIcon, PlusIcon, SwapIcon, TrashIcon } from '@/shared/ui/icons'
 
 export function ForjaPage() {
   const { user: usuario } = useSession()
@@ -299,10 +300,7 @@ function TarjetaDeObjeto({
 
       <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-rule-dark/25 pt-2">
         {!editable ? (
-          <span className="inline-flex items-center gap-1.5 text-mini text-ink-soft/60" title="Es de otro jugador">
-            <LockIcon className="h-3.5 w-3.5" />
-            De otro jugador
-          </span>
+          <CandadoDeAutor autorId={objeto.userId} que="Objeto" className="px-2 py-1" />
         ) : objeto.unitId != null ? (
           <button
             type="button"

@@ -18,6 +18,7 @@ import { ALIAS_MAX, inicialesDe, normalizarAlias, unidadesConLasMismasIniciales 
 import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
 import { esEditablePor } from '@/domain/personajeRenombre'
+import { CandadoDeAutor } from '@/shared/ui/CandadoDeAutor'
 import { isWizardTag } from '@/domain/magic'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { Panel } from '@/shared/ui/Panel'
@@ -28,7 +29,6 @@ import {
   ArrowLeftIcon,
   ArrowUpIcon,
   CheckIcon,
-  LockIcon,
   PlusIcon,
   TrashIcon,
   WarningIcon,
@@ -562,10 +562,7 @@ export function UnitDetailPage() {
         actions={
           <div className="flex items-center gap-3">
             {soloLectura ? (
-              <span className="flex items-center gap-1.5 text-sm text-ink-soft" title="Es de otro jugador">
-                <LockIcon className="h-4 w-4" />
-                De otro jugador
-              </span>
+              <CandadoDeAutor autorId={unit.userId} iconClassName="h-4 w-4" />
             ) : (
               <>
                 {dirty && !saving && <span className="text-xs font-medium text-bronze">● Cambios sin guardar</span>}

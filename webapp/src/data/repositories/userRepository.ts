@@ -92,6 +92,8 @@ export interface PrintOptions {
   reglas: boolean
   /** "Listado de hechizos" y la línea de sendas en la ficha de cada personaje. */
   magia: boolean
+  /** Los objetos mágicos que lleva cada personaje de la lista (ver la Forja). */
+  objetos: boolean
   /** Un interruptor por TIPO de dueño: se imprimen los apéndices de los tipos encendidos. */
   apendices: Record<ApendiceDueno, boolean>
 }
@@ -101,6 +103,7 @@ export const DEFAULT_PRINT_OPTIONS: PrintOptions = {
   renombre: true,
   reglas: true,
   magia: true,
+  objetos: true,
   apendices: { faccion: true, unidad: true, equipo: true, opcion: true, montura: true, carro: true },
 }
 
@@ -129,6 +132,7 @@ export function leerPrintOptions(json: string | null | undefined): PrintOptions 
     renombre: typeof crudo.renombre === 'boolean' ? crudo.renombre : true,
     reglas: typeof crudo.reglas === 'boolean' ? crudo.reglas : true,
     magia: typeof crudo.magia === 'boolean' ? crudo.magia : true,
+    objetos: typeof crudo.objetos === 'boolean' ? crudo.objetos : true,
     apendices,
   }
 }

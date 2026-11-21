@@ -44,6 +44,8 @@ import {
   type Dueno,
 } from '@/data/repositories/appendixRepository'
 import { DEFAULT_PRINT_OPTIONS, type PrintOptions } from '@/data/repositories/userRepository'
+import { MagicItemRepository } from '@/data/repositories/magicItemRepository'
+import { ETIQUETAS_DE_OBJETO } from '@/domain/objetosMagicos'
 import { bloquesDeHtml, tieneTexto } from '@/shared/richText'
 import { mostrarPdf } from '@/features/army-lists/pdfWindow'
 import type {
@@ -1160,7 +1162,94 @@ export async function exportArmyListToPdf(
     }
   }
 
-  // --- Sección 6: Apéndices y reglas adicionales. ---
+  // --- Sección 6: Objetos mágicos. ---
+  //
+  // Los que lleva cada personaje de la lista (ver la Forja). Va detrás de los
+  // personajes de renombre —son suyos: solo ellos pueden llevarlos— y con su
+  // propio interruptor, para que se pueda sacar la hoja con los personajes y
+  // sin la lista de objetos, o al revés.
+  //
+  // Una fila por objeto: su nombre, y al lado de qué tipo es y lo que lleva
+  // grabado. Lo que tiene un texto propio (los sellos, sobre todo) lo pone
+  // debajo, que es lo que hay que leer en la mesa. La historia del objeto no
+  // sale: es del personaje, no de la partida.
+  //
+  // Entero entre try y catch, como los apéndices: depende de la copia local
+  // del catálogo y nadie se puede quedar sin hoja por eso.
+  try {
+    if (impresion.objetos) {
+      const portadores = new Map(sortedEntries.map((e) => [e.unit.id, e]))
+      const conObjetos = (await MagicItemRepository.listAll()).filter(
+        (o) => o.unitId != null && portadores.has(o.unitId),
+      )
+      if (conObjetos.length > 0) {
+        const yObjetos = abrirSeccion('Objetos mágicos')
+        const filas: (string | { content: string; colSpan: number })[][] = []
+        // En el orden de la lista de unidades, que es como se lee la hoja.
+        for (const entry of sortedEntries) {
+          const suyos = conObjetos.filter((o) => o.unitId === entry.unit.id)
+          if (suyos.length === 0) continue
+          filas.push([{ content: nombreDeLaEntrada(entry).toUpperCase(), colSpan: 2 }])
+          for (const objeto of suyos) {
+            const grabado = objeto.caracteristicas.map((c) => (c.tipo === 'sello' ? `Sello ${c.nombre}` : c.nombre))
+            const textos = objeto.caracteristicas
+              .filter((c) => c.descripcion)
+              .map((c) => `${c.nombre}: ${c.descripcion}`)
+            filas.push([
+              objeto.nombre,
+              [[ETIQUETAS_DE_OBJETO[objeto.tipo], ...grabado].join(' · '), ...textos].join('\n'),
+            ])
+          }
+        }
+
+        autoTable(doc, {
+          startY: yObjetos,
+          margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
+          head: [['OBJETO', 'QUÉ LLEVA']],
+          body: filas,
+          theme: 'plain',
+          styles: {
+            font: 'times',
+            fontSize: 7,
+            textColor: rgb(paleta.ink),
+            cellPadding: { top: 0.9, bottom: 0.9, left: 2.2, right: 2.2 },
+            overflow: 'linebreak',
+          },
+          headStyles: {
+            textColor: rgb(paleta.inkSuave),
+            fontStyle: 'bold',
+            fontSize: 6.8,
+            cellPadding: { top: 0.8, bottom: 0.8, left: 2.2, right: 2.2 },
+          },
+          columnStyles: {
+            0: { cellWidth: 40, halign: 'left', fontStyle: 'bold' },
+            // A la izquierda, como los apéndices: la celda trae sus propios
+            // saltos de línea y autotable estiraría el final de cada uno.
+            1: { cellWidth: 'auto', halign: 'left' },
+          },
+          // Sin zebra y con la fila del personaje sombreada, igual que en los
+          // personajes de renombre: el fondo dice "de quién es esto".
+          didParseCell: (data) => {
+            centrarCabecera(data)
+            if (data.section !== 'body') return
+            const cruda = data.row.raw
+            if (Array.isArray(cruda) && cruda.length === 1) {
+              data.cell.styles.fillColor = rgb(paleta.fondoAlt)
+              data.cell.styles.fontStyle = 'bold'
+              data.cell.styles.textColor = rgb(paleta.inkSuave)
+              data.cell.styles.halign = 'left'
+              data.cell.styles.fontSize = 6.6
+            }
+          },
+          didDrawCell: (data) => dibujarBordeInferiorCabecera(data, paleta),
+        })
+      }
+    }
+  } catch {
+    // Sin objetos, pero con hoja.
+  }
+
+  // --- Sección 7: Apéndices y reglas adicionales. ---
   //
   // Los apéndices se escriben en el Editor y hasta ahora solo salían en las
   // hojas de unidad. Aquí se recogen los de TODO lo que hay en la lista —la

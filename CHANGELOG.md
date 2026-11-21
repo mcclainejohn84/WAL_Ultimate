@@ -13,6 +13,26 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.215 — 21/11/2026 11:54
+
+- **El candado va solo**, sin "De otro jugador" al lado: el icono se entiende.
+  Al pasar el ratón por encima dice de quién es: "Personaje de Hudson228"
+  (en la Forja, "Objeto de…"). Igual en la lámina, en la hoja de unidad, en
+  la ficha del Editor, en el listado de unidades y en los apéndices.
+- **Los objetos mágicos se ven en la lámina de cada personaje**, en una
+  franja propia: de qué tipo son, qué llevan grabado y, al desplegarlos, lo
+  que hace cada cosa y su historia. No se pueden cambiar desde ahí; lo único
+  que se puede hacer es **desvincularlos**, con confirmación: el objeto vuelve
+  a la Forja y al personaje se le devuelve lo que pagó.
+- **La hoja de ejército incluye los objetos mágicos** de cada personaje de la
+  lista, en una sección propia entre los personajes de renombre y los
+  apéndices, con lo que lleva grabado cada uno. Tiene su interruptor en las
+  opciones de impresión.
+- El botón de la Forja lleva el icono que elegiste: yunque, martillo y
+  chispa.
+
+---
+
 ## 0.214 — 14/11/2026 20:23
 
 - En la magia de un personaje, el botón **"Editar"** pasa a la cabecera, arriba

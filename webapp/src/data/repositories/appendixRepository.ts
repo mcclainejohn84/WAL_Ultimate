@@ -90,6 +90,8 @@ export interface DuenoPosible {
    * desde tres sitios distintos.
    */
   editable: boolean
+  /** Quién lo hizo, si es un personaje de renombre: para el globo del candado. */
+  autorId: number | null
 }
 
 /**
@@ -102,14 +104,21 @@ export interface DuenoPosible {
 export async function listarDuenos(): Promise<DuenoPosible[]> {
   const porClave = new Map<string, DuenoPosible>()
   const yo = getCurrentUser()?.id ?? null
-  const mete = (kind: ApendiceDueno, id: number, nombre: string, factionId: number | null, editable = true) => {
+  const mete = (
+    kind: ApendiceDueno,
+    id: number,
+    nombre: string,
+    factionId: number | null,
+    editable = true,
+    autorId: number | null = null,
+  ) => {
     const clave = `${kind}:${id}`
     const ya = porClave.get(clave)
     if (ya) {
       if (factionId != null && !ya.factionIds.includes(factionId)) ya.factionIds.push(factionId)
       return
     }
-    porClave.set(clave, { kind, id, nombre, factionIds: factionId == null ? [] : [factionId], editable })
+    porClave.set(clave, { kind, id, nombre, factionIds: factionId == null ? [] : [factionId], editable, autorId })
   }
 
   const facciones = await queryLocal('SELECT id, name FROM factions ORDER BY name', [], (r) => ({
@@ -130,7 +139,7 @@ export async function listarDuenos(): Promise<DuenoPosible[]> {
       isSpecialCharacter: Boolean(r.is_special_character),
     }),
   )
-  for (const u of unidades) mete('unidad', u.id, u.name, u.factionId, esEditablePor(u, yo))
+  for (const u of unidades) mete('unidad', u.id, u.name, u.factionId, esEditablePor(u, yo), u.userId)
 
   const equipo = await queryLocal(
     `SELECT eo.id AS id, eo.name AS name, u.faction_id AS faction_id

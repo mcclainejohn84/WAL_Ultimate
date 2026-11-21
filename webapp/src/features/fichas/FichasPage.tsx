@@ -49,7 +49,7 @@ import { compressImageFile, MAX_EMBLEM_BYTES, MAX_ILLUSTRATION_BYTES } from '@/s
 import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
 import { esEditablePor } from '@/domain/personajeRenombre'
-import { LockIcon } from '@/shared/ui/icons'
+import { CandadoDeAutor } from '@/shared/ui/CandadoDeAutor'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { Panel } from '@/shared/ui/Panel'
 import { Select } from '@/shared/ui/Select'
@@ -970,14 +970,12 @@ export function FichasPage() {
                   <Spinner />
                 ) : (
                   <div className="space-y-2">
-                    <p className="font-display text-base font-semibold text-maroon">{selectedDetail.name}</p>
-
-                    {fichaAjena && (
-                      <p className="flex items-center gap-1.5 rounded-sm border border-rule-dark/30 bg-parchment/60 px-3 py-2 text-xs text-ink-soft">
-                        <LockIcon className="h-3.5 w-3.5 shrink-0" />
-                        De otro jugador
-                      </p>
-                    )}
+                    {/* El candado va JUNTO AL NOMBRE, sin texto: de quién es
+                        lo dice el globo (ver CandadoDeAutor). */}
+                    <p className="flex items-center gap-2 font-display text-base font-semibold text-maroon">
+                      <span className="min-w-0 truncate">{selectedDetail.name}</span>
+                      {fichaAjena && <CandadoDeAutor autorId={selectedDetail.userId} />}
+                    </p>
 
                     {isUpgradeSelected && (
                       <p className="rounded-sm border border-rule-dark/30 bg-parchment/60 px-3 py-2 text-xs text-ink-soft">

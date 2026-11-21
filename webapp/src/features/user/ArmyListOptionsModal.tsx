@@ -38,7 +38,7 @@ const OPCIONES: { key: keyof ArmyListOptions; label: string }[] = [
 ]
 
 /** Las secciones del PDF que se pueden apagar, con el nombre que llevan en la hoja. */
-const SECCIONES: { key: 'renombre' | 'reglas' | 'magia'; label: string; pista: string }[] = [
+const SECCIONES: { key: 'renombre' | 'reglas' | 'magia' | 'objetos'; label: string; pista: string }[] = [
   {
     key: 'reglas',
     label: 'Resumen de reglas especiales',
@@ -50,6 +50,7 @@ const SECCIONES: { key: 'renombre' | 'reglas' | 'magia'; label: string; pista: s
     label: 'Personajes de renombre',
     pista: 'Atributos, habilidades, saberes y cicatrices de cada uno',
   },
+  { key: 'objetos', label: 'Objetos mágicos', pista: 'Los que lleva cada personaje, con lo que tienen grabado' },
 ]
 
 /** Lo que de verdad se enseña en la lista de apéndices, con su nombre en plural. */
