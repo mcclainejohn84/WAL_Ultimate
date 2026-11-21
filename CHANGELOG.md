@@ -13,6 +13,22 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.217 — 21/11/2026 14:18
+
+- **Un solo apéndice por pieza de equipo, cueste lo que cueste.** En el
+  catálogo hay varias "Lanza" (a 1, a 2, a 3 puntos…), pero es la misma
+  lanza: ahora todas comparten sus apéndices. Lo mismo con las armas a dos
+  manos, las armaduras, los escudos, etc., y con las opciones de unidad que
+  se repiten (las marcas, "Tripulante adicional"…). En "Apéndices" cada pieza
+  sale una vez, y el apéndice que se escribe para una lanza sale en todas.
+- Los apéndices que ya había colgados de las distintas lanzas se juntan solos
+  al abrir la aplicación. Las copias exactas (mismo título y mismo texto) se
+  quedan en una; si había textos distintos se conservan todos, para que elijas
+  tú cuál borrar.
+- "Dos armas de mano" y "Arma a dos manos" siguen siendo piezas distintas.
+
+---
+
 ## 0.216 — 21/11/2026 12:24
 
 - **Personajes de Renombre estrena una vista avanzada**, y es la que sale de

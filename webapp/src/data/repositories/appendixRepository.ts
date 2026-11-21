@@ -15,6 +15,13 @@
 // edición de a cuántos afecta, y lo normal es que el texto copiado se acabe
 // retocando para el destino.
 //
+// EL EQUIPO Y LAS OPCIONES VAN POR FAMILIAS. "Lanza" a 1, a 2 y a 3 puntos
+// son tres filas del catálogo pero una sola pieza, con un solo apéndice: el
+// apéndice cuelga de la cabeza de la familia y se lee igual desde cualquiera
+// de ellas (ver domain/familiasDeOpciones). Todo lo que sale de aquí ya viene
+// con el dueño puesto en la cabeza, así que las pantallas y el PDF agrupan y
+// cruzan por `kind:id` sin saber nada de familias.
+//
 // El HTML se sanea AQUÍ, además de en el editor: este repositorio es lo último
 // que hay antes de la base de datos y no puede fiarse de quién le llame (ver
 // shared/richText).
@@ -25,7 +32,10 @@ import { ChangeLogRepository } from '@/data/repositories/changeLogRepository'
 import { sanearHtml } from '@/shared/richText'
 import { esEditablePor } from '@/domain/personajeRenombre'
 import { getCurrentUser } from '@/shared/session/useSession'
+import { expandEquipmentName, expandUpgradeName } from '@/domain/catalogAliases'
 import type { ApendiceDueno, UnitAppendix } from '@/domain/types'
+import { cabezaDe, esAgrupado, miembrosDe, type Familias } from '@/domain/familiasDeOpciones'
+import { cargarFamilias } from '@/data/repositories/familiasDeOpciones'
 
 /** Cómo se llama cada tipo de dueño en la pantalla. */
 export const ETIQUETAS_DE_DUENO: Record<ApendiceDueno, string> = {
@@ -57,6 +67,12 @@ function mapAppendix(row: Record<string, unknown>): UnitAppendix {
     sheetY: (row.sheet_y as number) ?? null,
     sheetW: (row.sheet_w as number) ?? null,
   }
+}
+
+/** El mismo apéndice, con el dueño puesto en la cabeza de su familia. */
+function enSuFamilia(familias: Familias, a: UnitAppendix): UnitAppendix {
+  const cabeza = cabezaDe(familias, a.ownerKind, a.ownerId)
+  return cabeza === a.ownerId ? a : { ...a, ownerId: cabeza }
 }
 
 export interface AppendixInput {
@@ -104,6 +120,9 @@ export interface DuenoPosible {
 export async function listarDuenos(): Promise<DuenoPosible[]> {
   const porClave = new Map<string, DuenoPosible>()
   const yo = getCurrentUser()?.id ?? null
+  // El equipo y las opciones, UNO POR FAMILIA: "Lanza" sale una vez, con las
+  // facciones de todas sus filas, y no una por cada precio.
+  const familias = await cargarFamilias()
   const mete = (
     kind: ApendiceDueno,
     id: number,
@@ -150,7 +169,7 @@ export async function listarDuenos(): Promise<DuenoPosible[]> {
     [],
     (r) => ({ id: r.id as number, name: r.name as string, factionId: (r.faction_id as number) ?? null }),
   )
-  for (const e of equipo) mete('equipo', e.id, e.name, e.factionId)
+  for (const e of equipo) mete('equipo', cabezaDe(familias, 'equipo', e.id), expandEquipmentName(e.name), e.factionId)
 
   const mejoras = await queryLocal(
     `SELECT up.id AS id, up.name AS name, u.faction_id AS faction_id
@@ -161,7 +180,7 @@ export async function listarDuenos(): Promise<DuenoPosible[]> {
     [],
     (r) => ({ id: r.id as number, name: r.name as string, factionId: (r.faction_id as number) ?? null }),
   )
-  for (const m of mejoras) mete('opcion', m.id, m.name, m.factionId)
+  for (const m of mejoras) mete('opcion', cabezaDe(familias, 'opcion', m.id), expandUpgradeName(m.name), m.factionId)
 
   const perfiles = await queryLocal(
     `SELECT ap.id AS id, ap.name AS name, upr.role AS role, u.faction_id AS faction_id
@@ -186,11 +205,16 @@ export async function listarDuenos(): Promise<DuenoPosible[]> {
 export const AppendixRepository = {
   async listByOwner(kind: ApendiceDueno, ownerId: number): Promise<UnitAppendix[]> {
     try {
-      return await queryLocal(
-        'SELECT * FROM appendices WHERE owner_kind = ? AND owner_id = ? ORDER BY sort_order, id',
-        [kind, ownerId],
+      // De una pieza de equipo u opción, los de TODA su familia.
+      const familias = esAgrupado(kind) ? await cargarFamilias() : null
+      const ids = familias ? miembrosDe(familias, kind, ownerId) : [ownerId]
+      const filas = await queryLocal(
+        `SELECT * FROM appendices WHERE owner_kind = ? AND owner_id IN (${ids.map(() => '?').join(', ')})
+          ORDER BY sort_order, id`,
+        [kind, ...ids],
         mapAppendix,
       )
+      return familias ? filas.map((a) => enSuFamilia(familias, a)) : filas
     } catch {
       // La tabla puede no existir todavía (Worker sin desplegar): sin
       // apéndices, no con la pantalla rota.
@@ -213,7 +237,10 @@ export const AppendixRepository = {
    */
   async listParaDuenos(duenos: Dueno[]): Promise<UnitAppendix[]> {
     if (duenos.length === 0) return []
-    const claves = new Set(duenos.map((d) => `${d.kind}:${d.id}`))
+    // listAll ya los trae en la cabeza de su familia; los dueños se llevan
+    // al mismo sitio para que la lanza de 2 puntos encuentre el de todas.
+    const familias = await cargarFamilias()
+    const claves = new Set(duenos.map((d) => `${d.kind}:${cabezaDe(familias, d.kind, d.id)}`))
     const todos = await AppendixRepository.listAll()
     return todos.filter((a) => claves.has(`${a.ownerKind}:${a.ownerId}`))
   },
@@ -221,13 +248,21 @@ export const AppendixRepository = {
   /** TODOS, para la pantalla del Editor. Quien los agrupa y los filtra es ella. */
   async listAll(): Promise<UnitAppendix[]> {
     try {
-      return await queryLocal('SELECT * FROM appendices ORDER BY owner_kind, owner_id, sort_order, id', [], mapAppendix)
+      const [filas, familias] = await Promise.all([
+        queryLocal('SELECT * FROM appendices ORDER BY owner_kind, owner_id, sort_order, id', [], mapAppendix),
+        cargarFamilias(),
+      ])
+      return filas.map((a) => enSuFamilia(familias, a))
     } catch {
       return []
     }
   },
 
-  async create(dueno: Dueno, input: AppendixInput): Promise<number> {
+  async create(destino: Dueno, input: AppendixInput): Promise<number> {
+    // Siempre en la cabeza de la familia: se cuelgue desde la lanza que se cuelgue.
+    const dueno = esAgrupado(destino.kind)
+      ? { kind: destino.kind, id: cabezaDe(await cargarFamilias(), destino.kind, destino.id) }
+      : destino
     const id = await execCatalog(
       `INSERT INTO appendices (owner_kind, owner_id, title, body_html, sort_order)
        VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM appendices WHERE owner_kind = ? AND owner_id = ?))`,
@@ -285,13 +320,18 @@ export const AppendixRepository = {
    * siete veces no se distingue de otro modo.
    */
   async listCopiables(excepto: Dueno): Promise<AppendixConDueno[]> {
-    const [todos, duenos] = await Promise.all([AppendixRepository.listAll(), listarDuenos()])
+    const [todos, duenos, familias] = await Promise.all([
+      AppendixRepository.listAll(),
+      listarDuenos(),
+      cargarFamilias(),
+    ])
+    const exceptoId = cabezaDe(familias, excepto.kind, excepto.id)
     const porClave = new Map(duenos.map((d) => [`${d.kind}:${d.id}`, d]))
     const nombreDeFaccion = new Map(
       await queryLocal('SELECT id, name FROM factions', [], (r) => [r.id as number, r.name as string] as const),
     )
     return todos
-      .filter((a) => !(a.ownerKind === excepto.kind && a.ownerId === excepto.id))
+      .filter((a) => !(a.ownerKind === excepto.kind && a.ownerId === exceptoId))
       .map((a) => {
         const dueno = porClave.get(`${a.ownerKind}:${a.ownerId}`)
         const faccionId = dueno?.factionIds[0] ?? null
@@ -330,6 +370,9 @@ export const AppendixRepository = {
   /** Se los lleva por delante al borrar su dueño: nadie los volvería a ver. */
   async removeByOwner(kind: ApendiceDueno, ownerId: number): Promise<void> {
     try {
+      // De una pieza con familia solo se borran si era la última: si quedan
+      // otras lanzas, el apéndice es de ellas también.
+      if (esAgrupado(kind) && miembrosDe(await cargarFamilias(), kind, ownerId).length > 1) return
       await execCatalog('DELETE FROM appendices WHERE owner_kind = ? AND owner_id = ?', [kind, ownerId])
     } catch {
       // Sin la tabla no hay nada que limpiar.

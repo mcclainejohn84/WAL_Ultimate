@@ -8,6 +8,7 @@
 import { execCatalog, execCatalogBatch, type BatchStatement } from '@/data/sqlite/client'
 import { queryLocal, queryLocalOne } from '@/data/sqlite/localCatalog'
 import { ChangeLogRepository } from '@/data/repositories/changeLogRepository'
+import { soltarDeSuFamilia } from '@/data/repositories/familiasDeOpciones'
 import {
   mapEquipmentOptionRow,
   mapUpgradeRow,
@@ -321,6 +322,9 @@ export const EquipmentRepository = {
     id: number,
     input: { name: string; cost: number; category: EquipmentOption['category'] },
   ): Promise<void> {
+    // Si el nombre nuevo la saca de su familia, el apéndice de la familia se
+    // queda con las demás (ver familiasDeOpciones).
+    await soltarDeSuFamilia('equipo', id, input.name)
     await execCatalog('UPDATE equipment_options SET name = ?, cost = ?, category = ? WHERE id = ?', [
       input.name.trim(),
       input.cost,
@@ -369,6 +373,7 @@ export const EquipmentRepository = {
   /** Borra una pieza de equipo del catálogo. El ON DELETE CASCADE del esquema la quita de todas las unidades y de las incompatibilidades. */
   async remove(id: number): Promise<void> {
     const name = await nameOf('equipment_options', id)
+    await soltarDeSuFamilia('equipo', id)
     await execCatalog('DELETE FROM equipment_options WHERE id = ?', [id])
     await ChangeLogRepository.record('equipo', 'borrar', `Borró la opción de equipo "${name}"`, id)
   },
@@ -543,6 +548,7 @@ export const UpgradeRepository = {
   },
 
   async update(id: number, input: { name: string; cost: number }): Promise<void> {
+    await soltarDeSuFamilia('opcion', id, input.name)
     await execCatalog('UPDATE upgrades SET name = ?, cost = ? WHERE id = ?', [input.name.trim(), input.cost, id])
     await ChangeLogRepository.record('opcion', 'editar', `Editó la opción de unidad "${input.name.trim()}"`, id)
   },
@@ -586,6 +592,7 @@ export const UpgradeRepository = {
   /** Borra una opción de unidad. El ON DELETE CASCADE la quita de todas las unidades y de las incompatibilidades. */
   async remove(id: number): Promise<void> {
     const name = await nameOf('upgrades', id)
+    await soltarDeSuFamilia('opcion', id)
     await execCatalog('DELETE FROM upgrades WHERE id = ?', [id])
     await ChangeLogRepository.record('opcion', 'borrar', `Borró la opción de unidad "${name}"`, id)
   },

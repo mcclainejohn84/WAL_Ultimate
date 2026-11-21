@@ -16,6 +16,7 @@ import { seedMagicPaths, seedMagicSkills } from '@/data/repositories/magicSeedin
 import { seedCharacterSkills } from '@/data/repositories/characterSkillRepository'
 import { seedMagicItemTraits } from '@/data/repositories/magicItemRepository'
 import { seedDefaultCompositionRules } from '@/data/repositories/compositionRuleRepository'
+import { unificarApendicesDeOpciones } from '@/data/repositories/familiasDeOpciones'
 import type { AttributeProfileInput } from '@/domain/types'
 
 const RENAME_KEY = 'wharmy_catalog_rename_v1'
@@ -573,6 +574,16 @@ export async function runCatalogMaintenance(): Promise<void> {
     } catch (err) {
       console.warn('[WHArmy] No se pudieron sembrar las reglas de composición:', err)
     }
+  }
+
+  // UN APÉNDICE POR FAMILIA de equipo y de opciones ("Lanza", cueste lo que
+  // cueste): los que se colgaron de filas sueltas pasan a la cabeza y las
+  // copias exactas se quitan (ver familiasDeOpciones). Sin marca: solo
+  // escribe si queda algo por unificar.
+  try {
+    await unificarApendicesDeOpciones()
+  } catch (err) {
+    console.warn('[WHArmy] No se pudieron unificar los apéndices del equipo:', err)
   }
 
   if (!flagDone(DATA_FIX_KEY)) {
