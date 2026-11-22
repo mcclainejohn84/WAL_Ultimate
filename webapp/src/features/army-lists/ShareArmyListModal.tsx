@@ -26,6 +26,7 @@ import { UserRepository } from '@/data/repositories/userRepository'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { Modal } from '@/shared/ui/Modal'
 import { Button } from '@/shared/ui/Button'
+import { Segmentado } from '@/shared/ui/Segmentado'
 import { Spinner } from '@/shared/ui/Spinner'
 
 type Acceso = 'nada' | 'ver' | 'editar'
@@ -138,29 +139,12 @@ export function ShareArmyListModal({
                 >
                   {u.username}
                 </span>
-                <div
-                  role="radiogroup"
-                  aria-label={`Qué puede hacer ${u.username} con el ejército`}
-                  className="flex gap-0.5 rounded-sm border border-rule-dark/50 bg-parchment/70 p-0.5"
-                >
-                  {ACCESOS.map(({ valor, etiqueta }) => (
-                    <button
-                      key={valor}
-                      type="button"
-                      role="radio"
-                      aria-checked={acceso === valor}
-                      onClick={() => ponerAcceso(u.id, valor)}
-                      className={clsx(
-                        'rounded-[2px] px-2.5 py-0.5 text-xs whitespace-nowrap transition-colors',
-                        acceso === valor
-                          ? 'bg-maroon font-semibold text-parchment shadow-sm shadow-black/20'
-                          : 'text-ink-soft hover:text-ink',
-                      )}
-                    >
-                      {etiqueta}
-                    </button>
-                  ))}
-                </div>
+                <Segmentado
+                  etiqueta={`Qué puede hacer ${u.username} con el ejército`}
+                  valor={acceso}
+                  onChange={(valor) => ponerAcceso(u.id, valor)}
+                  opciones={ACCESOS}
+                />
                 {/* Sin el ejército no hay despliegue que enseñar, así que la
                     casilla solo se activa con acceso. */}
                 <label

@@ -67,16 +67,10 @@ import { CandadoDeAutor } from '@/shared/ui/CandadoDeAutor'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { Spinner } from '@/shared/ui/Spinner'
-import {
-  ArrowLeftIcon,
-  EyeIcon,
-  EyeOffIcon,
-  ImageIcon,
-  MonedaIcon,
-  PencilIcon,
-  PlusIcon,
-  TrashIcon,
-} from '@/shared/ui/icons'
+import { Button } from '@/shared/ui/Button'
+import { EnlaceDeVuelta } from '@/shared/ui/EnlaceDeVuelta'
+import { TituloDeSeccion } from '@/shared/ui/TituloDeSeccion'
+import { EyeIcon, EyeOffIcon, ImageIcon, MonedaIcon, PencilIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
 
 /** Todo lo que se pinta, cargado de una vez y en paralelo. */
 interface Expediente {
@@ -302,24 +296,33 @@ export function FichaDeRenombrePage() {
             único de la página que cambia algo. */}
         <div className="border-t border-rule-dark/25 bg-parchment-dark/20 px-4 py-3 sm:px-6">
           <nav aria-label={`Acciones sobre ${personaje.name}`} className="flex flex-wrap items-center gap-1.5">
-            <Accion principal={puedeEditar} onClick={() => setVentana('experiencia')}>
+            <Button size="sm" variant={puedeEditar ? 'primary' : 'secondary'} onClick={() => setVentana('experiencia')}>
               {puedeEditar && <PlusIcon className="h-3.5 w-3.5" />}
               Experiencia
-            </Accion>
-            <Accion onClick={() => setVentana('habilidades')}>Habilidades</Accion>
-            <Accion onClick={() => setVentana('cicatrices')}>Cicatrices</Accion>
-            {esMago && <Accion onClick={() => setVentana('magia')}>Magia</Accion>}
+            </Button>
+            <Button size="sm" onClick={() => setVentana('habilidades')}>
+              Habilidades
+            </Button>
+            <Button size="sm" onClick={() => setVentana('cicatrices')}>
+              Cicatrices
+            </Button>
+            {esMago && (
+              <Button size="sm" onClick={() => setVentana('magia')}>
+                Magia
+              </Button>
+            )}
             {puedeEditar && (
-              <Accion onClick={() => setVentana('retrato')}>
+              <Button size="sm" onClick={() => setVentana('retrato')}>
                 <PencilIcon className="h-3.5 w-3.5" />
                 Retrato y trasfondo
-              </Accion>
+              </Button>
             )}
 
             <span className="ml-auto flex flex-wrap items-center gap-1.5">
               {puedeEditar && (
-                <Accion
-                  discreta
+                <Button
+                  size="sm"
+                  variant="ghost"
                   disabled={acciones.ocupado != null}
                   onClick={() => void acciones.alternarOculto()}
                   title={
@@ -330,13 +333,18 @@ export function FichaDeRenombrePage() {
                 >
                   {personaje.hidden ? <EyeIcon className="h-3.5 w-3.5" /> : <EyeOffIcon className="h-3.5 w-3.5" />}
                   {personaje.hidden ? 'Mostrar' : 'Ocultar'}
-                </Accion>
+                </Button>
               )}
               {puedeEditar && (
-                <Accion discreta peligro onClick={() => setVentana('borrar')}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="hover:bg-danger/10 hover:text-danger"
+                  onClick={() => setVentana('borrar')}
+                >
                   <TrashIcon className="h-3.5 w-3.5" />
                   Borrar
-                </Accion>
+                </Button>
               )}
               {/* La ficha de unidad está en el Editor, que solo se abre en modo
                 administrador; en el personaje de otro se abre en lectura. */}
@@ -525,15 +533,7 @@ export function FichaDeRenombrePage() {
 // ===========================================================================
 
 function VolverAlListado() {
-  return (
-    <Link
-      to="/renombre"
-      className="mb-4 inline-flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
-    >
-      <ArrowLeftIcon className="h-4 w-4" />
-      Personajes de Renombre
-    </Link>
-  )
+  return <EnlaceDeVuelta to="/renombre">Personajes de Renombre</EnlaceDeVuelta>
 }
 
 /** El retrato de la cabecera: el mismo marco de la galería, en grande. */
@@ -574,48 +574,6 @@ function Estado({ children, icono, tono }: { children: ReactNode; icono?: ReactN
   )
 }
 
-/** Un botón de la barra de acciones. */
-function Accion({
-  children,
-  onClick,
-  principal = false,
-  discreta = false,
-  peligro = false,
-  disabled = false,
-  title,
-}: {
-  children: ReactNode
-  onClick: () => void
-  principal?: boolean
-  discreta?: boolean
-  peligro?: boolean
-  disabled?: boolean
-  title?: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      title={title}
-      className={clsx(
-        'inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-50',
-        'focus-visible:ring-2 focus-visible:ring-bronze/40 focus-visible:ring-offset-1 focus-visible:ring-offset-parchment focus-visible:outline-none',
-        principal
-          ? 'border-maroon bg-maroon text-parchment shadow-sm shadow-black/20 hover:bg-maroon-dark'
-          : discreta
-            ? clsx(
-                'border-transparent text-ink-soft',
-                peligro ? 'hover:bg-danger/10 hover:text-danger' : 'hover:bg-bronze/10 hover:text-bronze',
-              )
-            : 'border-rule-dark/45 bg-parchment/60 text-ink hover:border-bronze hover:bg-parchment',
-      )}
-    >
-      {children}
-    </button>
-  )
-}
-
 /**
  * Un bloque del expediente: rótulo en versalita con su filete y su recuento, y
  * el contenido sobre una placa de pergamino.
@@ -637,11 +595,7 @@ function Bloque({
       className="wh-surgir min-w-0 rounded-sm border border-rule-dark/40 bg-parchment/70 px-4 pt-3 pb-4 shadow-sm shadow-black/5 sm:px-5"
       style={{ animationDelay: `${retraso * 70}ms` }}
     >
-      <h2 className="mb-2.5 flex items-center gap-3">
-        <span className="font-display text-lg leading-none font-bold tracking-wide text-ink">{titulo}</span>
-        <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-rule-dark/45 to-transparent" />
-        {cuantas != null && <span className="text-xs tabular-nums text-ink-soft/70">{cuantas}</span>}
-      </h2>
+      <TituloDeSeccion titulo={titulo} cuantos={cuantas} className="mb-2.5" />
       {children}
     </section>
   )

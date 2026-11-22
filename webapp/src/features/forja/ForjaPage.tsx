@@ -48,8 +48,8 @@ import { tieneTexto } from '@/shared/richText'
 import { EncabezadoDeGrupo } from '@/features/renombre/piezas'
 import { FiltroSegmentado } from '@/shared/ui/FiltroSegmentado'
 import { CandadoDeAutor } from '@/shared/ui/CandadoDeAutor'
-import { Link } from 'react-router-dom'
-import { ArrowLeftIcon, PencilIcon, PlusIcon, SwapIcon, TrashIcon } from '@/shared/ui/icons'
+import { EnlaceDeVuelta } from '@/shared/ui/EnlaceDeVuelta'
+import { PencilIcon, PlusIcon, SwapIcon, TrashIcon } from '@/shared/ui/icons'
 
 export function ForjaPage() {
   const { user: usuario } = useSession()
@@ -88,13 +88,7 @@ export function ForjaPage() {
     <div>
       {/* La Forja ya no está en el menú: se entra desde Personajes de
           Renombre, así que el camino de vuelta tiene que estar a la vista. */}
-      <Link
-        to="/renombre"
-        className="mb-3 inline-flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Personajes de Renombre
-      </Link>
+      <EnlaceDeVuelta to="/renombre">Personajes de Renombre</EnlaceDeVuelta>
 
       <PageHeader
         title="Forja de objetos mágicos"

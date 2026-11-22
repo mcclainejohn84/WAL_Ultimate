@@ -13,6 +13,16 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.230 — 22/11/2026 15:24
+
+Repaso de estilo de las secciones nuevas para que todo mida y se alinee igual.
+
+- Botones: todos llevan filete (transparente cuando no se ve), así un botón granate y uno de pergamino puestos al lado miden lo mismo. Nuevo tamaño pequeño, que es el que usa ahora la barra de acciones de la ficha avanzada en lugar de sus botones propios.
+- Un solo control segmentado para las opciones excluyentes: filtros (Autor, Vista), "De evento / De batalla" en la experiencia y "No / Ver / Editar" al compartir un ejército.
+- Un solo rótulo de sección (título, recuento, filete y extra a la derecha) en la ficha avanzada y en la hoja de experiencia de batalla.
+- Un solo enlace de vuelta, con el mismo hueco hasta la cabecera, en la Forja, la ficha avanzada y la experiencia de batalla.
+- La galería de personajes y la de campañas usan el mismo espaciado.
+
 ## 0.229 — 22/11/2026 15:16
 
 - **El escudo (la imagen) de una campaña es cuadrado**: se encuadra en un

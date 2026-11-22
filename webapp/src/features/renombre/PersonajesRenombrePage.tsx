@@ -216,10 +216,10 @@ export function PersonajesRenombrePage() {
         title="Personajes de Renombre"
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {/* La Forja vive DENTRO de esta sección: los objetos son de los
-                personajes, y una entrada propia en el menú la alejaba de lo
-                único a lo que sirve. */}
-            {/* La experiencia de una batalla entera, para todos los que fueron. */}
+            {/* La experiencia de una batalla entera, para todos los que
+                fueron, y la Forja: viven DENTRO de esta sección porque son de
+                los personajes, y una entrada propia en el menú las alejaba de
+                lo único a lo que sirven. */}
             <Button variant="secondary" onClick={() => navegar('/renombre/batalla')}>
               <SwordIcon className="h-4 w-4" />
               Experiencia de batalla

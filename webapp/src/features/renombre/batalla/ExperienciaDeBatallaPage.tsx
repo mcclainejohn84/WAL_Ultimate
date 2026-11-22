@@ -22,7 +22,7 @@
 // experiencia de un personaje la apunta su autor, como todo lo demás.
 // ============================================================================
 import { useMemo, useState, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { clsx } from 'clsx'
 import {
   EXPERIENCIA_MAXIMA,
@@ -46,11 +46,13 @@ import { esEditablePor } from '@/domain/personajeRenombre'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
 import { PageHeader } from '@/shared/ui/PageHeader'
+import { EnlaceDeVuelta } from '@/shared/ui/EnlaceDeVuelta'
+import { TituloDeSeccion } from '@/shared/ui/TituloDeSeccion'
 import { Select } from '@/shared/ui/Select'
 import { Button } from '@/shared/ui/Button'
 import { Spinner } from '@/shared/ui/Spinner'
 import { EnteroInput } from '@/shared/ui/EnteroInput'
-import { ArrowLeftIcon, CheckIcon, ChevronDownIcon, StarIcon, SwordIcon } from '@/shared/ui/icons'
+import { CheckIcon, ChevronDownIcon, StarIcon, SwordIcon } from '@/shared/ui/icons'
 import { CamposDeBatalla, LineasApuntadas, TablaDeAcciones } from '@/features/renombre/batalla/piezasDeBatalla'
 import { useBatallaElegida } from '@/features/renombre/batalla/useBatallaElegida'
 
@@ -207,13 +209,7 @@ export function ExperienciaDeBatallaPage() {
 
   return (
     <div className="pb-24">
-      <Link
-        to="/renombre"
-        className="mb-4 inline-flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-ink"
-      >
-        <ArrowLeftIcon className="h-4 w-4" />
-        Personajes de Renombre
-      </Link>
+      <EnlaceDeVuelta to="/renombre">Personajes de Renombre</EnlaceDeVuelta>
       <PageHeader title="Experiencia de batalla" />
 
       {/* 1. CAMPAÑA Y BATALLA */}
@@ -500,15 +496,7 @@ function Paso({
 }) {
   return (
     <section className={primero ? undefined : 'mt-6'}>
-      <h2 className="mb-2 flex items-center gap-2.5">
-        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-maroon font-display text-xs font-bold text-parchment">
-          {numero}
-        </span>
-        <span className="font-display text-lg leading-none font-bold tracking-wide text-ink">{titulo}</span>
-        {cuantos != null && <span className="text-xs tabular-nums text-ink-soft/70">{cuantos}</span>}
-        <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-rule-dark/45 to-transparent" />
-        {extra}
-      </h2>
+      <TituloDeSeccion numero={numero} titulo={titulo} cuantos={cuantos} extra={extra} className="mb-2.5" />
       {children}
     </section>
   )
