@@ -13,6 +13,17 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.225 — 22/11/2026 13:47
+
+- La hoja de **experiencia de batalla**, más compacta: más ancha, con la tabla
+  del reglamento en dos columnas de alto parecido (acciones del personaje y
+  diferencia de puntos a un lado; victoria y bajas enemigas al otro), filas
+  más bajas y lo que se apunta en un panel más estrecho, con los puntos en la
+  misma línea que cada acción. En un ordenador la tabla entera cabe en
+  pantalla sin desplazarse.
+
+---
+
 ## 0.224 — 22/11/2026 13:24
 
 - **Experiencia de evento o de batalla.** En la ventana de Experiencia de un
