@@ -7,6 +7,7 @@ import { RulesListPage } from '@/features/admin/rules/RulesListPage'
 import { UnitsListPage } from '@/features/admin/units/UnitsListPage'
 import { PersonajesRenombrePage } from '@/features/renombre/PersonajesRenombrePage'
 import { FichaDeRenombrePage } from '@/features/renombre/avanzada/FichaDeRenombrePage'
+import { ExperienciaDeBatallaPage } from '@/features/renombre/batalla/ExperienciaDeBatallaPage'
 import { CampanasPage } from '@/features/campanas/CampanasPage'
 import { ForjaPage } from '@/features/forja/ForjaPage'
 import { ObjetosMagicosPage } from '@/features/admin/objetos/ObjetosMagicosPage'
@@ -188,6 +189,11 @@ const router = createHashRouter([
         // de "Editor" y la usa cualquiera (ver PersonajesRenombrePage).
         path: '/renombre',
         element: <PersonajesRenombrePage />,
+      },
+      {
+        // La experiencia de una batalla entera, para todos los que fueron.
+        path: '/renombre/batalla',
+        element: <ExperienciaDeBatallaPage />,
       },
       {
         // La ficha de un personaje en la vista avanzada: su propia dirección,

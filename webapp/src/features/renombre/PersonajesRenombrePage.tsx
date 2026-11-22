@@ -39,7 +39,7 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { Select } from '@/shared/ui/Select'
 import { TextField } from '@/shared/ui/TextField'
 import { FactionEmblem } from '@/shared/ui/FactionEmblem'
-import { AnvilIcon, ChevronDownIcon, PlusIcon } from '@/shared/ui/icons'
+import { AnvilIcon, ChevronDownIcon, PlusIcon, SwordIcon } from '@/shared/ui/icons'
 import { useNavigate } from 'react-router-dom'
 import { PersonajeRenombreCard } from '@/features/renombre/PersonajeRenombreCard'
 import { GaleriaDeRenombre } from '@/features/renombre/avanzada/GaleriaDeRenombre'
@@ -219,6 +219,11 @@ export function PersonajesRenombrePage() {
             {/* La Forja vive DENTRO de esta sección: los objetos son de los
                 personajes, y una entrada propia en el menú la alejaba de lo
                 único a lo que sirve. */}
+            {/* La experiencia de una batalla entera, para todos los que fueron. */}
+            <Button variant="secondary" onClick={() => navegar('/renombre/batalla')}>
+              <SwordIcon className="h-4 w-4" />
+              Experiencia de batalla
+            </Button>
             <Button variant="secondary" onClick={() => navegar('/forja')}>
               <AnvilIcon />
               Forja de objetos

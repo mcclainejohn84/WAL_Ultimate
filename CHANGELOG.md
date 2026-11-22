@@ -13,6 +13,30 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.228 — 22/11/2026 15:12
+
+- **Experiencia de una batalla entera**, nuevo botón "Experiencia de batalla"
+  en Personajes de Renombre. Se rellena en cuatro pasos:
+  1. **Campaña** (obligatoria) y **batalla**, elegida de Batallas o con su
+     nombre escrito.
+  2. **Personajes** que fueron: solo los tuyos que estén en esa campaña o en
+     ninguna.
+  3. **Puntos del bando**: victoria, bajas enemigas y diferencia de puntos,
+     apuntados una sola vez para la batalla, con la misma tabla y los mismos
+     puntos corregibles que en la hoja de un personaje.
+  4. **Cada personaje**: sus acciones propias (las de cursiva, que son suyas)
+     y su parte de lo del bando. Lo del bando tiene que repartirse entero
+     —no se puede guardar si falta o sobra un punto— y, si hubo victoria, el
+     General se lleva al menos 1. De entrada va todo al General (la estrella
+     marca quién lo es, y "Todo al General" vuelve a ese reparto).
+- Al guardar, cada personaje recibe su apunte en su libro de experiencia,
+  como si se hubiera apuntado uno a uno: la batalla, la campaña, lo suyo y su
+  parte del bando con el desglose.
+- La hoja de experiencia de batalla de un solo personaje usa ahora las mismas
+  piezas, así que las dos se ven y se manejan igual.
+
+---
+
 ## 0.227 — 22/11/2026 14:58
 
 - En la hoja de **experiencia de batalla**, cada grupo de la tabla (acciones

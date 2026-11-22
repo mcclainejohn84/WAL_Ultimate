@@ -265,3 +265,95 @@ export function notaDeBatalla(nombre: string, lineas: LineaApuntada[]): string {
     .join(' · ')
   return desglose ? `${titulo} — ${desglose}` : titulo
 }
+
+// ===========================================================================
+// UNA BATALLA ENTERA, CON VARIOS PERSONAJES
+//
+// Lo de cada personaje (las acciones en cursiva) es suyo y se apunta a cada
+// uno. Lo del bando (victoria, bajas, diferencia de puntos) se apunta UNA vez
+// para la batalla y se reparte entre los que fueron: la suma de lo repartido
+// tiene que ser exactamente lo que ganó el bando, ni un punto más ni uno
+// menos. Y si hubo puntos por ganar, el General se lleva al menos 1.
+// ===========================================================================
+
+export const GRUPOS_DEL_PERSONAJE = GRUPOS_DE_ACCIONES.filter((g) => g.clave === 'personaje')
+export const GRUPOS_DEL_BANDO = GRUPOS_DE_ACCIONES.filter((g) => g.clave !== 'personaje')
+
+/** Lo que suman las líneas de un grupo. */
+export function totalDelGrupo(lineas: LineaApuntada[], grupo: GrupoDeAccion): number {
+  return totalDeBatalla(lineas.filter((l) => ACCION_POR_CLAVE.get(l.clave)?.grupo === grupo))
+}
+
+/**
+ * Quién puede ir a una batalla de una campaña: los personajes de esa campaña y
+ * los que no están en ninguna.
+ */
+export function puedeIrALaCampana(susCampanas: readonly number[], campanaId: number): boolean {
+  return susCampanas.length === 0 || susCampanas.includes(campanaId)
+}
+
+/** El reparto de partida: todo para el General (los puntos de ganar son suyos por defecto). */
+export function repartoAlGeneral(
+  participantes: readonly number[],
+  general: number | null,
+  total: number,
+): Map<number, number> {
+  return new Map(participantes.map((id) => [id, id === general ? total : 0]))
+}
+
+export interface EstadoDelReparto {
+  /** Lo que ganó el bando. */
+  total: number
+  /** Lo repartido entre los personajes. */
+  repartido: number
+  /** total − repartido: 0 es lo único que se puede guardar. Negativo = sobra. */
+  pendiente: number
+  /** Hubo puntos por ganar y el General no se lleva ninguno. */
+  generalSinPunto: boolean
+}
+
+export function revisarReparto(
+  lineasDelBando: LineaApuntada[],
+  reparto: ReadonlyMap<number, number>,
+  participantes: readonly number[],
+  general: number | null,
+): EstadoDelReparto {
+  const total = totalDeBatalla(lineasDelBando)
+  const repartido = participantes.reduce((s, id) => s + (reparto.get(id) ?? 0), 0)
+  const victoria = totalDelGrupo(lineasDelBando, 'victoria')
+  return {
+    total,
+    repartido,
+    pendiente: total - repartido,
+    generalSinPunto: victoria > 0 && (general == null || (reparto.get(general) ?? 0) < 1),
+  }
+}
+
+/**
+ * EL APUNTE de un personaje en una batalla con varios: la batalla (y su
+ * campaña), lo suyo con su desglose y su parte de lo del bando, con el
+ * desglose del bando para saber de dónde salió.
+ * "Batalla: El vado del Reik (Imperio en llamas) — Sobrevivir a la batalla: 1 ·
+ *  Del bando: 3 de 7 (Obtener la victoria 2, Causar entre 1000 – 1499 bajas enemigas 5)"
+ */
+export function notaDeBatallaConjunta(
+  nombre: string,
+  campana: string | null,
+  propias: LineaApuntada[],
+  parteDelBando: number,
+  lineasDelBando: LineaApuntada[],
+): string {
+  const base = notaDeBatalla(nombre, propias)
+  const titulo = campana ? base.replace(/^Batalla(: [^—]*?)?(?= —|$)/, (m) => `${m} (${campana})`) : base
+  if (parteDelBando <= 0) return titulo
+  const total = totalDeBatalla(lineasDelBando)
+  const deDonde = lineasDelBando
+    .map((l) => {
+      const accion = ACCION_POR_CLAVE.get(l.clave)
+      return accion ? `${accion.corto}${l.cantidad > 1 ? ` ×${l.cantidad}` : ''} ${l.puntos}` : null
+    })
+    .filter(Boolean)
+    .join(', ')
+  const delBando = `Del bando: ${parteDelBando} de ${total}${deDonde ? ` (${deDonde})` : ''}`
+  return titulo.includes(' — ') ? `${titulo} · ${delBando}` : `${titulo} — ${delBando}`
+}
