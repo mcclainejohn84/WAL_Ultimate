@@ -61,3 +61,17 @@ export function esEditablePor(unidad: UnidadConAutor, userId: number | null | un
   if (unidad.userId == null) return true
   return unidad.userId === userId
 }
+
+/**
+ * Si un personaje puede ir a una BATALLA que apunta este usuario.
+ *
+ * LA ÚNICA EXCEPCIÓN a `esEditablePor`: quien organiza una partida apunta la
+ * experiencia de batalla de TODOS los que jugaron, sean de quien sean. Solo
+ * eso —un apunte nuevo en su libro, que no se edita ni se borra y que guarda
+ * quién lo hizo—; el resto del personaje sigue siendo solo de su autor.
+ *
+ * Los ocultos de otro no van: si no se ven, no se puede saber que existen.
+ */
+export function puedeIrALaBatalla(unidad: UnidadConAutor, userId: number | null | undefined): boolean {
+  return unidad.isSpecialCharacter && esVisiblePara(unidad, userId)
+}

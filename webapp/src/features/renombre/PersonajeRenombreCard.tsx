@@ -58,6 +58,7 @@ import { CicatricesModal } from '@/features/renombre/CicatricesModal'
 import { MagiaModal } from '@/features/renombre/MagiaModal'
 import { Button } from '@/shared/ui/Button'
 import { Segmentado } from '@/shared/ui/Segmentado'
+import { useNombresDeUsuario } from '@/shared/hooks/useNombresDeUsuario'
 import { Spinner } from '@/shared/ui/Spinner'
 import { TextField } from '@/shared/ui/TextField'
 import { RichText, RichTextEditor } from '@/shared/ui/RichTextEditor'
@@ -934,6 +935,9 @@ export function ExperienciaModal({
   onApuntado: () => void
 }) {
   const { data: apuntes, loading, reload } = useAsync(() => SpecialCharacterRepository.listExperiencia(personaje.id))
+  // Quién apuntó cada cosa, cuando no fue su autor: la experiencia de una
+  // batalla entera la puede apuntar cualquiera de los que jugaron.
+  const nombres = useNombresDeUsuario()
   const [cantidad, setCantidad] = useState('')
   const [motivo, setMotivo] = useState('')
   const [guardando, setGuardando] = useState(false)
@@ -1083,6 +1087,11 @@ export function ExperienciaModal({
                 </span>
                 <span className="min-w-0 flex-1 text-xs text-ink">
                   {a.note ?? <em className="text-ink-soft">Sin evento</em>}
+                  {a.userId != null && a.userId !== personaje.userId && nombres.has(a.userId) && (
+                    <span className="ml-1.5 text-mini whitespace-nowrap text-ink-soft/60">
+                      · {nombres.get(a.userId)}
+                    </span>
+                  )}
                 </span>
               </li>
             ))}

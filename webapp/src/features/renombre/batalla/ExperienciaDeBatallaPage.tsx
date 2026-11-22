@@ -18,8 +18,10 @@
 // la batalla, la campaña y el desglose: exactamente como si se hubiera
 // apuntado uno a uno (ver domain/experienciaDeBatalla#notaDeBatallaConjunta).
 //
-// Solo salen los personajes que puede tocar quien apunta (los suyos): la
-// experiencia de un personaje la apunta su autor, como todo lo demás.
+// SALEN LOS DE TODOS LOS JUGADORES, no solo los de quien apunta: es la única
+// excepción a que un personaje solo lo toca su autor (ver
+// domain/personajeRenombre#puedeIrALaBatalla). Quien organiza la partida la
+// apunta entera. Los suyos van primero y los del resto, agrupados por jugador.
 // ============================================================================
 import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -42,9 +44,10 @@ import {
   type GrupoDeAccion,
   type LineaApuntada,
 } from '@/domain/experienciaDeBatalla'
-import { esEditablePor } from '@/domain/personajeRenombre'
+import { puedeIrALaBatalla } from '@/domain/personajeRenombre'
 import { useAsync } from '@/shared/hooks/useAsync'
 import { useSession } from '@/shared/session/useSession'
+import { useNombresDeUsuario } from '@/shared/hooks/useNombresDeUsuario'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EnlaceDeVuelta } from '@/shared/ui/EnlaceDeVuelta'
 import { TituloDeSeccion } from '@/shared/ui/TituloDeSeccion'
@@ -89,14 +92,32 @@ export function ExperienciaDeBatallaPage() {
   const porId = useMemo(() => new Map((data?.personajes ?? []).map((p) => [p.id, p])), [data])
   const campana = data?.campanas.find((c) => c.id === campanaId) ?? null
 
-  // Los que pueden ir: los suyos, de esta campaña o de ninguna.
+  const nombres = useNombresDeUsuario()
+
+  // Los que pueden ir: los de cualquier jugador, de esta campaña o de ninguna.
   const elegibles = useMemo(() => {
     if (!data || campanaId == null) return []
     return data.personajes
-      .filter((p) => esEditablePor(p, user?.id))
+      .filter((p) => puedeIrALaBatalla(p, user?.id))
       .filter((p) => puedeIrALaCampana(data.porPersonaje.get(p.id) ?? [], campanaId))
       .sort((a, b) => a.name.localeCompare(b.name, 'es'))
   }, [data, campanaId, user?.id])
+
+  // Y agrupados por jugador: los suyos primero, el resto por nombre.
+  const porJugador = useMemo(() => {
+    const grupos = new Map<number | null, PersonajeEspecial[]>()
+    for (const p of elegibles) {
+      const autor = p.userId ?? null
+      const ya = grupos.get(autor)
+      if (ya) ya.push(p)
+      else grupos.set(autor, [p])
+    }
+    const nombreDe = (autor: number | null) =>
+      autor === user?.id ? 'Tuyos' : autor != null ? (nombres.get(autor) ?? '…') : 'Sin autor'
+    return [...grupos.entries()]
+      .map(([autor, personajes]) => ({ autor, nombre: nombreDe(autor), personajes }))
+      .sort((a, b) => (a.autor === user?.id ? -1 : b.autor === user?.id ? 1 : a.nombre.localeCompare(b.nombre, 'es')))
+  }, [elegibles, nombres, user?.id])
 
   const totalDelBando = totalDeBatalla(delBando)
   const reparto = useMemo(
@@ -232,31 +253,43 @@ export function ExperienciaDeBatallaPage() {
           {/* 2. QUIÉN FUE */}
           <Paso numero={2} titulo="Personajes" cuantos={participantes.length}>
             {elegibles.length === 0 ? (
-              <p className="text-xs text-ink-soft/60 italic">Ninguno de tus personajes puede ir a esta campaña.</p>
+              <p className="text-xs text-ink-soft/60 italic">Ningún personaje puede ir a esta campaña.</p>
             ) : (
-              <div role="group" aria-label="Personajes que fueron a la batalla" className="flex flex-wrap gap-1.5">
-                {elegibles.map((p) => {
-                  const va = participantes.includes(p.id)
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      aria-pressed={va}
-                      onClick={() => alternarParticipante(p.id)}
-                      className={clsx(
-                        'inline-flex items-center gap-1.5 rounded-sm border py-0.5 pr-2.5 pl-0.5 text-xs font-medium transition-colors',
-                        'focus-visible:ring-2 focus-visible:ring-bronze/40 focus-visible:outline-none',
-                        va
-                          ? 'border-maroon bg-maroon text-parchment shadow-sm shadow-black/20'
-                          : 'border-rule-dark/45 bg-parchment/60 text-ink hover:border-bronze',
-                      )}
-                    >
-                      <Avatar personaje={p} />
-                      {p.name}
-                      {va && <CheckIcon className="h-3 w-3" />}
-                    </button>
-                  )
-                })}
+              <div role="group" aria-label="Personajes que fueron a la batalla" className="space-y-2.5">
+                {porJugador.map((grupo) => (
+                  <div key={grupo.autor ?? 'nadie'}>
+                    {/* Con un solo jugador no hay nada que distinguir. */}
+                    {porJugador.length > 1 && (
+                      <p className="mb-1 text-micro font-semibold tracking-[0.14em] text-bronze uppercase">
+                        {grupo.nombre}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {grupo.personajes.map((p) => {
+                        const va = participantes.includes(p.id)
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            aria-pressed={va}
+                            onClick={() => alternarParticipante(p.id)}
+                            className={clsx(
+                              'inline-flex items-center gap-1.5 rounded-sm border py-0.5 pr-2.5 pl-0.5 text-xs font-medium transition-colors',
+                              'focus-visible:ring-2 focus-visible:ring-bronze/40 focus-visible:outline-none',
+                              va
+                                ? 'border-maroon bg-maroon text-parchment shadow-sm shadow-black/20'
+                                : 'border-rule-dark/45 bg-parchment/60 text-ink hover:border-bronze',
+                            )}
+                          >
+                            <Avatar personaje={p} />
+                            {p.name}
+                            {va && <CheckIcon className="h-3 w-3" />}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </Paso>

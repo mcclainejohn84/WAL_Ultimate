@@ -13,6 +13,12 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.231 — 22/11/2026 17:28
+
+- Experiencia de batalla (la de la batalla entera): ya se pueden elegir personajes de otros jugadores, para que quien organiza la partida la apunte para todos. Es la única excepción a que un personaje solo lo toca su autor: solo añade un apunte a su libro, nada más. Los ocultos de otro no salen.
+- Los personajes salen agrupados por jugador, los tuyos primero.
+- En el libro de experiencia de un personaje, el apunte que hizo otro jugador lleva su nombre al lado.
+
 ## 0.230 — 22/11/2026 15:24
 
 Repaso de estilo de las secciones nuevas para que todo mida y se alinee igual.
