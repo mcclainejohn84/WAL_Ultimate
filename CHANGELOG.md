@@ -13,6 +13,16 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.227 — 22/11/2026 14:58
+
+- En la hoja de **experiencia de batalla**, cada grupo de la tabla (acciones
+  del personaje, victoria, bajas enemigas y diferencia de puntos) se abre y se
+  cierra pulsando su cabecera, y al abrir uno se cierran los demás. La
+  cabecera de un grupo cerrado dice cuántas acciones tiene marcadas y lo que
+  suman. Se entra con "Acciones del personaje" abierto.
+
+---
+
 ## 0.226 — 22/11/2026 14:54
 
 - **La imagen de una campaña se encuadra**, como los retratos: al elegirla
