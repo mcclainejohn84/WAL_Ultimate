@@ -47,6 +47,17 @@ export function useFiltroDeCampanas(
   return useFiltroGuardado('campanas', userId)
 }
 
+/**
+ * En la vista clásica, QUÉ FACCIONES ESTÁN PLEGADAS: su cabecera se ve, sus
+ * láminas no. Con la misma memoria por usuario que los filtros. Vacío = todas
+ * desplegadas, que es como se entra la primera vez.
+ */
+export function useFaccionesPlegadas(
+  userId: number | null | undefined,
+): [Set<number>, (siguiente: Set<number>) => void] {
+  return useFiltroGuardado('plegadas', userId)
+}
+
 function useFiltroGuardado(
   nombre: string,
   userId: number | null | undefined,

@@ -20,6 +20,7 @@
 // quedaría corto.
 // ============================================================================
 import { useState } from 'react'
+import { clsx } from 'clsx'
 import { SpecialCharacterRepository, type PersonajeEspecial } from '@/data/repositories/specialCharacterRepository'
 import { FactionRepository } from '@/data/repositories/factionRepository'
 import { useAsync } from '@/shared/hooks/useAsync'
@@ -27,7 +28,7 @@ import { usePreferenciaLocal } from '@/shared/hooks/usePreferenciaLocal'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { EmptyState } from '@/shared/ui/EmptyState'
 import { useSession } from '@/shared/session/useSession'
-import { useFiltroDeCampanas, useFiltroDeFacciones } from '@/features/renombre/filtroDeFacciones'
+import { useFaccionesPlegadas, useFiltroDeCampanas, useFiltroDeFacciones } from '@/features/renombre/filtroDeFacciones'
 import { SIN_CAMPANA, eleccionVigente, pasaElFiltroDeCampanas } from '@/domain/campanas'
 import { CampaignRepository } from '@/data/repositories/campaignRepository'
 import { Modal } from '@/shared/ui/Modal'
@@ -38,7 +39,7 @@ import { Spinner } from '@/shared/ui/Spinner'
 import { Select } from '@/shared/ui/Select'
 import { TextField } from '@/shared/ui/TextField'
 import { FactionEmblem } from '@/shared/ui/FactionEmblem'
-import { AnvilIcon, PlusIcon } from '@/shared/ui/icons'
+import { AnvilIcon, ChevronDownIcon, PlusIcon } from '@/shared/ui/icons'
 import { useNavigate } from 'react-router-dom'
 import { PersonajeRenombreCard } from '@/features/renombre/PersonajeRenombreCard'
 import { GaleriaDeRenombre } from '@/features/renombre/avanzada/GaleriaDeRenombre'
@@ -55,17 +56,55 @@ import type { UnitSummary } from '@/data/repositories/unitRepository'
  * subtítulo debajo del nombre, que es donde vivía el "N con nombre propio" que
  * el usuario pidió quitar. Una regla horizontal separa igual de bien y deja
  * todo el ancho a las láminas, que es lo que se ha venido a ver.
+ *
+ * SE PLIEGA: la cabecera entera es el botón, con la flecha al final de la
+ * regla. Plegada, la facción ocupa una línea y el número dice cuántos hay
+ * dentro, así que no se pierde de vista lo que se ha escondido.
  */
-function CabeceraDeFaccion({ faccion, cuantos }: { faccion: Pick<Faction, 'name' | 'emblemUrl'>; cuantos: number }) {
+function CabeceraDeFaccion({
+  faccion,
+  nombre,
+  cuantos,
+  plegada,
+  onAlternar,
+  controla,
+}: {
+  faccion?: Pick<Faction, 'name' | 'emblemUrl'>
+  nombre: string
+  cuantos: number
+  plegada: boolean
+  onAlternar: () => void
+  /** Id de la lista que pliega, para aria-controls. */
+  controla: string
+}) {
   return (
-    <div className="mb-3 flex items-center gap-3">
-      <FactionEmblem faction={faccion} size="sm" />
-      <h2 className="font-display text-xl leading-none font-bold tracking-wide text-ink">{faccion.name}</h2>
-      <span className="text-sm tabular-nums text-ink-soft/70">{cuantos}</span>
-      <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-rule-dark/50 to-transparent" />
-    </div>
+    <h2 className={clsx(!plegada && 'mb-3')}>
+      <button
+        type="button"
+        onClick={onAlternar}
+        aria-expanded={!plegada}
+        aria-controls={controla}
+        className="group flex w-full items-center gap-3 rounded-sm text-left focus-visible:ring-2 focus-visible:ring-bronze/50 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment focus-visible:outline-none"
+      >
+        {faccion && <FactionEmblem faction={faccion} size="sm" />}
+        <span className="font-display text-xl leading-none font-bold tracking-wide text-ink transition-colors group-hover:text-maroon">
+          {nombre}
+        </span>
+        <span className="text-sm tabular-nums text-ink-soft/70">{cuantos}</span>
+        <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-rule-dark/50 to-transparent" />
+        <ChevronDownIcon
+          className={clsx(
+            'h-4 w-4 shrink-0 text-ink-soft/60 transition-transform duration-200 group-hover:text-bronze',
+            plegada && '-rotate-90',
+          )}
+        />
+      </button>
+    </h2>
   )
 }
+
+/** La clave de "Sin facción reconocible" entre las plegadas. Los ids de facción empiezan en 1. */
+const SIN_FACCION = -1
 
 /** Valor del filtro cuando no filtra nada. Es una cadena porque sale de un <select>. */
 
@@ -101,6 +140,14 @@ export function PersonajesRenombrePage() {
   const [faccionesElegidas, setFaccionesElegidas] = useFiltroDeFacciones(usuario?.id)
   // QUÉ CAMPAÑAS, igual: con memoria y vacío = todas. Se SUMA a los otros dos.
   const [campanasGuardadas, setCampanasElegidas] = useFiltroDeCampanas(usuario?.id)
+  // Las facciones PLEGADAS en la vista clásica (ver CabeceraDeFaccion).
+  const [plegadas, setPlegadas] = useFaccionesPlegadas(usuario?.id)
+  function alternarPlegada(id: number) {
+    const siguiente = new Set(plegadas)
+    if (siguiente.has(id)) siguiente.delete(id)
+    else siguiente.add(id)
+    setPlegadas(siguiente)
+  }
   // SOLO LOS MÍOS: se suma al de facciones, no lo sustituye (los tuyos de los
   // Hombres Bestia). Con memoria, como el de facciones: quien entra a llevar
   // los suyos entra siempre a lo mismo.
@@ -292,12 +339,19 @@ export function PersonajesRenombrePage() {
         <div className="space-y-8">
           {ordenadas.map((faccion) => (
             <section key={faccion.id}>
-              <CabeceraDeFaccion faccion={faccion} cuantos={porFaccion.get(faccion.id)?.length ?? 0} />
+              <CabeceraDeFaccion
+                faccion={faccion}
+                nombre={faccion.name}
+                cuantos={porFaccion.get(faccion.id)?.length ?? 0}
+                plegada={plegadas.has(faccion.id)}
+                onAlternar={() => alternarPlegada(faccion.id)}
+                controla={`renombre-faccion-${faccion.id}`}
+              />
               {/* Una lámina por fila. El contenido de la aplicación va en una
                   columna de 896 px (ver AppShell), así que partirla en dos
                   dejaría el retrato de 160 px con una columna de texto de cuatro
                   palabras de ancho. */}
-              <ul className="space-y-4">
+              <ul id={`renombre-faccion-${faccion.id}`} hidden={plegadas.has(faccion.id)} className="space-y-4">
                 {(porFaccion.get(faccion.id) ?? []).map((p) => (
                   <li key={p.id}>
                     <PersonajeRenombreCard personaje={p} objetos={objetosDe.get(p.id) ?? []} onCambio={recargarTodo} />
@@ -308,22 +362,29 @@ export function PersonajesRenombrePage() {
           ))}
           {huerfanos.length > 0 && (
             <section>
-              <div className="mb-3 flex items-center gap-3">
-                <h2 className="font-display text-xl leading-none font-bold tracking-wide text-ink">
-                  Sin facción reconocible
-                </h2>
-                <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-rule-dark/50 to-transparent" />
+              <CabeceraDeFaccion
+                nombre="Sin facción reconocible"
+                cuantos={huerfanos.length}
+                plegada={plegadas.has(SIN_FACCION)}
+                onAlternar={() => alternarPlegada(SIN_FACCION)}
+                controla="renombre-faccion-ninguna"
+              />
+              <div id="renombre-faccion-ninguna" hidden={plegadas.has(SIN_FACCION)}>
+                <p className="mb-3 text-xs text-ink-soft">
+                  Su facción no aparece en el listado: puede estar desactivada o haberse borrado.
+                </p>
+                <ul className="space-y-4">
+                  {huerfanos.map((p) => (
+                    <li key={p.id}>
+                      <PersonajeRenombreCard
+                        personaje={p}
+                        objetos={objetosDe.get(p.id) ?? []}
+                        onCambio={recargarTodo}
+                      />
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <p className="mb-3 text-xs text-ink-soft">
-                Su facción no aparece en el listado: puede estar desactivada o haberse borrado.
-              </p>
-              <ul className="space-y-4">
-                {huerfanos.map((p) => (
-                  <li key={p.id}>
-                    <PersonajeRenombreCard personaje={p} objetos={objetosDe.get(p.id) ?? []} onCambio={recargarTodo} />
-                  </li>
-                ))}
-              </ul>
             </section>
           )}
         </div>

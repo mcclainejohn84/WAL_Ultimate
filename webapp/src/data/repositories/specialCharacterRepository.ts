@@ -37,13 +37,14 @@
 // despliegue el Worker: una tabla que el snapshot no conoce llegaría vacía y
 // la experiencia parecería borrarse en cuanto se recargara la página.
 // ============================================================================
-import { exec, execCatalog, query } from '@/data/sqlite/client'
+import { exec, execBatch, execCatalog, query } from '@/data/sqlite/client'
+import { queryLocalOne } from '@/data/sqlite/localCatalog'
 import { UnitRepository } from '@/data/repositories/unitRepository'
 import { ChangeLogRepository } from '@/data/repositories/changeLogRepository'
 import { MagicRepository } from '@/data/repositories/magicRepository'
 import { hashDeContenido, imageUrl, uploadImageAtKey } from '@/data/network/images'
 import { getCurrentUser } from '@/shared/session/useSession'
-import { esVisiblePara } from '@/domain/personajeRenombre'
+import { esEditablePor, esVisiblePara } from '@/domain/personajeRenombre'
 import type { UnitSummary } from '@/data/repositories/unitRepository'
 
 /**
@@ -490,6 +491,81 @@ export const SpecialCharacterRepository = {
   /** Se la quita. Tampoco devuelve nada, por lo mismo. */
   async quitarCicatriz(unitId: number, clave: string): Promise<void> {
     await exec('DELETE FROM unit_scars WHERE unit_id = ? AND scar_key = ?', [unitId, clave])
+  },
+
+  /**
+   * REINICIA EL PERSONAJE: lo deja como recién creado en lo que tiene que ver
+   * con su carrera. Se borran su experiencia —el libro de apuntes entero—, sus
+   * habilidades (también las mágicas: habilidades mágicas, saberes y
+   * pergaminos, que viven en la misma tabla) y sus cicatrices, y los objetos
+   * mágicos que lleva vuelven a la Forja SIN reembolso: se pagaron con una
+   * experiencia que ya no existe.
+   *
+   * LAS SENDAS DE MAGIA SE QUEDAN, a petición del usuario. Un personaje copiado
+   * de un hechicero las trae de serie y el programa no guarda de quién se
+   * copió, así que no hay forma de saber cuáles compró y cuáles eran suyas.
+   *
+   * Es la única excepción a que los apuntes de experiencia sean inmutables, y
+   * por eso deja su propio apunte en el Log con lo que había: el libro se
+   * borra, pero no en silencio.
+   *
+   * Solo su autor (ver esEditablePor): la regla se comprueba también aquí y no
+   * solo en la pantalla.
+   */
+  async reiniciar(unitId: number): Promise<void> {
+    const unidad = await queryLocalOne(
+      'SELECT name, user_id, is_special_character FROM units WHERE id = ?',
+      [unitId],
+      (r) => ({
+        nombre: r.name as string,
+        userId: (r.user_id as number) ?? null,
+        isSpecialCharacter: Boolean(r.is_special_character),
+        hidden: false,
+      }),
+    )
+    if (unidad && !esEditablePor(unidad, getCurrentUser()?.id ?? null)) {
+      throw new Error('Este personaje es de otro jugador: solo su autor puede reiniciarlo.')
+    }
+
+    // Lo que había, para el apunte del Log.
+    const [experiencia, habilidades, cicatrices] = await Promise.all([
+      SpecialCharacterRepository.totalExperiencia(unitId).catch(() => 0),
+      SpecialCharacterRepository.listHabilidades(unitId),
+      SpecialCharacterRepository.listCicatrices(unitId),
+    ])
+
+    // Las tres tablas de la carrera van juntas en un lote: o se borran las
+    // tres o ninguna. Los objetos van aparte porque son de catálogo (otra vía).
+    await execBatch([
+      { sql: 'DELETE FROM unit_experience_log WHERE unit_id = ?', params: [unitId] },
+      { sql: 'DELETE FROM unit_skills WHERE unit_id = ?', params: [unitId] },
+      { sql: 'DELETE FROM unit_scars WHERE unit_id = ?', params: [unitId] },
+    ])
+    let objetos = 0
+    try {
+      objetos =
+        (await queryLocalOne(
+          'SELECT COUNT(*) AS n FROM magic_items WHERE unit_id = ?',
+          [unitId],
+          (r) => r.n as number,
+        )) ?? 0
+      if (objetos > 0) await execCatalog('UPDATE magic_items SET unit_id = NULL, cost = 0 WHERE unit_id = ?', [unitId])
+    } catch {
+      // Sin la tabla de la Forja (Worker sin desplegar) no hay objetos que devolver.
+    }
+
+    const partes = [
+      `${experiencia} de experiencia`,
+      `${habilidades.length} ${habilidades.length === 1 ? 'habilidad' : 'habilidades'}`,
+      `${cicatrices.length} ${cicatrices.length === 1 ? 'cicatriz' : 'cicatrices'}`,
+    ]
+    if (objetos > 0) partes.push(`${objetos} ${objetos === 1 ? 'objeto devuelto' : 'objetos devueltos'} a la Forja`)
+    await ChangeLogRepository.record(
+      'personaje',
+      'editar',
+      `Reinició a "${unidad?.nombre ?? `#${unitId}`}" (tenía ${partes.join(', ')})`,
+      unitId,
+    )
   },
 
   /**

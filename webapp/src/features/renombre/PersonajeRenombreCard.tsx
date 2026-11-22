@@ -72,6 +72,7 @@ import {
   PlusIcon,
   StarIcon,
   TrashIcon,
+  UndoIcon,
 } from '@/shared/ui/icons'
 
 /**
@@ -934,6 +935,21 @@ export function ExperienciaModal({
   const [motivo, setMotivo] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** La pregunta de "¿seguro que lo reinicias?" está abierta. */
+  const [reiniciando, setReiniciando] = useState(false)
+
+  async function reiniciar() {
+    setError(null)
+    try {
+      await SpecialCharacterRepository.reiniciar(personaje.id)
+      setReiniciando(false)
+      reload()
+      onApuntado()
+    } catch (err) {
+      setReiniciando(false)
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
 
   // Mientras cargan los apuntes se usa el total que la lámina ya traía, en vez
   // de un 0. Con 0 se veía parpadear "0 / 100" en un personaje veterano y, peor,
@@ -971,9 +987,24 @@ export function ExperienciaModal({
       onClose={onClose}
       widthClassName="max-w-lg"
       footer={
-        <Button variant="ghost" onClick={onClose}>
-          Cerrar
-        </Button>
+        <>
+          {/* REINICIAR va a la izquierda y apartado del "Cerrar", en el tono de
+              lo que borra pero sin gritar: se usa una vez por campaña, y no
+              tiene que estar a mano del clic de cerrar. */}
+          {!soloLectura && (
+            <button
+              type="button"
+              onClick={() => setReiniciando(true)}
+              className="mr-auto inline-flex items-center gap-1.5 rounded-sm px-2 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:bg-maroon/10 hover:text-danger"
+            >
+              <UndoIcon className="h-3.5 w-3.5" />
+              Reiniciar personaje
+            </button>
+          )}
+          <Button variant="ghost" onClick={onClose}>
+            Cerrar
+          </Button>
+        </>
       }
     >
       <div className="space-y-4">
@@ -1038,6 +1069,20 @@ export function ExperienciaModal({
           </ul>
         )}
       </div>
+      {reiniciando && (
+        <ConfirmDialog
+          title={`¿Reiniciar a ${personaje.name}?`}
+          message={
+            'Se borran su experiencia y todo su libro de apuntes, sus habilidades (también las mágicas: ' +
+            'saberes y pergaminos) y sus cicatrices, y los objetos mágicos que lleva vuelven a la Forja sin ' +
+            'reembolso. Sus sendas de magia, su perfil, su retrato y su trasfondo se quedan como están. ' +
+            'No se puede deshacer.'
+          }
+          confirmLabel="Reiniciar personaje"
+          onConfirm={reiniciar}
+          onCancel={() => setReiniciando(false)}
+        />
+      )}
     </Modal>
   )
 }

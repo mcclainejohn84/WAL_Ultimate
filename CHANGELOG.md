@@ -13,6 +13,21 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.222 — 22/11/2026 12:16
+
+- **Vista clásica de Personajes de Renombre: cada facción se pliega.** Se
+  pulsa su cabecera (con la flecha al final de la línea) y quedan solo el
+  nombre y cuántos personajes tiene. Se acuerda de cuáles tienes plegadas.
+- **Reiniciar personaje**, en la ventana de Experiencia, abajo a la
+  izquierda. Pregunta antes de hacer nada y, si se confirma, le borra la
+  experiencia y todo su libro de apuntes, las habilidades (también las
+  mágicas: saberes y pergaminos) y las cicatrices, y devuelve a la Forja los
+  objetos mágicos que llevaba, sin reembolso. Las sendas de magia, el perfil,
+  el retrato y el trasfondo se quedan como están. Solo lo puede hacer su
+  autor, y queda apuntado en el Log con lo que tenía.
+
+---
+
 ## 0.221 — 21/11/2026 20:56
 
 - El icono de **Forja de objetos** es ahora solo tu yunque, sin el martillo ni
