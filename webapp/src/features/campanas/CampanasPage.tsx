@@ -5,11 +5,11 @@
 // nombre, su historia, una imagen y un mapa, y agrupa Personajes de Renombre
 // (eso se decide desde cada personaje, ver CampanasDelPersonaje).
 //
-// CADA CAMPAÑA ES UN FOLIO: la imagen arriba, a sangre, con el nombre encima
-// como en la portada de un suplemento; debajo, quién sale en ella (los
-// retratos en fila) y el arranque de su historia. Sin imagen no queda un
-// hueco: la inicial del nombre en grande, como las placas sin retrato de la
-// galería de personajes.
+// CADA CAMPAÑA ES UNA PLACA, como las de la galería de personajes y cuatro
+// por fila: su escudo (la imagen, CUADRADA) enmarcado arriba, y debajo el
+// nombre, quién sale en ella (los retratos en fila) y el arranque de su
+// historia. Sin escudo, su mapa; sin mapa tampoco, la inicial del nombre en
+// grande, para que no quede un hueco.
 // ============================================================================
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { clsx } from 'clsx'
@@ -37,7 +37,7 @@ import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { ImageIcon, MapaIcon, PencilIcon, PlusIcon, TrashIcon } from '@/shared/ui/icons'
 
 /** Cuántos retratos se enseñan en fila antes del "+N". */
-const RETRATOS_EN_FILA = 6
+const RETRATOS_EN_FILA = 4
 
 async function cargar() {
   const [campanas, personajes, porPersonaje] = await Promise.all([
@@ -104,7 +104,7 @@ export function CampanasPage() {
           }
         />
       ) : (
-        <ul className="grid gap-5 sm:grid-cols-2">
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 lg:grid-cols-4">
           {campanas.map((c, i) => (
             <li key={c.id} className="wh-surgir" style={{ animationDelay: `${Math.min(i, 8) * 45}ms` }}>
               <Folio
@@ -165,121 +165,110 @@ function Folio({
   const portada = campana.imagenUrl ?? campana.mapaUrl
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-sm border border-rule-dark/45 bg-parchment/80 shadow-sm shadow-black/10 transition-[border-color,box-shadow] duration-200 hover:border-bronze/70 hover:shadow-md hover:shadow-black/15">
-      {/* LA PORTADA: imagen a sangre y el nombre encima. Pulsarla abre la edición. */}
+    <article className="group flex h-full flex-col rounded-sm border border-rule-dark/45 bg-parchment/80 p-1.5 shadow-sm shadow-black/10 transition-[border-color,box-shadow,translate] duration-200 hover:-translate-y-0.5 hover:border-bronze/70 hover:shadow-lg hover:shadow-black/15">
+      {/* EL ESCUDO: cuadrado, como su encuadre. Pulsarlo abre la edición. */}
       <button
         type="button"
         onClick={onEditar}
         aria-label={`Editar ${campana.nombre}`}
-        className="relative block aspect-[16/9] w-full overflow-hidden bg-parchment-dark/50 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-bronze/60"
+        className="relative block aspect-square w-full overflow-hidden rounded-[1px] bg-parchment-dark/50 focus-visible:ring-2 focus-visible:ring-bronze/60 focus-visible:outline-none"
       >
         {portada ? (
-          <>
-            <img
-              src={portada}
-              alt=""
-              loading="lazy"
-              className="absolute inset-0 h-full w-full object-cover transition-[scale] duration-500 ease-out group-hover:scale-[1.025]"
-              // Sin imagen de portada se usa el MAPA, envejecido: sigue siendo
-              // de la campaña y no deja la cabecera en blanco.
-              style={campana.imagenUrl ? undefined : { filter: 'sepia(0.55) saturate(0.8) contrast(0.95)' }}
-            />
-            <span
-              aria-hidden
-              className="absolute inset-0"
-              style={{
-                background:
-                  'linear-gradient(to top, rgba(20,14,6,0.82) 0%, rgba(20,14,6,0.35) 38%, transparent 65%), radial-gradient(ellipse at center, transparent 55%, rgba(20,14,6,0.28) 100%)',
-              }}
-            />
-            <h2 className="absolute inset-x-0 bottom-0 px-4 pb-3 font-display text-2xl leading-tight font-bold tracking-wide text-parchment [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
-              {campana.nombre}
-            </h2>
-          </>
+          <img
+            src={portada}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover transition-[scale] duration-500 ease-out group-hover:scale-[1.035]"
+            // Sin escudo se usa el MAPA, envejecido: sigue siendo de la campaña.
+            style={campana.imagenUrl ? undefined : { filter: 'sepia(0.55) saturate(0.8) contrast(0.95)' }}
+          />
         ) : (
           <>
-            {/* Ni imagen ni mapa: una portada de título, con su filete y la
-                inicial en grande, como las placas sin retrato de la galería. */}
-            <span aria-hidden className="absolute inset-2.5 border border-bronze/30" />
-            <span aria-hidden className="absolute inset-3.5 border border-bronze/15" />
+            <span aria-hidden className="absolute inset-2 border border-bronze/30" />
             <span
               aria-hidden
-              className="absolute inset-0 flex items-center justify-center pb-8 font-display text-[7rem] leading-none font-bold text-ink/[0.08] select-none"
+              className="absolute inset-0 flex items-center justify-center font-display text-7xl leading-none font-bold text-ink/[0.12] select-none"
             >
               {campana.nombre.trim().charAt(0).toUpperCase()}
             </span>
-            <h2 className="absolute inset-x-0 bottom-0 px-6 pb-5 text-center font-display text-2xl leading-tight font-bold tracking-wide text-ink">
-              {campana.nombre}
-            </h2>
           </>
         )}
-        <span aria-hidden className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-bronze/25" />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-bronze/30"
+          style={{ boxShadow: 'inset 0 0 14px rgba(20,14,6,0.22)' }}
+        />
       </button>
 
-      <div className="flex flex-1 flex-col gap-3 px-4 pt-3 pb-3">
+      <div className="flex flex-1 flex-col gap-1.5 px-1 pt-2">
+        <h2 className="line-clamp-2 font-display text-[0.98rem] leading-tight font-bold tracking-wide text-ink">
+          {campana.nombre}
+        </h2>
+
         {/* QUIÉN SALE: los retratos en fila y cuántos son. */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {enFila.length > 0 && (
-            <div className="flex -space-x-2">
+            <div className="flex -space-x-1.5">
               {enFila.map((p) => (
                 <span
                   key={p.id}
                   title={p.name}
-                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-parchment-dark ring-2 ring-parchment"
+                  className="inline-flex h-6 w-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-parchment-dark ring-2 ring-parchment"
                 >
                   {p.portraitUrl ? (
                     <img src={p.portraitUrl} alt={p.name} className="h-full w-full object-cover" />
                   ) : (
-                    <span className="font-display text-sm font-bold text-ink/45">{p.name.charAt(0)}</span>
+                    <span className="font-display text-[0.65rem] font-bold text-ink/45">{p.name.charAt(0)}</span>
                   )}
                 </span>
               ))}
               {resto > 0 && (
-                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bronze/15 text-mini font-semibold text-bronze ring-2 ring-parchment tabular-nums">
+                <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-bronze/15 text-[0.6rem] font-semibold text-bronze ring-2 ring-parchment tabular-nums">
                   +{resto}
                 </span>
               )}
             </div>
           )}
-          <span className="text-micro font-semibold tracking-[0.16em] text-ink-soft/75 uppercase tabular-nums">
+          <span className="text-micro font-semibold tracking-[0.14em] text-ink-soft/75 uppercase tabular-nums">
             {ordenados.length === 0
               ? 'Sin personajes'
               : `${ordenados.length} ${ordenados.length === 1 ? 'personaje' : 'personajes'}`}
           </span>
         </div>
 
-        {historia && <p className="line-clamp-3 text-sm leading-relaxed text-ink-soft">{historia}</p>}
+        {historia && <p className="line-clamp-2 text-xs leading-snug text-ink-soft">{historia}</p>}
 
-        <div className="mt-auto flex items-center gap-1 border-t border-rule-dark/20 pt-2">
+        <div className="mt-auto flex items-center gap-0.5 border-t border-rule-dark/20 pt-1">
           {campana.mapaUrl && (
             <a
               href={campana.mapaUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs font-medium text-ink-soft transition-colors hover:bg-bronze/10 hover:text-bronze"
+              title="Ver el mapa"
+              className="inline-flex items-center gap-1 rounded-sm px-1.5 py-1 text-mini font-medium text-ink-soft transition-colors hover:bg-bronze/10 hover:text-bronze"
             >
               <MapaIcon className="h-3.5 w-3.5" />
               Mapa
             </a>
           )}
-          <span className="ml-auto flex items-center gap-0.5">
+          <span className="ml-auto flex items-center">
             <button
               type="button"
               onClick={onEditar}
               aria-label={`Editar ${campana.nombre}`}
               title="Editar"
-              className="rounded-sm p-1.5 text-ink-soft transition-colors hover:bg-bronze/10 hover:text-bronze"
+              className="rounded-sm p-1 text-ink-soft transition-colors hover:bg-bronze/10 hover:text-bronze"
             >
-              <PencilIcon className="h-4 w-4" />
+              <PencilIcon className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
               onClick={onBorrar}
               aria-label={`Borrar ${campana.nombre}`}
               title="Borrar"
-              className="rounded-sm p-1.5 text-ink-soft transition-colors hover:bg-maroon/10 hover:text-danger"
+              className="rounded-sm p-1 text-ink-soft transition-colors hover:bg-maroon/10 hover:text-danger"
             >
-              <TrashIcon className="h-4 w-4" />
+              <TrashIcon className="h-3.5 w-3.5" />
             </button>
           </span>
         </div>
@@ -303,16 +292,16 @@ interface Pendiente {
 }
 
 /**
- * LA IMAGEN DE LA CAMPAÑA SE ENCUADRA, como los retratos: se ve a sangre en la
- * portada de su folio, en 16:9, y una foto casi nunca tiene esa forma. Se
- * arrastra y se amplía dentro de un marco con la misma proporción, y lo que se
+ * LA IMAGEN DE LA CAMPAÑA ES SU ESCUDO, y se encuadra como los retratos: es
+ * CUADRADA, que es como se ve en su placa, y una foto casi nunca tiene esa
+ * forma. Se arrastra y se amplía dentro de un marco cuadrado, y lo que se
  * guarda es justo lo que se ve ahí (ver shared/image#recortarEncuadre).
  *
- * El MAPA no: se guarda entero, porque se abre para leerlo y recortarlo le
- * quitaría justo los bordes.
+ * El MAPA no: se guarda entero y se enseña con SU forma, porque cada mapa
+ * tiene la suya y recortarlo le quitaría justo los bordes.
  */
-const PROPORCION_IMAGEN = 16 / 9
-const TAMANO_IMAGEN = { ancho: 1600, alto: 900 }
+const PROPORCION_IMAGEN = 1
+const TAMANO_IMAGEN = { ancho: 800, alto: 800 }
 
 /**
  * Cómo se prepara cada una. El mapa se deja más grande y con más peso: se
@@ -553,19 +542,31 @@ function RanuraDeImagen({
           de="de la imagen"
         />
       ) : (
-        <div className="rounded-sm border border-rule-dark/45 bg-parchment-dark/25 p-1.5">
+        <div className={clsx('rounded-sm border border-rule-dark/45 bg-parchment-dark/25 p-1.5', !contener && 'w-fit')}>
           <button
             type="button"
             aria-labelledby={id}
             disabled={bloqueado || preparando}
             onClick={() => input.current?.click()}
             className={clsx(
-              'relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-[1px] bg-parchment-dark/45 text-ink-soft/35',
+              // Con imagen, el hueco toma SU forma: el escudo es cuadrado y el
+              // mapa, el que sea (cada uno tiene la suya). Vacío, un cuadrado.
+              'relative flex items-center justify-center overflow-hidden rounded-[1px] bg-parchment-dark/45 text-ink-soft/35',
+              !url && 'aspect-square',
+              // El escudo, del mismo tamaño que su marco de encuadre (14rem).
+              contener ? 'w-full' : 'w-56 max-w-full',
               'transition-colors hover:text-bronze focus-visible:ring-2 focus-visible:ring-bronze/60 focus-visible:outline-none',
             )}
           >
             {url ? (
-              <img src={url} alt="" className={clsx('h-full w-full', contener ? 'object-contain' : 'object-cover')} />
+              <img
+                src={url}
+                alt=""
+                className={clsx(
+                  'block w-full',
+                  contener ? 'h-auto max-h-[22rem] object-contain' : 'aspect-square object-cover',
+                )}
+              />
             ) : preparando ? (
               <span className="text-xs">Preparando…</span>
             ) : (

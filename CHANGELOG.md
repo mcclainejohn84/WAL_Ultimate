@@ -13,6 +13,21 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.229 — 22/11/2026 15:16
+
+- **El escudo (la imagen) de una campaña es cuadrado**: se encuadra en un
+  marco cuadrado, como los retratos, y así se ve en su placa. Las que ya
+  estaban guardadas en 16:9 se ven recortadas al cuadrado; con "Reencuadrar"
+  se pueden ajustar.
+- **El mapa se enseña con su propia forma**, sea apaisado, vertical o
+  cuadrado, en vez de meterlo en un hueco fijo.
+- **La lista de campañas, más compacta**: cuatro por fila en el ordenador
+  (tres o dos en pantallas más estrechas), como las placas de la galería de
+  personajes: el escudo arriba y debajo el nombre, quién sale y el principio
+  de la historia.
+
+---
+
 ## 0.228 — 22/11/2026 15:12
 
 - **Experiencia de una batalla entera**, nuevo botón "Experiencia de batalla"
