@@ -495,22 +495,46 @@ export async function exportArmyListToPdf(
   y = dibujarEtiquetaSeccion(doc, 'Lista de unidades', y + 3, familiaTitulares, paleta)
 
   /**
+   * DÓNDE ACABÓ LO ÚLTIMO QUE SE DIBUJÓ: la página y la altura. Es lo que
+   * mira cada sección para saber dónde empezar.
+   *
+   * Antes se preguntaba al plugin de tablas por el final de SU última tabla,
+   * y eso solo vale si lo último fue una tabla. Los personajes de renombre
+   * escriben a mano su nombre y su línea de rango/sendas, y un personaje sin
+   * habilidades ni cicatrices no lleva tabla: la sección siguiente arrancaba
+   * donde había acabado la tabla de antes, y se imprimía ENCIMA de lo
+   * escrito a mano. Ahora cada tabla (ver `tabla`) y cada sección que escribe
+   * a mano apuntan aquí dónde se quedaron.
+   */
+  let cursor = { pagina: 1, y }
+  const paginaActual = () => doc.getCurrentPageInfo().pageNumber
+  function apuntarFin(yFin: number) {
+    cursor = { pagina: paginaActual(), y: yFin }
+  }
+  /** autoTable, y apunta dónde ha acabado (que puede ser varias páginas más abajo). */
+  function tabla(opciones: Parameters<typeof autoTable>[1]) {
+    autoTable(doc, opciones)
+    apuntarFin((doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? cursor.y)
+  }
+
+  /**
    * Abre una sección: mira dónde acabó lo último que se dibujó, salta de
    * página si ahí no cabe ni el rótulo, y pinta la etiqueta.
    *
-   * Antes cada sección encadenaba a mano con la `y` de la anterior. Con los
-   * interruptores de impresión eso dejó de valer: la sección anterior puede no
-   * haberse dibujado, y entonces esa `y` no existe o apunta a un sitio que no
-   * es. Preguntando por el final de la ÚLTIMA tabla da igual cuáles se hayan
-   * quedado por el camino.
+   * Con `hojaNueva` empieza siempre en una página aparte, arriba del todo: es
+   * lo que hacen los apéndices, que van al final y se leen por separado.
    */
-  function abrirSeccion(titulo: string): number {
-    let desde = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y
-    if (desde + ALTURA_MINIMA > doc.internal.pageSize.getHeight() - ALTURA_PIE) {
+  function abrirSeccion(titulo: string, { hojaNueva = false }: { hojaNueva?: boolean } = {}): number {
+    // Si lo último quedó en una página anterior (no debería), se empieza
+    // arriba de la actual: nunca encima de algo.
+    let desde = cursor.pagina === paginaActual() ? cursor.y : 26
+    if (hojaNueva || desde + ALTURA_MINIMA > doc.internal.pageSize.getHeight() - ALTURA_PIE) {
       doc.addPage()
       desde = 26
     }
-    return dibujarEtiquetaSeccion(doc, titulo, desde + 8, familiaTitulares, paleta)
+    const yTitulo = dibujarEtiquetaSeccion(doc, titulo, desde + 8, familiaTitulares, paleta)
+    apuntarFin(yTitulo)
+    return yTitulo
   }
 
   // --- Tabla 1: Lista de unidades. ---
@@ -545,7 +569,7 @@ export async function exportArmyListToPdf(
         ],
       ]
 
-  autoTable(doc, {
+  tabla({
     startY: y,
     margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
     head: [['Nº', 'TROPA', 'EQUIPO', 'OPCIONES', 'P', 'M', 'C', 'COSTE']],
@@ -642,7 +666,7 @@ export async function exportArmyListToPdf(
         ],
       ]
 
-  autoTable(doc, {
+  tabla({
     startY: y2,
     margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
     head: [['UNIDAD', 'M', 'HA', 'HP', 'F', 'R', 'H', 'I', 'A', 'L', 'REGLAS ESPECIALES']],
@@ -718,7 +742,7 @@ export async function exportArmyListToPdf(
           ],
         ]
 
-    autoTable(doc, {
+    tabla({
       startY: y3,
       margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
       head: [['REGLA', 'DESCRIPCIÓN']],
@@ -824,7 +848,7 @@ export async function exportArmyListToPdf(
         for (const h of hechizos) filas.push(filaHechizo(h))
       }
 
-      autoTable(doc, {
+      tabla({
         startY: yMagia,
         margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
         head: [['NV', 'HECHIZO', 'DIF.', 'ALCANCE', 'IMPACTOS', 'DAÑO', 'PERM.', 'DÓNDE', 'REGLAS']],
@@ -877,6 +901,7 @@ export async function exportArmyListToPdf(
 
       yMagia = ((doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? yMagia) + 6
     }
+    apuntarFin(yMagia)
   }
 
   // --- Sección 5: Personajes de renombre, al final del todo. ---
@@ -1005,7 +1030,7 @@ export async function exportArmyListToPdf(
         apartado('Cicatrices', ficha.cicatrices)
 
         if (filas.length > 0) {
-          autoTable(doc, {
+          tabla({
             startY: yRenombre,
             margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
             head: [['REGLA', 'DESCRIPCIÓN']],
@@ -1055,6 +1080,8 @@ export async function exportArmyListToPdf(
         } else {
           yRenombre += 4
         }
+        // Escrito a mano o con tabla, lo último del personaje acaba aquí.
+        apuntarFin(yRenombre)
       }
     }
   }
@@ -1099,7 +1126,7 @@ export async function exportArmyListToPdf(
           }
         }
 
-        autoTable(doc, {
+        tabla({
           startY: yObjetos,
           margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
           head: [['OBJETO', 'QUÉ LLEVA']],
@@ -1192,14 +1219,17 @@ export async function exportArmyListToPdf(
         .sort((a, b) => DUENOS.indexOf(a.kind) - DUENOS.indexOf(b.kind) || a.nombre.localeCompare(b.nombre, 'es'))
 
       if (grupos.length > 0) {
-        const yApendices = abrirSeccion('Apéndices y reglas adicionales')
+        // SIEMPRE AL FINAL Y EN UNA HOJA APARTE: son texto largo que se lee
+        // por separado de la lista, y empezar a media página detrás de lo que
+        // fuera los dejaba pegados a los personajes.
+        const yApendices = abrirSeccion('Apéndices y reglas adicionales', { hojaNueva: true })
         const filas: (string | { content: string; colSpan: number })[][] = []
         for (const grupo of grupos) {
           filas.push([{ content: `${ETIQUETAS_DE_DUENO[grupo.kind]} · ${grupo.nombre}`.toUpperCase(), colSpan: 2 }])
           for (const apendice of grupo.suyos) filas.push([apendice.title, textoDeApendice(apendice.bodyHtml)])
         }
 
-        autoTable(doc, {
+        tabla({
           startY: yApendices,
           margin: { top: 26, bottom: ALTURA_PIE, left: MARGEN, right: MARGEN },
           head: [['APÉNDICE', 'TEXTO']],

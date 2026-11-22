@@ -13,6 +13,19 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.223 — 22/11/2026 12:25
+
+- **Hoja de ejército: los apéndices ya no se imprimen encima de los
+  personajes de renombre.** Pasaba cuando el último personaje solo tenía
+  rango (sin habilidades ni cicatrices): lo que venía detrás —los objetos
+  mágicos o los apéndices— empezaba donde había acabado la tabla del
+  personaje anterior y se montaba encima de él. Ahora cada sección empieza
+  donde de verdad acabó lo último que se imprimió.
+- **Los apéndices van siempre al final y en una hoja aparte**, empezando
+  arriba del todo.
+
+---
+
 ## 0.222 — 22/11/2026 12:16
 
 - **Vista clásica de Personajes de Renombre: cada facción se pliega.** Se
