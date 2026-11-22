@@ -563,17 +563,43 @@ export const ZOOM_RETRATO_MIN = 1
 export const ZOOM_RETRATO_MAX = 4
 
 /**
- * Cuánto ocupa la foto dentro del cuadro, en fracciones del lado, para un zoom
- * dado. Con zoom 1 el lado mayor mide exactamente 1 (cabe justo).
+ * Cuánto ocupa la foto dentro del marco, para un zoom dado. Con zoom 1 la foto
+ * entera cabe justo dentro.
+ *
+ * EL MARCO NO TIENE POR QUÉ SER CUADRADO: `marco` es su proporción (ancho /
+ * alto; 1 en los retratos, 16/9 en la imagen de una campaña). Todo va en
+ * fracciones del ANCHO del marco, también lo vertical: así el marco mide 1 de
+ * ancho y 1/marco de alto, y con marco 1 las cuentas son las de siempre.
  */
 export function medidasDelEncuadre(
   anchoOriginal: number,
   altoOriginal: number,
   zoom: number,
+  marco = 1,
 ): { fw: number; fh: number } {
-  if (anchoOriginal <= 0 || altoOriginal <= 0) return { fw: zoom, fh: zoom }
+  if (anchoOriginal <= 0 || altoOriginal <= 0) return { fw: zoom, fh: zoom / marco }
   const proporcion = anchoOriginal / altoOriginal
-  return proporcion >= 1 ? { fw: zoom, fh: zoom / proporcion } : { fw: zoom * proporcion, fh: zoom }
+  return proporcion >= marco
+    ? { fw: zoom, fh: zoom / proporcion }
+    : { fw: (zoom * proporcion) / marco, fh: zoom / marco }
+}
+
+/**
+ * El zoom con el que la foto CUBRE el marco entero, sin franjas: es con el que
+ * nace el encuadre de una imagen que se ve a sangre (la de una campaña).
+ */
+export function zoomParaCubrir(anchoOriginal: number, altoOriginal: number, marco = 1): number {
+  if (anchoOriginal <= 0 || altoOriginal <= 0) return 1
+  const proporcion = anchoOriginal / altoOriginal
+  return Math.max(proporcion / marco, marco / proporcion)
+}
+
+/**
+ * Hasta dónde se puede ampliar: lo de siempre, salvo que una foto muy
+ * apaisada necesite más solo para cubrir el marco; entonces, el doble de eso.
+ */
+export function zoomMaximo(anchoOriginal: number, altoOriginal: number, marco = 1): number {
+  return Math.max(ZOOM_RETRATO_MAX, zoomParaCubrir(anchoOriginal, altoOriginal, marco) * 2)
 }
 
 /**
@@ -588,11 +614,12 @@ export function limitarEncuadre(
   encuadre: EncuadreRetrato,
   anchoOriginal: number,
   altoOriginal: number,
+  marco = 1,
 ): EncuadreRetrato {
-  const zoom = Math.min(ZOOM_RETRATO_MAX, Math.max(ZOOM_RETRATO_MIN, encuadre.zoom))
-  const { fw, fh } = medidasDelEncuadre(anchoOriginal, altoOriginal, zoom)
+  const zoom = Math.min(zoomMaximo(anchoOriginal, altoOriginal, marco), Math.max(ZOOM_RETRATO_MIN, encuadre.zoom))
+  const { fw, fh } = medidasDelEncuadre(anchoOriginal, altoOriginal, zoom, marco)
   const maxX = Math.abs(fw - 1) / 2
-  const maxY = Math.abs(fh - 1) / 2
+  const maxY = Math.abs(fh - 1 / marco) / 2
   return {
     zoom,
     x: Math.min(maxX, Math.max(-maxX, encuadre.x)),
@@ -613,19 +640,35 @@ export async function recortarRetrato(
   mime: string,
   encuadre: EncuadreRetrato,
 ): Promise<ResizedImage> {
+  return recortarEncuadre(bytes, mime, encuadre, { ancho: LADO_RETRATO, alto: LADO_RETRATO })
+}
+
+/**
+ * Lo mismo para un marco de cualquier proporción: aplica el encuadre y
+ * devuelve la imagen de `ancho` × `alto`, lista para subir. La proporción del
+ * marco sale de esas dos medidas.
+ */
+export async function recortarEncuadre(
+  bytes: Uint8Array,
+  mime: string,
+  encuadre: EncuadreRetrato,
+  tamano: { ancho: number; alto: number },
+): Promise<ResizedImage> {
   const buffer = new ArrayBuffer(bytes.byteLength)
   new Uint8Array(buffer).set(bytes)
-  const archivo = new File([buffer], 'retrato', { type: mime || 'image/webp' })
+  const archivo = new File([buffer], 'encuadre', { type: mime || 'image/webp' })
   const { source, width, height } = await decodeImage(archivo)
   try {
-    const L = LADO_RETRATO
-    const { canvas, ctx } = lienzoDeTrabajo(L, L)
-    const seguro = limitarEncuadre(encuadre, width, height)
-    const { fw, fh } = medidasDelEncuadre(width, height, seguro.zoom)
+    const L = tamano.ancho
+    const marco = tamano.ancho / tamano.alto
+    const { canvas, ctx } = lienzoDeTrabajo(tamano.ancho, tamano.alto)
+    const seguro = limitarEncuadre(encuadre, width, height, marco)
+    const { fw, fh } = medidasDelEncuadre(width, height, seguro.zoom, marco)
+    // Todo en fracciones del ANCHO del marco (ver medidasDelEncuadre).
     const anchoDibujo = fw * L
     const altoDibujo = fh * L
     const izquierda = (L - anchoDibujo) / 2 + seguro.x * L
-    const arriba = (L - altoDibujo) / 2 + seguro.y * L
+    const arriba = (tamano.alto - altoDibujo) / 2 + seguro.y * L
     ctx.drawImage(source, izquierda, arriba, anchoDibujo, altoDibujo)
     // WebP conserva el canal alfa Y comprime con pérdida; si el navegador no lo
     // soporta se cae a PNG, que también es transparente aunque pese más (JPEG

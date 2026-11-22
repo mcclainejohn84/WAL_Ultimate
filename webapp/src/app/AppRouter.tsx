@@ -7,7 +7,7 @@ import { RulesListPage } from '@/features/admin/rules/RulesListPage'
 import { UnitsListPage } from '@/features/admin/units/UnitsListPage'
 import { PersonajesRenombrePage } from '@/features/renombre/PersonajesRenombrePage'
 import { FichaDeRenombrePage } from '@/features/renombre/avanzada/FichaDeRenombrePage'
-import { CampanasPage } from '@/features/admin/campaigns/CampanasPage'
+import { CampanasPage } from '@/features/campanas/CampanasPage'
 import { ForjaPage } from '@/features/forja/ForjaPage'
 import { ObjetosMagicosPage } from '@/features/admin/objetos/ObjetosMagicosPage'
 import { UnitDetailPage } from '@/features/admin/units/UnitDetailPage'
@@ -123,14 +123,8 @@ const router = createHashRouter([
           </AdminOnly>
         ),
       },
-      {
-        path: '/admin/campanas',
-        element: (
-          <AdminOnly>
-            <CampanasPage />
-          </AdminOnly>
-        ),
-      },
+      // Las campañas vivieron en el Editor; ahora están con Batallas y Mapas.
+      { path: '/admin/campanas', element: <Navigate to="/campanas" replace /> },
       {
         path: '/admin/apendices',
         element: (
@@ -233,6 +227,12 @@ const router = createHashRouter([
       {
         path: '/mapas',
         element: <MapsListPage />,
+      },
+      {
+        // CAMPAÑAS, junto a Batallas y Mapas y sin AdminOnly: son del grupo,
+        // como los mapas, y las lleva quien juega (ver CampanasPage).
+        path: '/campanas',
+        element: <CampanasPage />,
       },
       {
         path: '/mapas/:id',

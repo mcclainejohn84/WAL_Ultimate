@@ -13,6 +13,20 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.226 — 22/11/2026 14:54
+
+- **La imagen de una campaña se encuadra**, como los retratos: al elegirla
+  aparece en un marco con la forma de la portada de su ficha (16:9), cubriéndolo
+  entero, y se arrastra para moverla y se amplía con la rueda o la barra. Lo
+  que se ve en el marco es lo que se guarda. "Centrar" vuelve al encuadre de
+  partida, y en una campaña que ya tiene imagen, "Reencuadrar" la vuelve a
+  abrir en el marco. El mapa se sigue guardando entero.
+- **Campañas sale del Editor** y pasa a la barra principal, junto a Batallas
+  y Mapas. Ya no hace falta el modo administrador para crearlas, editarlas o
+  borrarlas. El enlace antiguo lleva a la nueva.
+
+---
+
 ## 0.225 — 22/11/2026 13:47
 
 - La hoja de **experiencia de batalla**, más compacta: más ancha, con la tabla

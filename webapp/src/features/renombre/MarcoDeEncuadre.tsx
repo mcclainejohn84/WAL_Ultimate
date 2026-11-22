@@ -15,13 +15,7 @@
 // ============================================================================
 import { useEffect, useRef, useState } from 'react'
 import { clsx } from 'clsx'
-import {
-  limitarEncuadre,
-  medidasDelEncuadre,
-  ZOOM_RETRATO_MAX,
-  ZOOM_RETRATO_MIN,
-  type EncuadreRetrato,
-} from '@/shared/image'
+import { limitarEncuadre, medidasDelEncuadre, zoomMaximo, ZOOM_RETRATO_MIN, type EncuadreRetrato } from '@/shared/image'
 
 interface MarcoDeEncuadreProps {
   /** URL de la imagen de trabajo (la ya preparada, con el fondo quitado). */
@@ -31,18 +25,35 @@ interface MarcoDeEncuadreProps {
   alto: number
   encuadre: EncuadreRetrato
   onChange: (encuadre: EncuadreRetrato) => void
+  /**
+   * Proporción del marco (ancho / alto). 1 —cuadrado— en los retratos; la
+   * imagen de una campaña va en 16/9, que es como se ve en su folio.
+   */
+  proporcion?: number
+  /** De qué es el encuadre, para leerlo en voz alta: "del retrato", "de la imagen". */
+  de?: string
 }
 
-export function MarcoDeEncuadre({ url, ancho, alto, encuadre, onChange }: MarcoDeEncuadreProps) {
+export function MarcoDeEncuadre({
+  url,
+  ancho,
+  alto,
+  encuadre,
+  onChange,
+  proporcion = 1,
+  de = 'del retrato',
+}: MarcoDeEncuadreProps) {
   const cuadroRef = useRef<HTMLDivElement>(null)
   const [arrastrando, setArrastrando] = useState(false)
   // Punto donde se agarró y encuadre en ese momento. Se guarda en una ref y no
   // en el estado: cambia en cada `pointermove` y no tiene que repintar nada.
   const agarre = useRef<{ px: number; py: number; x: number; y: number } | null>(null)
 
-  const { fw, fh } = medidasDelEncuadre(ancho, alto, encuadre.zoom)
+  // En fracciones del ANCHO del marco, también lo vertical (ver medidasDelEncuadre).
+  const { fw, fh } = medidasDelEncuadre(ancho, alto, encuadre.zoom, proporcion)
+  const maximo = zoomMaximo(ancho, alto, proporcion)
 
-  /** Lado del cuadro en pantalla. Hace falta para pasar píxeles de ratón a fracciones. */
+  /** Ancho del marco en pantalla. Hace falta para pasar píxeles de ratón a fracciones. */
   function ladoEnPantalla(): number {
     return cuadroRef.current?.getBoundingClientRect().width ?? 1
   }
@@ -67,6 +78,7 @@ export function MarcoDeEncuadre({ url, ancho, alto, encuadre, onChange }: MarcoD
         },
         ancho,
         alto,
+        proporcion,
       ),
     )
   }
@@ -78,7 +90,7 @@ export function MarcoDeEncuadre({ url, ancho, alto, encuadre, onChange }: MarcoD
   }
 
   function cambiarZoom(zoom: number) {
-    onChange(limitarEncuadre({ ...encuadre, zoom }, ancho, alto))
+    onChange(limitarEncuadre({ ...encuadre, zoom }, ancho, alto, proporcion))
   }
 
   // La rueda se escucha a mano y NO con `onWheel` de React, que registra el
@@ -104,11 +116,13 @@ export function MarcoDeEncuadre({ url, ancho, alto, encuadre, onChange }: MarcoD
         onPointerUp={alSoltarPuntero}
         onPointerCancel={alSoltarPuntero}
         className={clsx(
-          'relative h-56 w-56 shrink-0 touch-none overflow-hidden rounded-sm border border-rule-dark/50 bg-parchment-dark/40 select-none',
+          'relative shrink-0 touch-none overflow-hidden rounded-sm border border-rule-dark/50 bg-parchment-dark/40 select-none',
+          proporcion === 1 ? 'h-56 w-56' : 'w-full',
           arrastrando ? 'cursor-grabbing' : 'cursor-grab',
         )}
+        style={proporcion === 1 ? undefined : { aspectRatio: String(proporcion) }}
         role="application"
-        aria-label="Encuadre del retrato: arrastra para mover, rueda para ampliar"
+        aria-label={`Encuadre ${de}: arrastra para mover, rueda para ampliar`}
       >
         <img
           src={url}
@@ -116,10 +130,12 @@ export function MarcoDeEncuadre({ url, ancho, alto, encuadre, onChange }: MarcoD
           draggable={false}
           className="pointer-events-none absolute max-w-none"
           style={{
+            // Lo vertical va en fracciones del ANCHO: se pasa a porcentaje
+            // del alto multiplicando por la proporción.
             width: `${fw * 100}%`,
-            height: `${fh * 100}%`,
+            height: `${fh * proporcion * 100}%`,
             left: `${(0.5 - fw / 2 + encuadre.x) * 100}%`,
-            top: `${(0.5 - fh / 2 + encuadre.y) * 100}%`,
+            top: `${(0.5 - (fh / 2 - encuadre.y) * proporcion) * 100}%`,
           }}
         />
         {/* Guías en tercios, solo mientras se arrastra: ayudan a centrar la
@@ -145,11 +161,11 @@ export function MarcoDeEncuadre({ url, ancho, alto, encuadre, onChange }: MarcoD
           type="range"
           className="w-40 accent-maroon"
           min={ZOOM_RETRATO_MIN}
-          max={ZOOM_RETRATO_MAX}
+          max={maximo}
           step={0.01}
           value={encuadre.zoom}
           onChange={(e) => cambiarZoom(Number(e.target.value))}
-          aria-label="Ampliar el retrato"
+          aria-label={`Ampliar ${de === 'del retrato' ? 'el retrato' : 'la imagen'}`}
         />
         <span className="w-10 shrink-0 text-mini tabular-nums text-ink-soft">{encuadre.zoom.toFixed(1)}×</span>
       </label>

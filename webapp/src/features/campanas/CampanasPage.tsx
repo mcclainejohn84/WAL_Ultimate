@@ -1,5 +1,7 @@
 // ============================================================================
-// "Campañas" (Editor): se crean, se editan y se borran. Cada una tiene su
+// "Campañas", junto a Batallas y Mapas (empezó en el Editor y se sacó de ahí
+// a petición del usuario: las campañas son de quien juega, no del catálogo).
+// Se crean, se editan y se borran. Cada una tiene su
 // nombre, su historia, una imagen y un mapa, y agrupa Personajes de Renombre
 // (eso se decide desde cada personaje, ver CampanasDelPersonaje).
 //
@@ -14,7 +16,15 @@ import { clsx } from 'clsx'
 import { CampaignRepository, type Campana, type ImagenDeCampana } from '@/data/repositories/campaignRepository'
 import { SpecialCharacterRepository, type PersonajeEspecial } from '@/data/repositories/specialCharacterRepository'
 import { useAsync } from '@/shared/hooks/useAsync'
-import { compressImageFile } from '@/shared/image'
+import {
+  compressImageFile,
+  descargarImagenComoBytes,
+  medirImagen,
+  recortarEncuadre,
+  zoomParaCubrir,
+  type EncuadreRetrato,
+} from '@/shared/image'
+import { MarcoDeEncuadre } from '@/features/renombre/MarcoDeEncuadre'
 import { aTextoPlano, tieneTexto } from '@/shared/richText'
 import { PageHeader } from '@/shared/ui/PageHeader'
 import { Button } from '@/shared/ui/Button'
@@ -287,14 +297,31 @@ interface Pendiente {
   bytes: Uint8Array
   mime: string
   url: string
+  /** Sus medidas: las necesita el encuadre para saber cuánto ocupa en el marco. */
+  ancho: number
+  alto: number
 }
+
+/**
+ * LA IMAGEN DE LA CAMPAÑA SE ENCUADRA, como los retratos: se ve a sangre en la
+ * portada de su folio, en 16:9, y una foto casi nunca tiene esa forma. Se
+ * arrastra y se amplía dentro de un marco con la misma proporción, y lo que se
+ * guarda es justo lo que se ve ahí (ver shared/image#recortarEncuadre).
+ *
+ * El MAPA no: se guarda entero, porque se abre para leerlo y recortarlo le
+ * quitaría justo los bordes.
+ */
+const PROPORCION_IMAGEN = 16 / 9
+const TAMANO_IMAGEN = { ancho: 1600, alto: 900 }
 
 /**
  * Cómo se prepara cada una. El mapa se deja más grande y con más peso: se
  * mira para leerlo, y a 1600 px los rótulos de un mapa dibujado ya no se leen.
  */
 const PREPARACION: Record<ImagenDeCampana, { maxSize: number; maxBytes?: number }> = {
-  imagen: { maxSize: 1600 },
+  // Más grande que lo que se guarda: así se puede ampliar al encuadrar sin
+  // que el recorte salga borroso.
+  imagen: { maxSize: 2400 },
   mapa: { maxSize: 2600, maxBytes: 1500 * 1024 },
 }
 
@@ -312,6 +339,8 @@ function EditorDeCampana({
   const [pendientes, setPendientes] = useState<Partial<Record<ImagenDeCampana, Pendiente>>>({})
   const [quitar, setQuitar] = useState<Partial<Record<ImagenDeCampana, boolean>>>({})
   const [preparando, setPreparando] = useState<ImagenDeCampana | null>(null)
+  /** El encuadre de la imagen que se está colocando (solo con una imagen nueva o reencuadrándose). */
+  const [encuadre, setEncuadre] = useState<EncuadreRetrato | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -319,18 +348,46 @@ function EditorDeCampana({
   const urls = useRef<string[]>([])
   useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), [])
 
+  /** Deja una imagen lista para guardar (y, si es la de portada, para encuadrar). */
+  async function ponerPendiente(cual: ImagenDeCampana, bytes: Uint8Array, mime: string) {
+    const buffer = new ArrayBuffer(bytes.byteLength)
+    new Uint8Array(buffer).set(bytes)
+    const url = URL.createObjectURL(new Blob([buffer], { type: mime }))
+    urls.current.push(url)
+    const medidas = (await medirImagen(bytes, mime)) ?? { ancho: 0, alto: 0 }
+    setPendientes((p) => ({ ...p, [cual]: { bytes, mime, url, ...medidas } }))
+    setQuitar((q) => ({ ...q, [cual]: false }))
+    // Nace CUBRIENDO el marco, sin franjas: es como se ve en la portada.
+    if (cual === 'imagen')
+      setEncuadre({ zoom: zoomParaCubrir(medidas.ancho, medidas.alto, PROPORCION_IMAGEN), x: 0, y: 0 })
+  }
+
   async function elegir(cual: ImagenDeCampana, file: File | undefined) {
     if (!file) return
     setPreparando(cual)
     setError(null)
     try {
       const lista = await compressImageFile(file, { ...PREPARACION[cual], keepAlpha: false })
-      const buffer = new ArrayBuffer(lista.bytes.byteLength)
-      new Uint8Array(buffer).set(lista.bytes)
-      const url = URL.createObjectURL(new Blob([buffer], { type: lista.mime }))
-      urls.current.push(url)
-      setPendientes((p) => ({ ...p, [cual]: { bytes: lista.bytes, mime: lista.mime, url } }))
-      setQuitar((q) => ({ ...q, [cual]: false }))
+      await ponerPendiente(cual, lista.bytes, lista.mime)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setPreparando(null)
+    }
+  }
+
+  /**
+   * Reencuadrar la imagen que ya tiene. Se parte de la guardada, que ya está
+   * recortada: vale para retocar el encuadre; para un cambio grande sale mejor
+   * volver a elegir la original (igual que en los retratos).
+   */
+  async function reencuadrar() {
+    if (!campana?.imagenUrl) return
+    setPreparando('imagen')
+    setError(null)
+    try {
+      const { bytes, mime } = await descargarImagenComoBytes(campana.imagenUrl)
+      await ponerPendiente('imagen', bytes, mime)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -341,6 +398,7 @@ function EditorDeCampana({
   function quitarImagen(cual: ImagenDeCampana) {
     setPendientes((p) => ({ ...p, [cual]: undefined }))
     setQuitar((q) => ({ ...q, [cual]: true }))
+    if (cual === 'imagen') setEncuadre(null)
   }
 
   async function guardar() {
@@ -353,7 +411,11 @@ function EditorDeCampana({
       else await CampaignRepository.update(id, datos)
       for (const cual of ['imagen', 'mapa'] as const) {
         const nueva = pendientes[cual]
-        if (nueva) await CampaignRepository.setImagen(id, cual, nueva.bytes, nueva.mime)
+        if (nueva && cual === 'imagen' && encuadre) {
+          // El encuadre se aplica AQUÍ: lo que sube es ya la portada definitiva.
+          const recortada = await recortarEncuadre(nueva.bytes, nueva.mime, encuadre, TAMANO_IMAGEN)
+          await CampaignRepository.setImagen(id, cual, recortada.bytes, recortada.mime)
+        } else if (nueva) await CampaignRepository.setImagen(id, cual, nueva.bytes, nueva.mime)
         else if (quitar[cual]) await CampaignRepository.quitarImagen(id, cual)
       }
       onGuardado()
@@ -400,6 +462,22 @@ function EditorDeCampana({
             bloqueado={guardando}
             onElegir={(f) => void elegir('imagen', f)}
             onQuitar={() => quitarImagen('imagen')}
+            encuadrando={
+              pendientes.imagen && encuadre
+                ? {
+                    fuente: pendientes.imagen,
+                    encuadre,
+                    onChange: setEncuadre,
+                    onCentrar: () =>
+                      setEncuadre({
+                        zoom: zoomParaCubrir(pendientes.imagen!.ancho, pendientes.imagen!.alto, PROPORCION_IMAGEN),
+                        x: 0,
+                        y: 0,
+                      }),
+                  }
+                : null
+            }
+            onReencuadrar={campana?.imagenUrl && !pendientes.imagen && !quitar.imagen ? () => void reencuadrar() : null}
           />
           <RanuraDeImagen
             etiqueta="Mapa"
@@ -432,6 +510,8 @@ function RanuraDeImagen({
   bloqueado,
   onElegir,
   onQuitar,
+  encuadrando = null,
+  onReencuadrar = null,
 }: {
   etiqueta: string
   icono: ReactNode
@@ -444,6 +524,15 @@ function RanuraDeImagen({
   bloqueado: boolean
   onElegir: (file: File | undefined) => void
   onQuitar: () => void
+  /** Con una imagen nueva de portada: el marco para encuadrarla en vez de la vista previa. */
+  encuadrando?: {
+    fuente: Pendiente
+    encuadre: EncuadreRetrato
+    onChange: (e: EncuadreRetrato) => void
+    onCentrar: () => void
+  } | null
+  /** Reencuadrar la que ya está guardada. */
+  onReencuadrar?: (() => void) | null
 }) {
   const input = useRef<HTMLInputElement>(null)
   const id = useMemo(() => `ranura-${etiqueta.toLowerCase()}`, [etiqueta])
@@ -452,31 +541,59 @@ function RanuraDeImagen({
       <span id={id} className="mb-1 block text-xs font-medium text-ink-soft">
         {etiqueta}
       </span>
-      <div className="rounded-sm border border-rule-dark/45 bg-parchment-dark/25 p-1.5">
-        <button
-          type="button"
-          aria-labelledby={id}
-          disabled={bloqueado || preparando}
-          onClick={() => input.current?.click()}
-          className={clsx(
-            'relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-[1px] bg-parchment-dark/45 text-ink-soft/35',
-            'transition-colors hover:text-bronze focus-visible:ring-2 focus-visible:ring-bronze/60 focus-visible:outline-none',
-          )}
-        >
-          {url ? (
-            <img src={url} alt="" className={clsx('h-full w-full', contener ? 'object-contain' : 'object-cover')} />
-          ) : preparando ? (
-            <span className="text-xs">Preparando…</span>
-          ) : (
-            icono
-          )}
-          <span aria-hidden className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-bronze/25" />
-        </button>
-      </div>
+      {encuadrando ? (
+        // LO QUE SE VE EN EL MARCO ES LO QUE SE GUARDA (ver MarcoDeEncuadre).
+        <MarcoDeEncuadre
+          url={encuadrando.fuente.url}
+          ancho={encuadrando.fuente.ancho}
+          alto={encuadrando.fuente.alto}
+          encuadre={encuadrando.encuadre}
+          onChange={encuadrando.onChange}
+          proporcion={PROPORCION_IMAGEN}
+          de="de la imagen"
+        />
+      ) : (
+        <div className="rounded-sm border border-rule-dark/45 bg-parchment-dark/25 p-1.5">
+          <button
+            type="button"
+            aria-labelledby={id}
+            disabled={bloqueado || preparando}
+            onClick={() => input.current?.click()}
+            className={clsx(
+              'relative flex aspect-[16/10] w-full items-center justify-center overflow-hidden rounded-[1px] bg-parchment-dark/45 text-ink-soft/35',
+              'transition-colors hover:text-bronze focus-visible:ring-2 focus-visible:ring-bronze/60 focus-visible:outline-none',
+            )}
+          >
+            {url ? (
+              <img src={url} alt="" className={clsx('h-full w-full', contener ? 'object-contain' : 'object-cover')} />
+            ) : preparando ? (
+              <span className="text-xs">Preparando…</span>
+            ) : (
+              icono
+            )}
+            <span aria-hidden className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-bronze/25" />
+          </button>
+        </div>
+      )}
       <div className="mt-1.5 flex flex-wrap items-center gap-1">
         <Button variant="secondary" disabled={bloqueado || preparando} onClick={() => input.current?.click()}>
           {preparando ? 'Preparando…' : url ? 'Cambiar' : 'Elegir'}
         </Button>
+        {onReencuadrar && (
+          <Button variant="secondary" disabled={bloqueado || preparando} onClick={onReencuadrar}>
+            Reencuadrar
+          </Button>
+        )}
+        {encuadrando && (
+          <Button
+            variant="ghost"
+            disabled={bloqueado}
+            onClick={encuadrando.onCentrar}
+            title="Vuelve al encuadre de partida: la imagen cubriendo el marco, centrada"
+          >
+            Centrar
+          </Button>
+        )}
         {url && (
           <Button variant="ghost" disabled={bloqueado || preparando} onClick={onQuitar}>
             Quitar
