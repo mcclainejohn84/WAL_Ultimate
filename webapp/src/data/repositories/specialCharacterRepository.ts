@@ -48,11 +48,11 @@ import { esEditablePor, esVisiblePara } from '@/domain/personajeRenombre'
 import type { UnitSummary } from '@/data/repositories/unitRepository'
 
 /**
- * Tope de experiencia, tal y como se pidió: una escala de 1 a 100. Sumar por
+ * Tope de experiencia, tal y como se pidió: una escala de 1 a 200 (era 100). Sumar por
  * encima no se rechaza en la base —el apunte es histórico y no queremos perder
  * lo que pasó en una partida—, pero la interfaz avisa antes de pasarse.
  */
-export const EXPERIENCIA_MAXIMA = 100
+export const EXPERIENCIA_MAXIMA = 200
 
 /** Un apunte del libro de experiencia. */
 export interface ApunteDeExperiencia {

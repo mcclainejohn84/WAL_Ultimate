@@ -41,6 +41,7 @@ import {
 } from '@/shared/image'
 import { MarcoDeEncuadre } from '@/features/renombre/MarcoDeEncuadre'
 import { SelectorDeCampanas } from '@/features/renombre/CampanasDelPersonaje'
+import { ExperienciaDeBatallaModal } from '@/features/renombre/ExperienciaDeBatallaModal'
 import { CampaignRepository } from '@/data/repositories/campaignRepository'
 import { aTextoPlano, sanearHtml, tieneTexto } from '@/shared/richText'
 import { UnitRepository } from '@/data/repositories/unitRepository'
@@ -71,6 +72,7 @@ import {
   PencilIcon,
   PlusIcon,
   StarIcon,
+  SwordIcon,
   TrashIcon,
   UndoIcon,
 } from '@/shared/ui/icons'
@@ -937,6 +939,8 @@ export function ExperienciaModal({
   const [error, setError] = useState<string | null>(null)
   /** La pregunta de "¿seguro que lo reinicias?" está abierta. */
   const [reiniciando, setReiniciando] = useState(false)
+  /** La hoja de experiencia de BATALLA está abierta (ver ExperienciaDeBatallaModal). */
+  const [deBatalla, setDeBatalla] = useState(false)
 
   async function reiniciar() {
     setError(null)
@@ -1010,6 +1014,44 @@ export function ExperienciaModal({
       <div className="space-y-4">
         <BarraDeExperiencia valor={total} size="md" />
 
+        {/* DE EVENTO O DE BATALLA. Evento es lo de siempre —cuánto y por qué,
+            escrito a mano— y es lo que sale de entrada. Batalla abre la hoja
+            con la tabla del reglamento, aparte: es otro formulario entero. */}
+        {!soloLectura && (
+          <div
+            role="radiogroup"
+            aria-label="Qué experiencia se apunta"
+            className="flex w-fit gap-0.5 rounded-sm border border-rule-dark/50 bg-parchment/70 p-0.5"
+          >
+            {(
+              [
+                ['evento', 'De evento'],
+                ['batalla', 'De batalla'],
+              ] as const
+            ).map(([valor, etiqueta]) => {
+              const activa = valor === 'batalla' ? deBatalla : !deBatalla
+              return (
+                <button
+                  key={valor}
+                  type="button"
+                  role="radio"
+                  aria-checked={activa}
+                  onClick={() => setDeBatalla(valor === 'batalla')}
+                  className={clsx(
+                    'inline-flex items-center gap-1.5 rounded-[2px] px-3 py-1 text-xs whitespace-nowrap transition-colors',
+                    activa
+                      ? 'bg-maroon font-semibold text-parchment shadow-sm shadow-black/20'
+                      : 'text-ink-soft hover:text-ink',
+                  )}
+                >
+                  {valor === 'batalla' && <SwordIcon className="h-3.5 w-3.5" />}
+                  {etiqueta}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
         {!soloLectura && (
           <div className="rounded-sm border border-rule-dark/30 bg-parchment/60 p-3">
             <div className="flex items-end gap-2">
@@ -1069,6 +1111,17 @@ export function ExperienciaModal({
           </ul>
         )}
       </div>
+      {deBatalla && (
+        <ExperienciaDeBatallaModal
+          personaje={personaje}
+          experienciaActual={total}
+          onClose={() => setDeBatalla(false)}
+          onApuntado={() => {
+            reload()
+            onApuntado()
+          }}
+        />
+      )}
       {reiniciando && (
         <ConfirmDialog
           title={`¿Reiniciar a ${personaje.name}?`}

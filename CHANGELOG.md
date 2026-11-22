@@ -13,6 +13,30 @@ es posterior a `0.9`, aunque como número decimal sería menor.
 
 ---
 
+## 0.224 — 22/11/2026 13:24
+
+- **Experiencia de evento o de batalla.** En la ventana de Experiencia de un
+  personaje de renombre se elige el tipo. **De evento** es lo de siempre (y
+  lo que sale de entrada): cuánto y por qué. **De batalla** abre una hoja
+  aparte:
+  - La batalla se elige de las que hay en Batallas o se escribe su nombre.
+  - A la izquierda, la tabla de acciones del reglamento tal cual, agrupada
+    (acciones del personaje en cursiva, victoria, bajas enemigas y diferencia
+    de puntos). Se pincha lo que hizo y se apunta con sus puntos; en las de
+    "por cada", cada clic suma una más; de los tramos (bajas, diferencia de
+    puntos, ejército compuesto) solo cuenta uno. "Unidad con rango
+    aniquilada" lleva su rango y calcula 1 + rango − 2.
+  - A la derecha, lo que se le va a apuntar a ese personaje, con los puntos
+    de cada línea corregibles para cuando se reparten entre varios, y el
+    total.
+  - Las reglas de reparto y los asteriscos de la tabla están en la "i" de
+    cada grupo.
+  - Se guarda como un apunte en su libro de experiencia, con la batalla y el
+    desglose.
+- **El tope de experiencia pasa de 100 a 200.**
+
+---
+
 ## 0.223 — 22/11/2026 12:25
 
 - **Hoja de ejército: los apéndices ya no se imprimen encima de los
